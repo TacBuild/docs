@@ -1,0 +1,292 @@
+---
+title: Deploy a Token on TAC EVM
+description: "Learn how to deploy a token on TAC EVM"
+---
+
+In this guide, we will deploy and interact with a token on TAC EVM.
+
+## Prerequisites
+
+- Node.js
+- NPM / Yarn
+- Basic knowledge of Solidity
+- An Ethereum wallet
+
+## Set up your environment
+
+The first thing we need to do is set up our environment. In this guide, we will use Foundry to compile and deploy our smart contract. Foundry is a modern development toolchain for Ethereum, with a focus on simplicity and ease of use.
+
+### Install the Foundry CLI
+
+To install the Foundry CLI, run the following command:
+
+```bash
+curl -L https://foundry.paradigm.xyz | bash
+```
+
+This will download foundryup. Then install Foundry by running,
+
+```bash
+foundryup
+```
+
+Once Foundry is installed, you can verify the installation by running `forge --version`.
+
+### Initialize a Foundry project
+
+Next, we need to initialize a Foundry project. To do this, run the following command:
+
+```bash
+forge init token
+```
+
+Then, navigate inside counter_contract, and your project structure should look like this:
+
+```
+.
+├── lib
+├── script
+├── src
+└── test
+foundry.toml
+```
+
+### Write your smart contract
+
+Now, we need to write our smart contract. Create a file called `token.sol` in the `src` directory and add the following code:
+
+```solidity
+// SPDX-License-Identifier: MIT
+
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.13;
+
+contract ExampleToken {
+    string public name;
+    string public symbol;
+    uint8 public decimals;
+    uint256 public totalSupply;
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
+
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+
+    constructor(string memory _name, string memory _symbol, uint8 _decimals, uint256 _totalSupply) {
+        name = _name;
+        symbol = _symbol;
+        decimals = _decimals;
+        totalSupply = _totalSupply;
+        balanceOf[msg.sender] = _totalSupply;
+        emit Transfer(address(0), msg.sender, _totalSupply);
+    }
+
+    function transfer(address _to, uint256 _value) public returns (bool success) {
+        require(balanceOf[msg.sender] >= _value, "Insufficient balance");
+        balanceOf[msg.sender] -= _value;
+        balanceOf[_to] += _value;
+        emit Transfer(msg.sender, _to, _value);
+        return true;
+    }
+
+    function approve(address _spender, uint256 _value) public returns (bool success) {
+        allowance[msg.sender][_spender] = _value;
+        emit Approval(msg.sender, _spender, _value);
+        return true;
+    }
+
+    function transferFrom(address _from, address _to, uint256 _value) public returns (bool success) {
+        require(balanceOf[_from] >= _value, "Insufficient balance");
+        require(allowance[_from][msg.sender] >= _value, "Insufficient allowance");
+        balanceOf[_from] -= _value;
+        balanceOf[_to] += _value;
+        allowance[_from][msg.sender] -= _value;
+        emit Transfer(_from, _to, _value);
+        return true;
+    }
+}
+
+```
+
+In the above code, we have a constructor that initializes the token with a name, symbol, decimals, and total supply. We also have a `transfer`, `approve`, and `transferFrom` function that allows us to transfer, approve, and transfer from tokens.
+
+### Test your smart contract
+
+To add tests for your smart contract, create a file called `token.t.sol` in the `test` directory and add the following code:
+
+```solidity
+
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.13;
+
+import {Test, console} from "forge-std/Test.sol";
+import {ExampleToken} from "../src/token.sol";
+
+contract SimpleTokenTest is Test {
+    ExampleToken public token;
+    address public owner;
+    address public user1;
+    address public user2;
+    uint256 public initialSupply;
+
+    function setUp() public {
+        owner = address(this);
+        user1 = address(0x1);
+        user2 = address(0x2);
+        initialSupply = 1000000 * 10**18;
+
+        // Deploy token
+        token = new ExampleToken("Test Token", "TST", 18, initialSupply);
+    }
+
+    function test_InitialState() public {
+        assertEq(token.name(), "Test Token");
+        assertEq(token.symbol(), "TST");
+        assertEq(token.decimals(), 18);
+        assertEq(token.totalSupply(), initialSupply);
+        assertEq(token.balanceOf(owner), initialSupply);
+    }
+
+    function test_Transfer() public {
+        uint256 amount = 1000 * 10**18;
+        token.transfer(user1, amount);
+
+        assertEq(token.balanceOf(user1), amount);
+        assertEq(token.balanceOf(owner), initialSupply - amount);
+    }
+
+    function testFail_TransferInsufficientBalance() public {
+        uint256 amount = initialSupply + 1;
+        token.transfer(user1, amount);
+    }
+
+    function test_Approve() public {
+        uint256 amount = 1000 * 10**18;
+        token.approve(user1, amount);
+
+        assertEq(token.allowance(owner, user1), amount);
+    }
+
+    function test_TransferFrom() public {
+        uint256 amount = 1000 * 10**18;
+
+        // First approve user1 to spend tokens
+        token.approve(user1, amount);
+
+        // Use user1 to transfer tokens from owner to user2
+        vm.prank(user1);
+        token.transferFrom(owner, user2, amount);
+
+        assertEq(token.balanceOf(user2), amount);
+        assertEq(token.balanceOf(owner), initialSupply - amount);
+        assertEq(token.allowance(owner, user1), 0);
+    }
+
+    function testFail_TransferFromInsufficientAllowance() public {
+        uint256 amount = 1000 * 10**18;
+
+        // Try to transfer without approval
+        vm.prank(user1);
+        token.transferFrom(owner, user2, amount);
+    }
+
+    function testFuzz_Transfer(uint256 amount) public {
+        // Bound the amount to be within the total supply
+        amount = bound(amount, 0, initialSupply);
+
+        token.transfer(user1, amount);
+        assertEq(token.balanceOf(user1), amount);
+        assertEq(token.balanceOf(owner), initialSupply - amount);
+    }
+
+    function testFuzz_Approve(uint256 amount) public {
+        token.approve(user1, amount);
+        assertEq(token.allowance(owner, user1), amount);
+    }
+
+    function test_TransferEmitsEvent() public {
+        uint256 amount = 1000 * 10**18;
+
+        vm.expectEmit(true, true, false, true);
+        emit ExampleToken.Transfer(owner, user1, amount);
+
+        token.transfer(user1, amount);
+    }
+
+    function test_ApproveEmitsEvent() public {
+        uint256 amount = 1000 * 10**18;
+
+        vm.expectEmit(true, true, false, true);
+        emit ExampleToken.Approval(owner, user1, amount);
+
+        token.approve(user1, amount);
+    }
+}
+
+```
+
+The above code is a test for our smart contract. In the above code, we have a `setUp` function that initializes the token and the owner, user1, and user2 addresses. We also have a `test_InitialState` function that checks the initial state of the token, and a `test_Transfer` function that tests the `transfer` function.
+
+### Compile your smart contract
+
+Before we compile our smart contract, create a new script in the `script` directory called `token.s.sol`, and add the following code:
+
+```solidity
+pragma solidity ^0.8.13;
+
+import {Script, console} from "forge-std/Script.sol";
+import {ExampleToken} from "../src/token.sol";
+
+contract TokenScript is Script {
+    ExampleToken public token;
+
+    function setUp() public {}
+
+    function run() public {
+        vm.startBroadcast();
+
+        token = new ExampleToken("Test Token", "TST", 18, initialSupply);
+
+        vm.stopBroadcast();
+    }
+}
+```
+
+Now, we can compile our smart contract by running the following command:
+
+```bash
+forge build
+```
+
+You should see compilation details such as:
+
+```bash
+[⠰] Compiling...
+[⠘] Compiling 12 files with 0.8.15
+[⠊] Solc 0.8.15 finished in 1.41s
+Compiler run successful
+```
+
+### Deploy your smart contract
+
+Before we deploy our smart contract, make sure to add TAC EVM as a network in your wallet, and get some testnet TAC. You can get testnet TAC from the [TAC Faucet](https://turin.faucet.tac.build/) and use the top right button to add TAC EVM as a network.
+
+Next, To deploy your smart contract, run the following command:
+
+You can replace `<your-rpc-url>` with: https://turin.rpc.tac.build
+
+<Warning>
+Make sure to replace `<your-private-key>` with your own Ethereum private key. Don't share or expose your private key.
+</Warning>
+
+```bash
+forge script script/token.s.sol:TokenScript --rpc-url <your-rpc-url> --private-key <your-private-key> --constructor-args "Test Token" "TST" 18 1000000000000000000000000
+```
+
+You can view the deployed contract on the [TAC EVM Explorer](https://turin.explorer.tac.build/).
+
+That is it! You have successfully deployed a token on TAC EVM.
+
+## Next steps
+
+- [Interact with Uniswap V2](/guides/uniswap-v2)

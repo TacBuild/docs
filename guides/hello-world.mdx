@@ -1,0 +1,192 @@
+---
+title: Hello World on TAC EVM
+description: "Learn how to deploy and interact with a smart contract on TAC EVM"
+---
+
+In this guide, we will deploy and interact with a smart contract on TAC EVM.
+
+## Prerequisites
+
+- Node.js
+- NPM / Yarn
+- Basic knowledge of Solidity
+- An Ethereum wallet
+
+## Set up your environment
+
+The first thing we need to do is set up our environment. In this guide, we will use Foundry to compile and deploy our smart contract. Foundry is a modern development toolchain for Ethereum, with a focus on simplicity and ease of use.
+
+### Install the Foundry CLI
+
+To install the Foundry CLI, run the following command:
+
+```bash
+curl -L https://foundry.paradigm.xyz | bash
+```
+
+This will download foundryup. Then install Foundry by running,
+
+```bash
+foundryup
+```
+
+Once Foundry is installed, you can verify the installation by running `forge --version`.
+
+### Initialize a Foundry project
+
+Next, we need to initialize a Foundry project. To do this, run the following command:
+
+```bash
+forge init hello-world
+```
+
+Then, navigate inside counter_contract, and your project structure should look like this:
+
+```
+.
+├── lib
+├── script
+├── src
+└── test
+foundry.toml
+```
+
+### Write your smart contract
+
+Now, we need to write our smart contract. Create a file called `Hello.sol` in the `src` directory and add the following code:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.13;
+
+contract HelloWorld {
+    string private greeting = "Hello TAC!";
+
+    event GreetingChanged(string newGreeting, address changedBy);
+
+    function getGreeting() public view returns (string memory) {
+        return greeting;
+    }
+
+    function setGreeting(string memory _newGreeting) public {
+        greeting = _newGreeting;
+        emit GreetingChanged(_newGreeting, msg.sender);
+    }
+}
+```
+
+The contract has two functions: `getGreeting` and `setGreeting`.
+
+The `getGreeting` function returns the current greeting, and the `setGreeting` function sets a new greeting. The `GreetingChanged` event is emitted whenever the greeting is changed.
+
+### Test your smart contract
+
+To add tests for your smart contract, create a file called `Hello.t.sol` in the `test` directory and add the following code:
+
+```solidity
+pragma solidity ^0.8.13;
+
+
+import {Test, console} from "forge-std/Test.sol";
+import {HelloWorld} from "../src/Hello.sol";
+
+contract HelloWorldTest is Test {
+    HelloWorld public helloWorld;
+
+    event GreetingChanged(string newGreeting, address changedBy);
+
+    function setUp() public {
+        helloWorld = new HelloWorld();
+    }
+
+    function test_InitialGreeting() public view {
+        assertEq(helloWorld.getGreeting(), "Hello TAC!");
+    }
+
+    function test_SetGreeting() public {
+        string memory newGreeting = "Hello from foundry!";
+
+        vm.expectEmit(true, true, true, true);
+        emit GreetingChanged(newGreeting, address(this));
+
+        helloWorld.setGreeting(newGreeting);
+        assertEq(helloWorld.getGreeting(), newGreeting);
+    }
+
+    function testFuzz_SetGreeting(string memory randomGreeting) public {
+        helloWorld.setGreeting(randomGreeting);
+        assertEq(helloWorld.getGreeting(), randomGreeting);
+    }
+
+
+}
+```
+
+The above code is a test for our smart contract. It tests the initial greeting, the `setGreeting` function, and the `GreetingChanged` event.
+
+### Compile your smart contract
+
+Before we compile our smart contract, create a new script in the `script` directory called `hello.s.sol`, and add the following code:
+
+```solidity
+pragma solidity ^0.8.13;
+
+import {Script, console} from "forge-std/Script.sol";
+import {HelloWorld} from "../src/hello-tac.sol";
+
+contract HelloWorldScript is Script {
+    HelloWorld public helloWorld;
+
+    function setUp() public {}
+
+    function run() public {
+        vm.startBroadcast();
+
+        helloWorld = new HelloWorld();
+
+        console.log("Initial greeting:", helloWorld.getGreeting());
+
+        vm.stopBroadcast();
+    }
+}
+```
+
+Now, we can compile our smart contract by running the following command:
+
+```bash
+forge build
+```
+
+You should see compilation details such as:
+
+```bash
+[⠰] Compiling...
+[⠘] Compiling 12 files with 0.8.15
+[⠊] Solc 0.8.15 finished in 1.41s
+Compiler run successful
+```
+
+### Deploy your smart contract
+
+Before we deploy our smart contract, make sure to add TAC EVM as a network in your wallet, and get some testnet TAC. You can get testnet TAC from the [TAC Faucet](https://turin.faucet.tac.build/) and use the top right button to add TAC EVM as a network.
+
+Next, To deploy your smart contract, run the following command:
+
+You can replace `<your-rpc-url>` with: https://turin.rpc.tac.build
+
+<Warning>
+Make sure to replace `<your-private-key>` with your own Ethereum private key. Don't share or expose your private key.
+</Warning>
+
+```bash
+forge script script/hello.s.sol:HelloWorldScript --rpc-url <your-rpc-url> --private-key <your-private-key>
+```
+
+You can view the deployed contract on the [TAC EVM Explorer](https://turin.explorer.tac.build/).
+
+That is it! You have successfully deployed and interacted with a smart contract on TAC EVM.
+
+## Next steps
+
+- [Deploy a Token](/guides/token)
+- [Interact with Uniswap V2](/guides/uniswap-v2)

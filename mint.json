@@ -14,7 +14,6 @@
       "light": "#F2EBFF",
       "dark": "#0a080f"
     }
- 
   },
   "topbarLinks": [
     {
@@ -77,34 +76,23 @@
     },
     {
       "group": "Guides/Tutorials",
-      "pages": [
-        "guides/guide-1"
-      ]
+      "pages": ["guides/hello-world", "guides/token", "guides/uniswap-v2"]
     },
     {
       "group": "Partner Integrations",
-      "pages": [
-        "partner-integrations/partner-integrations-1"
-      ]
+      "pages": ["partner-integrations/partner-integrations-1"]
     },
     {
       "group": "Contribute to TAC Network",
-      "pages": [
-        "evm/introduction-1"
-      ]
+      "pages": ["evm/introduction-1"]
     },
     {
       "group": "Run a TAC Node",
-      "pages": [
-        "evm/node-runner"
-      ]
+      "pages": ["evm/node-runner"]
     },
     {
       "group": "Become a Validator",
-      "pages": [
-        "evm/validator-1",
-        "evm/validator-2"
-      ]
+      "pages": ["evm/validator-1", "evm/validator-2"]
     }
   ],
   "theme": "prism",
