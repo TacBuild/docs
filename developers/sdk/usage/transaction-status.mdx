@@ -1,0 +1,139 @@
+---
+title: "Transaction Status"
+description: "Learn how to track the status of your transactions"
+---
+
+After sending a cross-chain transaction, you can track its status using the TransactionStatus class. This guide explains how to monitor your transaction through its lifecycle.
+
+## Basic Status Tracking
+
+### Initialize Tracker
+
+```typescript
+import { TransactionStatus } from "tac-sdk";
+
+const tracker = new TransactionStatus();
+```
+
+### Detailed Status Tracking
+
+1. Get Operation ID
+
+```typescript
+const operationId = await tracker.getOperationId(transactionLinker);
+
+if (!operationId) {
+  console.log("Waiting for validators to receive messages...");
+  // Implement retry logic
+}
+```
+
+2. Check Transaction Status
+
+```typescript
+const status = await tracker.getStatusTransaction(operationId);
+console.log("Current status:", status);
+```
+
+### Status Types
+
+Your transaction will progress through these states:
+
+- `EVMMerkleMessageCollected`: All events collected for sharded message
+- `EVMMerkleRootSet`: Message added to Merkle tree
+- `EVMMerkleMessageExecuted`: Executed on EVM side
+- `TVMMerkleMessageCollected`: Return message generated
+- `TVMMerkleRootSet`: TVM message added to tree
+- `TVMMerkleMessageExecuted`: Executed on TVM side
+- `FinalSuccessfulState`: Final successful state
+
+### Simplified Status Tracking
+
+Use the simplified method for easier status monitoring:
+
+```typescript
+const simplifiedStatus = await tracker.getSimpifiedTransactionStatus(
+  transactionLinker
+);
+
+switch (simplifiedStatus) {
+  case SimplifiedStatuses.Pending:
+    console.log("Transaction is in progress");
+    break;
+  case SimplifiedStatuses.Successful:
+    console.log("Transaction completed successfully");
+    break;
+  case SimplifiedStatuses.Failed:
+    console.log("Transaction failed");
+    break;
+  case SimplifiedStatuses.OperationIdNotFound:
+    console.log("Operation ID not found");
+    break;
+}
+```
+
+### Complete Tracking Example
+
+```typescript
+import { TransactionStatus, SimplifiedStatuses } from "tac-sdk";
+
+async function trackTransaction(transactionLinker) {
+  const tracker = new TransactionStatus();
+
+  // Method 1: Detailed tracking
+  const operationId = await tracker.getOperationId(transactionLinker);
+  if (operationId) {
+    const status = await tracker.getStatusTransaction(operationId);
+    console.log("Detailed status:", status);
+  }
+
+  // Method 2: Simplified tracking
+  const simplifiedStatus = await tracker.getSimpifiedTransactionStatus(
+    transactionLinker
+  );
+  console.log("Simplified status:", SimplifiedStatuses[simplifiedStatus]);
+}
+```
+
+### Polling Implementation
+
+```typescript
+async function pollStatus(transactionLinker, maxAttempts = 20) {
+  const tracker = new TransactionStatus();
+  let attempts = 0;
+
+  const poll = async () => {
+    if (attempts >= maxAttempts) {
+      throw new Error("Max polling attempts reached");
+    }
+
+    const status = await tracker.getSimpifiedTransactionStatus(
+      transactionLinker
+    );
+    if (status === SimplifiedStatuses.Successful) {
+      return "Success";
+    }
+    if (status === SimplifiedStatuses.Failed) {
+      throw new Error("Transaction failed");
+    }
+
+    attempts++;
+    await new Promise((resolve) => setTimeout(resolve, 5000)); // 5 second delay
+    return poll();
+  };
+
+  return poll();
+}
+```
+
+### Error Handling
+
+```typescript
+try {
+  await pollStatus(transactionLinker);
+  console.log("Transaction completed successfully");
+} catch (error) {
+  console.error("Transaction monitoring failed:", error.message);
+  // Implement recovery logic
+}
+```

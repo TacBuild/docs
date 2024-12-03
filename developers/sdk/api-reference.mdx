@@ -1,0 +1,162 @@
+---
+title: API Reference
+description: API Reference for TAC-SDK
+---
+
+## TAC SDK Class
+
+### Constructor
+
+```typescript
+constructor(params: TacSDKTonClientParams)
+```
+
+Parameters:
+
+- tonClientParameters?: TonClientParameters - Optional custom TON client configuration
+- network?: Network - Network selection (Testnet/Mainnet), defaults to Testnet
+- delay?: number - Delay in seconds for TON client requests, defaults to 0
+
+Example:
+
+```typescript
+import { TacSdk, Network } from "tac-sdk";
+
+const sdk = new TacSdk({
+  network: Network.Testnet,
+  delay: 3,
+});
+```
+
+### Core Method: sendCrossChainJettonTransaction
+
+```typescript
+async sendCrossChainJettonTransaction(
+jettons: JettonOperationGeneralData[],
+evmProxyMsg: EvmProxyMsg,
+sender: SenderAbstraction
+): Promise<{ transactionLinker: TransactionLinker }>
+```
+
+Parameters:
+
+1. jettons: Array of JettonOperationGeneralData objects
+
+   - fromAddress: string - Address of the sender
+   - tokenAddress: string - Address of the Jetton token
+   - jettonAmount: number - Amount of Jettons to transfer
+   - tonAmount?: number - Optional additional TON amount
+
+2. evmProxyMsg: EvmProxyMsg object
+
+   - evmTargetAddress: string - Target address on EVM network
+   - methodName: string - Method to execute on target contract
+   - encodedParameters: string - Encoded parameters for EVM method
+
+3. sender: SenderAbstraction
+   Either TonConnectSender or RawSender instance
+
+Returns:
+Promise resolving to an object containing transactionLinker for tracking
+
+## Transaction Functions
+
+### TonConnectSender Class
+
+```typescript
+constructor(tonConnect: TonConnectUI)
+```
+
+Purpose:
+Enables sending transactions via TonConnect integration.
+
+Example:
+
+```typescript
+const sender = new TonConnectSender(tonConnect);
+```
+
+### RawSender Class
+
+```typescript
+constructor(mnemonic: string)
+```
+
+Purpose:
+Enables direct blockchain interaction using a mnemonic phrase.
+Currently supports V3R2 wallets.
+
+Example:
+
+```typescript
+const sender = new RawSender("24 words mnemonic");
+```
+
+## Status Tracking
+
+### TransactionStatus Class
+
+Purpose:
+Tracks cross-chain transaction status through Lite Sequencer endpoints.
+
+#### Method: getOperationId
+
+```typescript
+async getOperationId(transactionLinker: TransactionLinker): Promise<string>
+```
+
+Purpose:
+Retrieves operation ID for transaction tracking.
+
+Parameters:
+
+- transactionLinker: TransactionLinker object from sendCrossChainJettonTransaction
+
+Returns:
+String representing the operationId
+
+#### Method: getStatusTransaction
+
+```typescript
+async getStatusTransaction(operationId: string): Promise<string>
+```
+
+Purpose:
+Retrieves current transaction status.
+
+Parameters:
+
+- operationId: String obtained from getOperationId
+
+Returns:
+Transaction status string:
+
+- EVMMerkleMessageCollected
+- EVMMerkleRootSet
+- EVMMerkleMessageExecuted
+- TVMMerkleMessageCollected
+- TVMMerkleRootSet
+- TVMMerkleMessageExecuted
+
+#### Method: getSimpifiedTransactionStatus
+
+```typescript
+async getSimpifiedTransactionStatus(
+  transactionLinker: TransactionLinker
+): Promise<SimplifiedStatuses>
+```
+
+Purpose:
+Provides simplified transaction status.
+
+Parameters:
+
+- transactionLinker: TransactionLinker object
+
+Returns:
+SimplifiedStatuses enum value:
+
+- Pending
+- Successful
+- Failed
+- OperationIdNotFound

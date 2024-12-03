@@ -1,0 +1,88 @@
+---
+title: Quick Start
+description: "Get started with TAC development in minutes"
+---
+
+This guide will help you start building/modifying your EVM frontend with TAC SDK. You'll learn how to set up the SDK and make your first cross-chain transaction that will trigger your solidity code deployed on TAC.
+
+<Steps>
+<Step title="Installation">
+
+Install the TAC SDK using npm:
+
+```bash
+npm install tac-sdk
+```
+
+Once you've installed the SDK, you can start building. Here's a basic setup to get you started:
+
+</Step>
+
+<Step title="Import dependencies">
+
+```javascript
+import { TacSdk } from "tac-sdk";
+import { TonConnectUI } from "@tonconnect/ui";
+import { ethers } from "ethers";
+```
+
+</Step>
+
+<Step title="Initialize TON Connect">
+
+```javascript
+const tonConnectUI = new TonConnectUI({
+  manifestUrl: "YOUR_MANIFEST_URL",
+});
+```
+
+</Step>
+
+<Step title="Create a TAC SDK instance">
+
+```javascript
+const tacSdk = new TacSdk({
+  network: "TESTNET", // Use "MAINNET" for production
+});
+```
+
+</Step>
+
+<Step title="Making Your First Cross-Chain Transaction">
+
+Here's a simple example of making a cross-chain transaction:
+
+```javascript
+// 1. Encode your parameters using ethers
+const abi = new ethers.AbiCoder();
+const encodedParameters = abi.encode(
+  ["address", "uint256"],
+  [targetAddress, amount]
+);
+
+// 2. Set up transaction parameters
+const params = {
+  fromAddress: "YOUR_TON_ADDRESS",
+  jettonAmount: 100,
+  proxyMsg: {
+    evmTargetAddress: "EVM_CONTRACT_ADDRESS",
+    methodName: "transfer(address,uint256)",
+    encodedParameters: encodedParameters,
+  },
+  tokenAddress: "TON_TOKEN_ADDRESS",
+  tonConnect: tonConnectUI,
+};
+
+// 3. Send the transaction
+await tacSdk.sendJettonWithProxyMsg(params);
+```
+
+</Step>
+</Steps>
+
+## API Endpoints
+
+You can use these public endpoints for development:
+
+- Mainnet: https://toncenter.com/api/v2/jsonRPC
+- Testnet: https://testnet.toncenter.com/api/v2/jsonRPC

@@ -21,25 +21,17 @@
       "url": "mailto:info@tac.build"
     }
   ],
-  "tabs": [
-    {
-      "name": "Guides/Tutorials",
-      "url": "tutorials"
-    },
-    {
-      "name": "Partner Integrations",
-      "url": "partner-integrations"
-    },
-    {
-      "name": "Contribute to TAC Network",
-      "url": "evm"
-    }
-  ],
+
   "topbarCtaButton": {
     "name": "Telegram",
     "url": "https://t.me/TACbuild"
   },
   "anchors": [
+    {
+      "name": "Developers",
+      "icon": "code",
+      "url": "developers"
+    },
     {
       "name": "Telegram",
       "icon": "telegram",
@@ -62,7 +54,8 @@
       "pages": [
         "get-started/introduction",
         "get-started/quickstart",
-        "get-started/architecture"
+        "get-started/architecture",
+        "get-started/token-ops"
       ]
     },
     {
@@ -75,24 +68,42 @@
       ]
     },
     {
-      "group": "Guides/Tutorials",
-      "pages": ["guides/hello-world", "guides/token", "guides/uniswap-v2"]
-    },
-    {
-      "group": "Partner Integrations",
-      "pages": ["partner-integrations/partner-integrations-1"]
-    },
-    {
-      "group": "Contribute to TAC Network",
+      "group": "Contribue",
       "pages": ["evm/introduction-1"]
     },
+
     {
-      "group": "Run a TAC Node",
-      "pages": ["evm/node-runner"]
+      "group": "SDK",
+      "pages": [
+        "developers/sdk/introduction",
+        "developers/sdk/quickstart",
+        {
+          "group": "Core Concepts",
+          "pages": [
+            "developers/sdk/core/sharded-messages",
+            "developers/sdk/core/transaction-tracking"
+          ]
+        },
+        {
+          "group": "Usage Guide",
+          "pages": [
+            "developers/sdk/usage/creating-instance",
+            "developers/sdk/usage/sending-transactions",
+            "developers/sdk/usage/transaction-status"
+          ]
+        },
+        "developers/sdk/api-reference",
+        "developers/sdk/types"
+      ]
     },
+
     {
-      "group": "Become a Validator",
-      "pages": ["evm/validator-1", "evm/validator-2"]
+      "group": "Integration Guides",
+      "pages": [
+        "developers/guides/hello-world",
+        "developers/guides/token",
+        "developers/guides/uniswap-v2"
+      ]
     }
   ],
   "theme": "prism",

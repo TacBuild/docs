@@ -1,0 +1,125 @@
+---
+title: Sending Transactions
+description: "Learn how to send transactions using TAC SDK"
+---
+
+The TAC-SDK provides two approaches for sending transactions:
+
+- Using TonConnect
+- Using a Raw Wallet via mnemonic
+
+## Using TonConnect
+
+### Setup
+
+```typescript
+import { TonConnectUI } from "@tonconnect/ui";
+import { TonConnectSender } from "tac-sdk";
+
+// Initialize TonConnect
+const tonConnect = new TonConnectUI({
+  manifestUrl: config.tonconnectManifestUrl,
+});
+
+// Create sender
+const sender = new TonConnectSender(tonConnect);
+```
+
+## Using a Raw Wallet via mnemonic
+
+### Setup
+
+```typescript
+import { RawSender } from "tac-sdk";
+
+// Create sender using mnemonic
+const mnemonic = process.env.TVM_MNEMONICS || ""; // 24 words mnemonic
+const sender = new RawSender(mnemonic);
+```
+
+### Sending Cross-Chain Transactions
+
+1. Prepare EVM Proxy Message
+
+```typescript
+import { ethers } from "ethers";
+
+const abi = new ethers.AbiCoder();
+const encodedParameters = abi.encode(
+  ["uint256", "uint256", "address[]", "address"],
+  [tokenAAmount, tokenBAmount, [EVMtokenAAddress, EVMtokenBAddress], proxyDapp]
+);
+
+const evmProxyMsg = {
+  evmTargetAddress: DappProxyAddress,
+  methodName: "addLiquidity(uint256,uint256,address[],address)",
+  encodedParameters,
+};
+```
+
+2. Prepare Jetton Transfer Data
+
+```typescript
+const jettons = [
+  {
+    fromAddress: "tonUserAddress",
+    tokenAddress: TVMtokenAAddress,
+    jettonAmount: tokenAAmount,
+    tonAmount: 0.4,
+  },
+  {
+    fromAddress: "tonUserAddress",
+    tokenAddress: TVMtokenBAddress,
+    jettonAmount: tokenBAmount,
+    tonAmount: 0.4,
+  },
+];
+```
+
+3. Send Transaction
+
+```typescript
+const result = await tacSdk.sendCrossChainJettonTransaction(
+  jettons,
+  evmProxyMsg,
+  sender
+);
+
+// Get transaction linker for status tracking
+const { transactionLinker } = result;
+```
+
+### Complete Example
+
+```typescript
+import { TacSdk, Network, RawSender } from "tac-sdk";
+import { ethers } from "ethers";
+
+// Initialize SDK
+const tacSdk = new TacSdk({
+  network: Network.Testnet,
+  delay: 3,
+});
+
+// Create sender (using Raw Wallet in this example)
+const sender = new RawSender(mnemonic);
+
+// Prepare EVM message
+const evmProxyMsg = {
+  evmTargetAddress: DappProxyAddress,
+  methodName: "addLiquidity(uint256,uint256,address[],address)",
+  encodedParameters: abi.encode(/* parameters */),
+};
+
+// Prepare jetton transfers
+const jettons = [
+  /* jetton transfer data */
+];
+
+// Send transaction
+const { transactionLinker } = await tacSdk.sendCrossChainJettonTransaction(
+  jettons,
+  evmProxyMsg,
+  sender
+);
+```

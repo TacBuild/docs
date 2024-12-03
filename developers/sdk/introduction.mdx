@@ -1,0 +1,22 @@
+---
+title: Introduction
+description: "Learn how to use TAC SDK to build your own applications."
+---
+
+TAC JavaScript SDK facilitates cross-chain transactions from TVM (TON Virtual Machine) to EVM-compatible blockchains. It is designed to simplify cross-chain interactions for EVM developers by enabling transactions from TVM to EVM with minimal configuration.
+
+This SDK allows EVM developers to perform cross-chain transactions without needing an in-depth understanding of TON. By specifying the following details, the SDK will generate the necessary transactions:
+
+**For EVM:**
+
+- The ProxyDapp address to interact with.
+- The method to call on the contract.
+- Any parameters required for the contract method.
+
+**For TVM:**
+
+- Addresses of TVM Jettons corresponding to EVM tokens.
+
+Using these inputs, the SDK builds a TON transaction payload and enables further signature processing through TON-Connect or directly via mnemonic.
+
+In future updates, the SDK will automatically calculate TON jetton addresses based on corresponding EVM tokens.

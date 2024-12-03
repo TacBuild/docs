@@ -1,0 +1,72 @@
+The TAC-SDK provides comprehensive tools for tracking the status of cross-chain transactions through their entire lifecycle. This tracking system uses the TransactionStatus class to monitor transactions from initiation to completion.
+
+## Getting Started
+
+1. Operation ID
+   First, obtain the `operationId` using the `transactionLinker` structure:
+
+```typescript
+const tracker = new TransactionStatus();
+const operationId = await tracker.getOperationId(transactionLinker);
+```
+
+Note: If you receive an empty response string, it means validators haven't received your messages yet. Keep polling until you get a non-empty operationId.
+
+2. Checking Transaction Status
+
+Once you have the `operationId`, track the transaction status:
+
+```typescript
+const status = await tracker.getStatusTransaction(operationId);
+```
+
+## Transaction Status Lifecycle
+
+1. EVM Message Collection
+   - Status: EVMMerkleMessageCollected
+   - Indicates validator has collected all events for a sharded message
+   - For simple transfers, means the message is fully gathered
+2. EVM Message Processing
+   - Status: EVMMerkleRootSet
+   - EVM message is added to the Merkle tree
+   - Future roots will reflect this addition
+3. EVM Execution
+   - Status: EVMMerkleMessageExecuted
+   - Message has been executed on the EVM side
+4. TVM Message Collection
+   - Status: TVMMerkleMessageCollected
+   - Return message event is generated after EVM execution
+   - Will be executed on the TVM side
+5. TVM Message Processing
+   - Status: TVMMerkleRootSet
+   - TVM message is added to the Merkle tree
+   - Future roots updated accordingly
+6. TVM Execution
+   - Status: TVMMerkleMessageExecuted
+   - Final state: transaction completed its full cycle
+   - Indicates successful cross-chain operation
+
+## Simplified Status Tracking
+
+For easier monitoring, use the simplified status method:
+
+```typescript
+const simplifiedStatus = await tracker.getSimpifiedTransactionStatus(
+  transactionLinker
+);
+```
+
+### Simplified Status Types
+
+- Pending: Transaction is in progress
+- Successful: Transaction completed successfully
+- Failed: Transaction failed
+- OperationIdNotFound: Operation ID not found
+
+### Error Handling
+
+Currently, there are no explicit error statuses. If an issue occurs:
+
+- Transaction will pause at a particular stage
+- Continue monitoring the status
+- Check for timeout or other indicators

@@ -1,0 +1,80 @@
+To begin using the TAC-SDK, you need to create an instance of the TacSdk class. This class is the main entry point for all cross-chain operations.
+
+## Basic Setup
+
+```typescript
+import { TacSdk } from "tac-sdk";
+import { Network } from "tac-sdk";
+
+const tacSdk = new TacSdk({
+  network: Network.Testnet,
+  delay: 3,
+});
+```
+
+## Configuration Options
+
+The `TacSdk` constructor accepts a `TacSDKTonClientParams` object with the following options:
+
+```typescript
+type TacSDKTonClientParams = {
+  tonClientParameters?: TonClientParameters;
+  network?: Network;
+  delay?: number;
+};
+```
+
+Parameters Explained
+
+- `network`: Choose between `Network.Testnet` or `Network.Mainnet`
+  - Default: `Network.Testnet`
+- `delay`: Time delay (in seconds) for requests to the TON client
+  - Default: 0
+  - Recommended: 5 when using default `tonClientParameters`
+- `tonClientParameters`: Optional custom parameters for the TON client configuration
+
+## HTTP API Endpoints
+
+The SDK uses these default public endpoints:
+
+- Mainnet: https://toncenter.com/api/v2/jsonRPC
+- Testnet: https://testnet.toncenter.com/api/v2/jsonRPC
+
+### Network Selection
+
+```typescript
+// For testing
+const testSdk = new TacSdk({ network: Network.Testnet });
+
+// For production
+const prodSdk = new TacSdk({ network: Network.Mainnet });
+```
+
+### Setting Appropriate Delays
+
+```typescript
+// With default parameters
+const sdk = new TacSdk({ delay: 5 });
+
+// With custom parameters
+const customSdk = new TacSdk({
+  delay: 3,
+  tonClientParameters: {
+    /* custom parameters */
+  },
+});
+```
+
+### Usage Example
+
+```typescript
+// Create SDK instance
+const tacSdk = new TacSdk({
+  network: Network.Testnet,
+  delay: 3,
+});
+
+// Now you can use the instance for transactions
+// For example:
+await tacSdk.sendCrossChainJettonTransaction(/* parameters */);
+```

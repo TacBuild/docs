@@ -1,0 +1,70 @@
+---
+title: Sharded Messages
+description: "Learn about sharded messages in TAC SDK"
+---
+
+Due to the specific architecture of TVM (TON Virtual Machine), it's not possible to send multiple tokens in a single transaction. The TAC-SDK uses a sharded messaging system to handle this limitation, where each token transfer is treated as a separate message.
+
+## How It Works
+
+Each message in the sharded system is linked on the validator side using a unique triplet:
+
+- `caller`: The address initiating the transaction
+- `ShardId`: Unique identifier for the message shard
+- `ShardCount`: Total number of shards in the transaction
+
+## Use Cases
+
+### Single Token Transfer
+
+For simple operations like token swaps:
+
+- One token is transferred
+- Single sharded message is created
+- Message is processed individually
+
+### Multiple Token Operations
+
+For complex operations like liquidity providing:
+
+- First token transfer is sent as one sharded message
+- Second token transfer is sent as another sharded message
+- Validators process and link these messages together using the unique triplet
+
+### Example: Adding Liquidity
+
+```typescript
+// Example of providing liquidity with two tokens
+const jettons: JettonOperationGeneralData[] = [
+  {
+    fromAddress: "tonUserAddress",
+    tokenAddress: TVMtokenAAddress,
+    jettonAmount: tokenAAmount,
+    tonAmount: 0.4,
+  },
+  {
+    fromAddress: "tonUserAddress",
+    tokenAddress: TVMtokenBAddress,
+    jettonAmount: tokenBAmount,
+    tonAmount: 0.4,
+  },
+];
+```
+
+In this example:
+
+- Each token transfer becomes a separate sharded message
+- Both messages share the same caller and ShardCount
+- Each message has a unique ShardId
+- Validators link these messages together for the complete operation
+
+### Message Processing
+
+- Messages are generated separately for each token
+- Each message contains:
+  - Token transfer details
+  - Unique shard identification
+  - Link to the overall transaction
+- Validators collect and process messages
+- Messages are linked based on their unique triplet
+- Complete operation is executed once all shards are processed

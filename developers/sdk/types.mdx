@@ -1,0 +1,141 @@
+---
+title: Types & Structures
+description: Types & Structures for TAC-SDK
+---
+
+### Network (Enum)
+
+```typescript
+enum Network {
+  Testnet = "testnet",
+  Mainnet = "mainnet",
+}
+```
+
+- **`Testnet`**: Represents the testnet ton network.
+- **`Mainnet`**: Represents the mainnet ton network.
+
+### TacSDKTonClientParams (Type)
+
+```typescript
+type TacSDKTonClientParams = {
+  tonClientParameters?: TonClientParameters;
+  network?: Network;
+  delay?: number;
+};
+```
+
+Parameters for the TON SDK client.
+
+- **`tonClientParameters`** _(optional)_: Parameters for configuring the TON client.
+- **`network`** _(optional)_: Specifies the blockchain network (`Network` type). Default - _Network.testnet_.
+- **`delay`** _(optional)_: Delay (in seconds) for requests to the TON client. Default is _0_, but with default _tonClientParameters_ better use _5_.
+  This structure is used to create the TON client, which you will utilize for sending transactions. It allows you to specify the network (Testnet or Mainnet), configure client parameters, and set a delay for request execution. Proper configuration ensures smooth and efficient interaction with the TON blockchain during operations.
+
+### EvmProxyMsg (Type)
+
+```typescript
+type EvmProxyMsg = {
+  evmTargetAddress: string;
+  methodName: string;
+  encodedParameters: string;
+};
+```
+
+Represents a proxy message to a TAC.
+
+- **`evmTargetAddress`**: Target address on the EVM network.
+- **`methodName`**: Method name to be called on the target contract.
+- **`encodedParameters`**: Parameters for the method, encoded as a string.
+
+This structure defines the logic you want to execute on the TAC side. This message is sent along with all the sharded messages related to the jetton bridging, enabling the TAC to process the intended logic on the TAC side during the cross-chain transaction.
+
+### JettonOperationGeneralData (Type)
+
+```typescript
+type JettonOperationGeneralData = {
+  fromAddress: string;
+  tokenAddress: string;
+  jettonAmount: number;
+  tonAmount?: number;
+};
+```
+
+Represents general data for Jetton operations.
+
+- **`fromAddress`**: Sender's address.
+- **`tokenAddress`**: TVM jetton's address.
+- **`jettonAmount`**: Amount of Jetton to be transferred.
+- **`tonAmount`** _(optional)_: Additional TON amount.
+
+### TransactionLinker (Type)
+
+```typescript
+type TransactionLinker = {
+  caller: string;
+  queryId: number;
+  shardCount: number;
+  shardedId: string;
+  timestamp: number;
+};
+```
+
+Linker to track cross-chain transaction.
+
+- **`caller`**: Address of the transaction initiator.
+- **`queryId`**: Identifier for the query.
+- **`shardCount`**: Number of shards involved.
+- **`shardedId`**: Identifier for the shard.
+- **`timestamp`**: Timestamp of the transaction.
+
+This structure is designed to help track the entire execution path of a transaction across all levels. By using it, you can identify the `operationId` and subsequently monitor the transaction status through a public API. This is particularly useful for ensuring visibility and transparency in the transaction lifecycle, allowing you to verify its progress and outcome.
+
+### SimplifiedStatuses (Enum)
+
+```typescript
+enum SimplifiedStatuses {
+  Pending,
+  Failed,
+  Successful,
+  OperationIdNotFound,
+}
+```
+
+Represents the simplified transaction statuses.
+
+- **`Pending`**: The transaction in progress.
+- **`Failed`**: The transaction has failed.
+- **`Successful`**: The transaction was executed successfully.
+- **`OperationIdNotFound`**: The operation ID was not found.
+
+### ShardMessage (Type)
+
+```typescript
+type ShardMessage = {
+  address: string;
+  value: number;
+  payload: Cell;
+};
+```
+
+Represent one shard message witin a transaction.
+
+- **`address`**: Address of the message recipient.
+- **`value`**: Value (in tokens) sent with the message.
+- **`payload`**: Encoded payload (constructed payload for bridging jettons).
+
+### ShardTransaction (Type)
+
+```typescript
+type ShardTransaction = {
+  validUntil: number;
+  messages: ShardMessage[];
+  network: Network;
+};
+```
+
+Represents a collected shard messages(for example, for adding liquidity there will be two shard messages: bridging TokenA, bridging TokenB).
+
+- **`validUntil`**: Validity timestamp for the transaction.
+- **`messages`**: Array of messages (`ShardMessage` type, bridging multiple tokens).
+- **`network`**: Blockchain network (\texttt{Network} type).
