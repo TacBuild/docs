@@ -16,8 +16,8 @@ Message {
    string methodName;       // Method to call on target contract
    bytes arguments;         // Method arguments
    string caller;          // Original caller's address
-   TokenAmount mint;       // Tokens locked on TON
-   TokenAmount unlock;     // Tokens burned on TON
+   TokenAmount mint;        // Tokens locked on TON
+   TokenAmount unlock;      // Tokens burned on TON
 }
 ```
 
@@ -29,21 +29,15 @@ The process begins when a user interacts with a TON Adapter. Their action trigge
 </Step>
 
 <Step title="Sequencer Processing">
-  Sequencers take over once a message is created. They store these messages in
-  their local databases and perform comprehensive validation. This includes
-  verifying that all asset transfers match the message parameters exactly,
-  ensuring the integrity of the cross-chain operation.
+Once a message is created, sequencers take over. They store these messages in their local databases and perform comprehensive validation. This includes verifying that all asset transfers match the message parameters exactly, ensuring the integrity of the cross-chain operation.
 </Step>
 
 <Step title="Tree Formation">
-  At regular intervals determined by DAO settings, sequencers compile all
-  validated messages into Merkle trees. The root hash of these trees becomes the
-  foundation for network-wide consensus, creating a verifiable record of all
-  cross-chain communications.
+At regular intervals determined by DAO settings, sequencers compile all validated messages into Merkle trees. The root hash of these trees becomes the foundation for network-wide consensus, creating a verifiable record of all cross-chain communications.
 </Step>
 
 <Step title="Message Execution">
-Once validated through consensus, messages move to execution on the target chain. This final stage includes all necessary asset operations like minting or unlocking tokens, followed by the actual method calls on target contracts.
+Once validated through consensus, messages move to execution on the target chain. This final stage includes all necessary asset operations, such as minting or unlocking tokens, followed by the actual method calls on target contracts.
 </Step>
 </Steps>
 
@@ -51,13 +45,13 @@ Once validated through consensus, messages move to execution on the target chain
 
 TAC organizes message processing into epochs, providing a structured approach to cross-chain communication. Each epoch is calculated using:
 
-```
+```javascript
 EpochId = (now - protocolDeployDate) / epochDuration
 ```
 
 Messages are processed within specific timespans, ensuring orderly handling of cross-chain operations:
 
-```
+```javascript
 [protocolDeployDate + EpochId * epochDuration,
 protocolDeployDate + (EpochId + 1) * epochDuration]
 ```
@@ -74,13 +68,13 @@ TAC's error handling system ensures user assets remain secure even when transact
 
 ## TON Adapter Implementation
 
-The TON Adapter system comes to life through the CrossChainLayer.receiveMessage() method. This crucial component verifies message uniqueness, validates proofs, and manages asset operations before calling target contract methods. During execution, it handles token minting or unlocking, executes the intended contract calls, and manages any return messages needed.
+The TON Adapter system comes to life through the `CrossChainLayer.receiveMessage()` method. This crucial component verifies message uniqueness, validates proofs, and manages asset operations before calling target contract methods. During execution, it handles token minting or unlocking, executes the intended contract calls, and manages any return messages needed.
 
 ## Common Scenarios
 
 <Steps>
 <Step title="Token Transfers">
-When users transfer tokens between chains, the process begins on TON with TON native asset locking in the TON Adapter. The cross-chain message travels through the sequencer network, resulting in equivalent token minting on the EVM side.
+When users transfer tokens between chains, the process begins on TON with TON-native asset locking in the TON Adapter. The cross-chain message travels through the sequencer network, resulting in equivalent token minting on the EVM side.
 </Step>
 
 <Step title="Contract Interactions">

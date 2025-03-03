@@ -71,7 +71,11 @@
         "core-concepts/what-is-tac",
         "core-concepts/proxy-apps",
         "core-concepts/cross-chain-messaging",
-        "core-concepts/sequencer-network"
+        "core-concepts/sequencer-network",
+        "core-concepts/contribute",
+        "core-concepts/cross-chain-messaging",
+        "core-concepts/proxy-apps",
+        "core-concepts/what-is-tac"
       ]
     },
     {
@@ -84,7 +88,9 @@
     },
     {
       "group": "Contribute",
-      "pages": ["core-concepts/contribute"]
+      "pages": [
+        "core-concepts/contribute"
+      ]
     },
     {
       "group": "Get Started",
@@ -117,17 +123,21 @@
         "developers/sdk/changelog"
       ]
     },
-
     {
       "group": "Guides",
-      "pages": ["developers/guides/hello-world", "developers/guides/uniswap-v2"]
+      "pages": [
+        "developers/guides/hello-world",
+        "developers/guides/uniswap-v2"
+      ]
     },
     {
       "group": "API References",
       "pages": [
         {
           "group": "Status",
-          "pages": ["developers/api-references/status/get-status"]
+          "pages": [
+            "developers/api-references/status/get-status"
+          ]
         },
         {
           "group": "EVM",
@@ -147,7 +157,9 @@
         },
         {
           "group": "Logs",
-          "pages": ["developers/api-references/logs/get-log-file-content"]
+          "pages": [
+            "developers/api-references/logs/get-log-file-content"
+          ]
         },
         {
           "group": "Shards statistics",
@@ -157,7 +169,9 @@
         },
         {
           "group": "OperationId",
-          "pages": ["developers/api-references/operationid/get-operation-id"]
+          "pages": [
+            "developers/api-references/operationid/get-operation-id"
+          ]
         },
         {
           "group": "Time profiling",
@@ -169,20 +183,26 @@
     },
     {
       "group": "Proxy",
-      "pages": ["developers/proxy/developing-proxy"]
+      "pages": [
+        "developers/proxy/developing-proxy"
+      ]
     },
     {
       "group": "Partner Integrations",
       "pages": [
         {
           "group": "Oracles",
-          "pages": ["developers/partner-integrations/oracles/stork"]
+          "pages": [
+            "developers/partner-integrations/oracles/stork"
+          ]
         }
       ]
     },
     {
       "group": "",
-      "pages": ["run-node/join-network"]
+      "pages": [
+        "run-node/join-network"
+      ]
     }
   ],
   "theme": "prism",

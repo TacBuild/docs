@@ -3,15 +3,15 @@ title: What is TAC
 description: "Learn more about TAC - how it works and why it exists"
 ---
 
-TAC is a Network Extension for TON that expand its compatibility with the Ethereum Virtual Machine (EVM). It enables users to access EVM applications directly through their TON wallets, eliminating the need for managing multiple wallets or using traditional bridges.
+TAC is a Network Extension for TON that expands its compatibility with the Ethereum Virtual Machine (EVM). It enables users to access EVM applications directly through their TON wallets, eliminating the need for managing multiple wallets or using traditional bridges.
 
 ## Key Features
 
 Here are the key features of TAC and how they work:
 
-### EVM equivalent Layer 1
+### EVM-equivalent Layer 1
 
-The EVM equivalence in TAC is obtained running a fully fledged EVM Layer1 based on CosmosSDK + Ethermint, secured by dPoS and Babylon Bitcoin Staking. This TAC EVM Layer is the place where EVM code is deployed and executed to power TON Native-like dapps in the TAC ecosystem.
+The EVM equivalence in TAC is obtained by running a fully-fledged EVM Layer 1 based on CosmosSDK + Ethermint, secured by DPoS and Babylon Bitcoin Staking. This TAC EVM Layer is where EVM code is deployed and executed to power TON native-like dApps in the TAC ecosystem.
 
 ### Secure Cross-Chain Communication
 
@@ -19,7 +19,7 @@ At the heart of TAC is a decentralized sequencer network that ensures secure mes
 
 ### Economic Security Model
 
-The network's security on both the TAC EVM Layer and TON Adapter relies on real economic stake in the system. These groups of validators (EVM) & sequencers (Adapter) must stake collateral and actively participate in validation rounds. Good performance earns rewards, while incorrect operations face penalties. This economic model aligns incentives across the network, ensuring participants work to maintain security and efficiency.
+The network's security on both the TAC EVM Layer and TON Adapter relies on real economic stake in the system. These groups of validators (EVM) and sequencers (Adapter) must stake collateral and actively participate in validation rounds. Good performance earns rewards, while incorrect operations face penalties. This economic model aligns incentives across the network, ensuring participants work to maintain security and efficiency.
 
 ### Proxy Apps
 
@@ -37,11 +37,7 @@ The process begins when a user connects their TON wallet to interact with an EVM
 </Step>
 
 <Step title="Message Validation">
-  The sequencer network takes over processing the message through a
-  sophisticated validation system. Sequencers collect transactions into Merkle
-  trees and work to reach consensus. Each group must internally agree on the
-  transaction's validity before it moves to cross-group validation. Only after
-  passing these checks does the message proceed to execution.
+The sequencer network takes over processing the message through a sophisticated validation system. Sequencers collect transactions into Merkle trees and work to reach consensus. Each group must internally agree on the transaction's validity before it moves to cross-group validation. Only after passing these checks does the message proceed to execution.
 </Step>
 
 <Step title="Transaction Execution">
@@ -66,7 +62,7 @@ protocolDeployDate + (EpochId + 1) * epochDuration]
 
 ## TAC EVM Network Security
 
-TAC is a ComsosSDK + Etheremint Layer 1 secured by Tendermint-Core and Babylon Bitcoin Staking. As such, the TAC EVM Layer inherit all the security aspects of Ethermint Cosmos chains.
+TAC is a CosmosSDK + Ethermint Layer 1 secured by Tendermint-Core and Babylon Bitcoin Staking. As such, the TAC EVM Layer inherits all the security aspects of Ethermint Cosmos chains.
 
 ## TON Adapter Security
 
