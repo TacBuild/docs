@@ -10,7 +10,7 @@ The TON Adapter is the backbone of TAC, enabling secure communication between TO
 Every message in the TON Adapter contains essential information needed for cross-chain operations. The message includes a timestamp from the TON blockchain, target contract address, method name, and arguments. It also tracks token amounts for minting and unlocking operations, ensuring accurate asset transfer across chains.
 
 ```solidity
-Message {
+struct Message {
    uint32 timestamp;        // Transaction timestamp from TON blockchain
    address target;          // Target smart contract address
    string methodName;       // Method to call on target contract
