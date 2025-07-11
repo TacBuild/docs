@@ -1,0 +1,262 @@
+---
+title: Token Operations
+description: "How different token types are handled, deployed, and managed across TON and TAC EVM chains"
+---
+
+Token operations in TAC encompass the creation, deployment, transfer, and management of digital assets across both TON and TAC EVM chains. The system supports multiple token standards while maintaining compatibility and seamless user experience across both ecosystems.
+
+## Token Categories
+
+TAC handles different categories of tokens, each with specific characteristics and operational requirements.
+
+<Frame caption="Token categories and their flow between TON and TAC EVM">
+  <img
+    src="/images/token-categories.png"
+    alt="Different token types in the TAC ecosystem"
+  />
+</Frame>
+
+### TON-Origin Tokens
+
+- **TON Jettons**: Standard fungible tokens native to the TON blockchain that follow TON's jetton standard with typical 9-decimal precision.
+
+- **Native TON**: The native currency of the TON blockchain, which receives special handling when bridging to maintain its fundamental properties.
+
+- **TON-Native Assets**: Specialized tokens created specifically for the TON ecosystem, including governance tokens, utility tokens, and application-specific assets.
+
+### TAC EVM-Origin Tokens
+
+- **Native TAC Tokens**: Tokens originally created on the TAC EVM Layer, including the native TAC token used for gas fees and protocol operations.
+
+- **EVM dApp Tokens**: Tokens created by applications deployed on TAC EVM, such as liquidity provider tokens, governance tokens, and application-specific assets.
+
+- **Wrapped Assets**: Representations of external assets that have been brought into the TAC EVM ecosystem through various bridging mechanisms.
+
+## Token Deployment Process
+
+When tokens first cross between chains, TAC automatically handles the deployment of corresponding token contracts with proper metadata preservation.
+
+### Automatic Deployment Triggers
+
+<Steps>
+  <Step title="First Bridge Detection" icon="radar">
+    When a token type first appears in a cross-chain message, the sequencer
+    network detects that no corresponding contract exists on the target chain.
+  </Step>
+
+<Step title="Metadata Extraction" icon="info">
+  The system extracts essential token information including name, symbol,
+  decimals, description, and original contract address from the source chain.
+</Step>
+
+<Step title="Contract Deployment" icon="rocket">
+  A standard ERC-20 (for TAC EVM) or jetton (for TON) contract is automatically
+  deployed using the TokenFactory with the extracted metadata.
+</Step>
+
+  <Step title="Registry Update" icon="book">
+    The new token deployment is registered in the cross-chain address registry,
+    creating a permanent mapping between chain-specific addresses.
+  </Step>
+</Steps>
+
+### Token Implementation Standards
+
+<Tabs>
+  <Tab title="ERC-20 on TAC EVM">
+    - **Standard Compliance**: All bridged tokens on TAC EVM implement the standard ERC-20 interface for maximum compatibility with existing tools and protocols.
+    
+    - **Metadata Extensions**: Additional metadata fields are included to maintain connection with the original TON token, including the `l1Address` field containing the original TON jetton address.
+    
+    - **Decimal Preservation**: TON tokens maintain their original 9-decimal precision when deployed on TAC EVM, rather than being converted to the typical 18-decimal EVM standard.
+    
+      ```solidity
+      interface IERC20Extended {
+          // Standard ERC-20 functions
+          function name() external view returns (string memory);
+          function symbol() external view returns (string memory);
+          function decimals() external view returns (uint8);
+          
+          // TAC-specific metadata
+          function l1Address() external view returns (string memory);
+          function description() external view returns (string memory);
+          function image() external view returns (string memory);
+      }
+      ```
+  </Tab>
+  
+  <Tab title="Jettons on TON">
+    - **TON Standard Compliance**: Tokens bridged to TON follow the standard jetton implementation for compatibility with TON wallets and applications.
+    
+    - **Metadata Preservation**: Original EVM token metadata is preserved in the TON jetton implementation, including name, symbol, and decimal information.
+    
+    - **Decimal Limitations**: EVM tokens with 18 decimals face limitations when bridging to TON due to TON's 9-decimal standard, potentially requiring precision adjustments.
+  </Tab>
+</Tabs>
+
+## Asset Synchronization
+
+The synchronization process ensures that token representations remain consistent across both chains while maintaining proper supply accounting.
+
+### TON to TAC EVM Synchronization
+
+- **Automatic Trigger**: When users attempt to execute transactions involving TON-native tokens, sequencers automatically create wrapped versions on TAC EVM if they don't already exist.
+
+- **Token Creation Operation**: The sequencer creates a token deployment operation that includes all necessary metadata and deployment parameters.
+
+- **Verification Process**: The token's existence and metadata are verified on the TON blockchain before creating the corresponding EVM representation.
+
+- **Address Calculation**: The corresponding TAC EVM address is calculated deterministically based on the TON token's metadata and address.
+
+### TAC EVM to TON Synchronization
+
+- **Burn Operation Detection**: When EVM tokens are burned for bridging to TON, the system detects whether a corresponding jetton exists on TON.
+
+- **StateInit Inclusion**: If no corresponding jetton exists, the bridging message includes StateInit data for automatic token deployment on TON.
+
+- **Metadata Verification**: Token metadata is verified on TAC EVM and used to create the appropriate jetton implementation on TON.
+
+## Decimal Management
+
+Different blockchain ecosystems use different decimal standards, requiring careful handling to maintain precision and user experience.
+
+<Accordion title="Decimal Standards and Compatibility" icon="calculator">
+- **TON Standard**: TON jettons typically use 9 decimals, following the platform's conventions for token precision and gas efficiency.
+
+- **EVM Standard**: Ethereum and EVM chains commonly use 18 decimals, providing higher precision for complex DeFi operations and calculations.
+
+- **Preservation Strategy**: TAC maintains the original decimal precision of tokens when bridging, rather than converting to the target chain's standard.
+
+- **Compatibility Considerations**: While TAC EVM supports tokens with various decimal counts, applications must handle the precision differences appropriately.
+
+</Accordion>
+
+<Warning>
+  Bridging 18-decimal TAC tokens back to TON may have limitations due to TON's
+  9-decimal standard. Consider keeping high-precision tokens on the EVM side
+  when possible.
+</Warning>
+
+## Address Calculation and Pairing
+
+Token address relationships follow deterministic patterns that enable predictable bridging behavior and address pre-calculation.
+
+### Deterministic Address Generation
+
+- **TVM-Origin Tokens**: For tokens originating from TON, the corresponding TAC EVM address is calculated based on the token's TON metadata and contract address.
+
+- **EVM-Origin Tokens**: For tokens originating from TAC EVM, the corresponding TON jetton address is calculated using the token's EVM metadata and deployment parameters.
+
+- **Pre-Calculation Capability**: Applications can calculate paired token addresses before tokens actually bridge, enabling advanced features and user interface improvements.
+
+### Address Registry System
+
+<AccordionGroup>
+  <Accordion title="Registry Functions" icon="database">
+    - **Mapping Storage**: The system maintains an on-chain registry of all token address pairs, providing an authoritative source for cross-chain address relationships.
+    - **Query Interface**: Applications can query the registry to find corresponding addresses without needing to perform calculations or wait for token deployment.
+    - **Metadata Access**: The registry also stores essential token metadata for proper display and interaction across both chains.
+  </Accordion>
+
+  <Accordion title="Registry Updates" icon="refresh-cw">
+    - **Automatic Registration**: When tokens are first deployed through bridging operations, they're automatically registered with their cross-chain counterparts.
+    - **Verification Process**: Registry updates are validated through the same consensus mechanisms as other cross-chain operations.
+    - **Immutable Records**: Once registered, address pairs become immutable to prevent confusion and maintain consistency.
+  </Accordion>
+</AccordionGroup>
+
+## Liquidity Management
+
+Token operations enable sophisticated liquidity management strategies that benefit both TON and TAC EVM ecosystems.
+
+### Cross-Chain Liquidity Flow
+
+- **Dynamic Allocation**: Tokens can flow between chains based on where liquidity is most needed, optimizing capital efficiency across both ecosystems.
+
+- **Arbitrage Mechanisms**: Price differences between chains create natural arbitrage opportunities that help maintain price consistency and efficient markets.
+
+- **Protocol Integration**: DeFi protocols can access liquidity from both ecosystems, increasing available capital and reducing slippage for users.
+
+### Liquidity Pool Examples
+
+<Tabs>
+  <Tab title="DEX Liquidity">
+    - **Unified Pools**: When users provide liquidity to DEXes on TAC EVM using TON-origin tokens, the system handles two separate transactions for TVM tokens that are combined into a single Merkle message.
+    - **LP Token Creation**: DEX pools create liquidity provider tokens that can be bridged back to TON for use in TON-native applications.
+    - **Cross-Chain Trading**: The same liquidity serves traders from both ecosystems, maximizing utilization and fee generation for liquidity providers.
+  </Tab>
+
+  <Tab title="Lending Protocols">
+    - **Collateral Management**: TON tokens can serve as collateral in TAC EVM lending protocols, while borrowed assets can be used across both chains.
+    - **Interest Optimization**: Users can move assets to the chain offering the best interest rates or borrowing terms.
+    - **Risk Distribution**: Cross-chain lending enables better risk distribution and capital efficiency.
+  </Tab>
+</Tabs>
+
+## Token Lifecycle Management
+
+### Creation and Minting
+
+- **Initial Deployment**: New tokens can be created on either chain and automatically gain the ability to bridge to the other chain when first used in cross-chain operations.
+
+- **Supply Management**: Token creators maintain control over supply on the origin chain, while bridged representations have supplies managed automatically by the bridging system.
+
+- **Metadata Updates**: While metadata can be modified on the origin chain, changes are not currently reflected in bridged representations, maintaining stability of deployed contracts.
+
+### Transfer and Trading
+
+- **Native Transfers**: Tokens can be transferred normally within their native chains using standard blockchain mechanisms.
+
+- **Cross-Chain Movement**: Token movement between chains occurs through the asset bridging system as part of application interactions.
+
+*- *Trading Integration\*\*: Bridged tokens integrate seamlessly with existing trading infrastructure on both chains.
+
+### Burning and Recovery
+
+<Columns cols={2}>
+  <Card title="Controlled Burning" icon="flame">
+    - **Bridge Burning**: Tokens are burned automatically as part of the bridging process when moving from TAC EVM back to TON.
+    - **Supply Reduction**: Token creators can implement burning mechanisms on their native chains to reduce total supply.
+  </Card>
+
+  <Card title="Asset Recovery" icon="shield">
+    - **Failed Operation Recovery**: If cross-chain operations fail, the bridging system automatically handles asset recovery and return to users.
+    - **Emergency Procedures**: The system includes emergency procedures for recovering assets in extreme scenarios.
+  </Card>
+</Columns>
+
+## Special Token Types
+
+### Native Gas Tokens
+
+- **TON Token**: Native TON receives special handling when bridging, including automatic wrapping mechanisms and gas fee considerations.
+
+- **TAC Token**: The native TAC token used for gas fees on TAC EVM can be bridged to TON for use in TON-native applications.
+
+- **Gas Fee Management**: Both native tokens can be used for gas fees on their respective chains while maintaining bridging capabilities.
+
+### Governance Tokens
+
+- **Cross-Chain Governance**: Governance tokens can be bridged to enable participation in protocol governance from either chain.
+
+- **Voting Rights**: Bridged governance tokens maintain their voting rights and can participate in governance processes regardless of which chain they're currently on.
+
+- **Delegation Mechanisms**: Token holders can delegate voting rights across chains while maintaining custody of their tokens.
+
+## Performance and Scalability
+
+### Token Operation Efficiency
+
+- **Batch Processing**: Multiple token operations can be batched together for improved efficiency and reduced transaction costs.
+
+- **Optimized Deployment**: Token deployment processes are optimized to minimize gas costs and deployment time.
+
+- **Caching Strategies**: Token metadata and address mappings are cached to improve application performance.
+
+### Scaling Considerations
+
+- **Throughput Limits**: Token operations are subject to the same throughput limits as other cross-chain operations in TAC.
+
+- **Gas Optimization**: Token contracts are optimized for gas efficiency while maintaining full functionality and security.
+
+- **Network Effects**: As more tokens bridge between chains, network effects improve efficiency and reduce costs for all users.

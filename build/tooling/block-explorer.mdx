@@ -1,0 +1,73 @@
+---
+title: Block Explorer
+description: "Explore TAC blockchain data with our custom Blockcout explorer featuring cross-chain operation tracking"
+---
+
+TAC uses a custom version of Blockcout that includes specialized features for tracking cross-chain operations and transactions between TON and TAC EVM. This enhanced explorer provides visibility into both standard EVM transactions and TAC's unique hybrid dApp functionality.
+
+## Available Explorers
+
+<CardGroup cols={2}>
+  <Card
+    title="TAC Mainnet Explorer"
+    icon="blocks"
+    href="https://explorer.tac.build"
+  >
+    Mainnet Explorer provides live transaction monitoring, smart contract verification, cross-chain operation tracking, and real-time network statistics.
+  </Card>
+
+  <Card
+    title="Saint Petersburg Testnet Explorer"
+    icon="test-tube-diagonal"
+    href="https://spb.explorer.tac.build"
+  >
+    Saint Petersburg Testnet Explorer provides development and testing, contract debugging, cross-chain transaction testing, and testnet activity monitoring.
+  </Card>
+</CardGroup>
+
+## Enhanced Features
+
+Our custom Blockcout implementation includes additional functionality designed specifically for TAC's hybrid dApp ecosystem:
+
+<Tabs>
+  <Tab title="Cross-Chain Operations">
+
+    - Monitor cross-chain transactions as they progress
+    through the TON Adapter system, including stage progression and completion
+    status.
+    - View connections between TON-side
+    transactions and their corresponding EVM executions.
+    - Track token movements between TON and TAC EVM with complete audit trails.
+
+  </Tab>
+
+  <Tab title="Standard Features">
+
+    - Complete transaction information including gas
+    usage, status, and event logs.
+    - Contract verification,
+    source code viewing, and interaction interfaces.
+    - Real-time network metrics, block information, and validator activity.
+
+  </Tab>
+</Tabs>
+
+## Quick Links
+
+<AccordionGroup>
+  <Accordion title="Contract Verification" icon="shield-check">
+    Verify your smart contracts directly through the explorer interface or use
+    Hardhat/Foundry verification commands pointing to the explorer's API
+    endpoints.
+  </Accordion>
+
+<Accordion title="API Access" icon="code">
+  Both explorers provide standard Blockcout API endpoints for programmatic
+  access to blockchain data and contract interactions.
+</Accordion>
+
+  <Accordion title="Cross-Chain Monitoring" icon="arrow-left-right">
+    Use the operation tracking features to monitor the progress of cross-chain
+    transactions and debug hybrid dApp functionality.
+  </Accordion>
+</AccordionGroup>

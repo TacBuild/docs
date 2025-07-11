@@ -1,0 +1,997 @@
+---
+title: Token Address Mapping
+description: "Master cross-chain token address resolution, caching strategies, and address management for seamless asset operations"
+---
+
+Token address mapping is a critical component of cross-chain operations, enabling seamless translation between TON and TAC EVM token addresses. The TAC SDK provides comprehensive tools for address resolution, caching, and management to ensure efficient and reliable cross-chain asset handling.
+
+## Understanding Address Mapping
+
+Cross-chain address mapping maintains relationships between tokens across different blockchain networks. In TAC's hybrid architecture, every bridged asset has corresponding addresses on both TON and TAC EVM:
+
+<Tabs>
+  <Tab title="TON to TAC Mapping">
+    ```javascript
+    // TON Jetton → TAC EVM Token
+    const tonJettonAddress = "EQJettonMasterAddress...";
+    const tacEvmAddress = await tacSdk.getEVMTokenAddress(tonJettonAddress);
+    
+    console.log(`TON Jetton: ${tonJettonAddress}`);
+    console.log(`TAC EVM Token: ${tacEvmAddress}`);
+    ```
+    
+    **Characteristics:**
+    - Jetton master contracts map to ERC20 contracts
+    - NFT collections map to ERC721 contracts
+    - Individual NFT items maintain cross-chain identity
+    - Native TON maps to wrapped TON (wTON) on TAC
+  </Tab>
+  
+  <Tab title="TAC to TON Mapping">
+    ```javascript
+    // TAC EVM Token → TON Jetton
+    const tacEvmAddress = "0xEVMTokenAddress...";
+    const tonJettonAddress = await tacSdk.getTVMTokenAddress(tacEvmAddress);
+    
+    console.log(`TAC EVM Token: ${tacEvmAddress}`);
+    console.log(`TON Jetton: ${tonJettonAddress}`);
+    ```
+    
+    **Characteristics:**
+    - ERC20 contracts map back to jetton masters
+    - ERC721 contracts map to NFT collections
+    - Maintains full bidirectional compatibility
+    - Preserves token metadata and properties
+  </Tab>
+</Tabs>
+
+## Core Address Resolution Methods
+
+### Basic Token Address Resolution
+
+```javascript
+class TokenAddressResolver {
+  constructor(tacSdk) {
+    this.tacSdk = tacSdk;
+    this.addressCache = new Map();
+    this.reverseAddressCache = new Map();
+  }
+
+  async resolveToEVM(tonAddress) {
+    // Check cache first
+    if (this.addressCache.has(tonAddress)) {
+      return this.addressCache.get(tonAddress);
+    }
+
+    try {
+      const evmAddress = await this.tacSdk.getEVMTokenAddress(tonAddress);
+      
+      // Cache the result
+      this.addressCache.set(tonAddress, evmAddress);
+      this.reverseAddressCache.set(evmAddress, tonAddress);
+      
+      return evmAddress;
+    } catch (error) {
+      console.error(`Failed to resolve TON address ${tonAddress}:`, error);
+      throw error;
+    }
+  }
+
+  async resolveToTON(evmAddress) {
+    // Check cache first
+    if (this.reverseAddressCache.has(evmAddress)) {
+      return this.reverseAddressCache.get(evmAddress);
+    }
+
+    try {
+      const tonAddress = await this.tacSdk.getTVMTokenAddress(evmAddress);
+      
+      // Cache the result
+      this.reverseAddressCache.set(evmAddress, tonAddress);
+      this.addressCache.set(tonAddress, evmAddress);
+      
+      return tonAddress;
+    } catch (error) {
+      console.error(`Failed to resolve EVM address ${evmAddress}:`, error);
+      throw error;
+    }
+  }
+
+  async resolveBatch(addresses, direction = 'TON_TO_EVM') {
+    const results = new Map();
+    const promises = addresses.map(async (address) => {
+      try {
+        const resolved = direction === 'TON_TO_EVM' 
+          ? await this.resolveToEVM(address)
+          : await this.resolveToTON(address);
+        
+        results.set(address, { success: true, address: resolved });
+      } catch (error) {
+        results.set(address, { success: false, error: error.message });
+      }
+    });
+
+    await Promise.allSettled(promises);
+    return results;
+  }
+
+  clearCache() {
+    this.addressCache.clear();
+    this.reverseAddressCache.clear();
+  }
+
+  getCacheStats() {
+    return {
+      forwardCacheSize: this.addressCache.size,
+      reverseCacheSize: this.reverseAddressCache.size,
+      totalCached: this.addressCache.size + this.reverseAddressCache.size
+    };
+  }
+}
+```
+
+### NFT Address Resolution
+
+NFT address mapping requires special handling for collections vs individual items:
+
+```javascript
+class NFTAddressResolver {
+  constructor(tacSdk) {
+    this.tacSdk = tacSdk;
+    this.nftCache = new Map();
+  }
+
+  async resolveNFTCollection(tonCollectionAddress) {
+    const cacheKey = `collection_${tonCollectionAddress}`;
+    
+    if (this.nftCache.has(cacheKey)) {
+      return this.nftCache.get(cacheKey);
+    }
+
+    try {
+      const evmNftAddress = await this.tacSdk.getEVMNFTAddress(
+        tonCollectionAddress,
+        'COLLECTION'
+      );
+      
+      const result = {
+        tonCollection: tonCollectionAddress,
+        evmCollection: evmNftAddress,
+        type: 'COLLECTION'
+      };
+
+      this.nftCache.set(cacheKey, result);
+      return result;
+    } catch (error) {
+      console.error(`Failed to resolve NFT collection ${tonCollectionAddress}:`, error);
+      throw error;
+    }
+  }
+
+  async resolveNFTItem(tonItemAddress) {
+    const cacheKey = `item_${tonItemAddress}`;
+    
+    if (this.nftCache.has(cacheKey)) {
+      return this.nftCache.get(cacheKey);
+    }
+
+    try {
+      const evmNftAddress = await this.tacSdk.getEVMNFTAddress(
+        tonItemAddress,
+        'ITEM'
+      );
+      
+      const result = {
+        tonItem: tonItemAddress,
+        evmNft: evmNftAddress,
+        type: 'ITEM'
+      };
+
+      this.nftCache.set(cacheKey, result);
+      return result;
+    } catch (error) {
+      console.error(`Failed to resolve NFT item ${tonItemAddress}:`, error);
+      throw error;
+    }
+  }
+
+  async resolveNFTFromEVM(evmNftAddress, tokenId = null) {
+    const cacheKey = tokenId 
+      ? `evm_item_${evmNftAddress}_${tokenId}`
+      : `evm_collection_${evmNftAddress}`;
+    
+    if (this.nftCache.has(cacheKey)) {
+      return this.nftCache.get(cacheKey);
+    }
+
+    try {
+      const tonNftAddress = await this.tacSdk.getTVMNFTAddress(
+        evmNftAddress,
+        tokenId
+      );
+      
+      const result = {
+        evmNft: evmNftAddress,
+        tonNft: tonNftAddress,
+        tokenId,
+        type: tokenId ? 'ITEM' : 'COLLECTION'
+      };
+
+      this.nftCache.set(cacheKey, result);
+      return result;
+    } catch (error) {
+      console.error(`Failed to resolve EVM NFT ${evmNftAddress}:`, error);
+      throw error;
+    }
+  }
+
+  async getNFTMetadata(nftAddress, addressType) {
+    try {
+      if (addressType === 'ITEM') {
+        const metadata = await this.tacSdk.getNFTItemData(nftAddress);
+        return {
+          address: nftAddress,
+          type: 'ITEM',
+          metadata: {
+            initialized: metadata.init,
+            index: metadata.index,
+            collection: metadata.collection_address,
+            owner: metadata.owner_address,
+            content: metadata.individual_content
+          }
+        };
+      } else {
+        // Collection metadata would require additional SDK methods
+        return {
+          address: nftAddress,
+          type: 'COLLECTION',
+          metadata: {
+            // Collection-specific metadata
+          }
+        };
+      }
+    } catch (error) {
+      console.error(`Failed to get NFT metadata for ${nftAddress}:`, error);
+      throw error;
+    }
+  }
+}
+```
+
+## Native Token Handling
+
+### Native TON and TAC Address Management
+
+```javascript
+class NativeTokenManager {
+  constructor(tacSdk) {
+    this.tacSdk = tacSdk;
+    this.nativeAddresses = new Map();
+  }
+
+  async initializeNativeAddresses() {
+    try {
+      // Get native token representations
+      const nativeTonAddress = this.tacSdk.nativeTONAddress; // Always "NONE"
+      const nativeTacAddress = await this.tacSdk.nativeTACAddress();
+      
+      this.nativeAddresses.set('TON_NATIVE', nativeTonAddress);
+      this.nativeAddresses.set('TAC_NATIVE', nativeTacAddress);
+      
+      console.log('Native token addresses initialized:');
+      console.log(`- TON Native: ${nativeTonAddress}`);
+      console.log(`- TAC Native: ${nativeTacAddress}`);
+      
+      return {
+        tonNative: nativeTonAddress,
+        tacNative: nativeTacAddress
+      };
+    } catch (error) {
+      console.error('Failed to initialize native addresses:', error);
+      throw error;
+    }
+  }
+
+  isNativeTON(address) {
+    return address === this.tacSdk.nativeTONAddress || 
+           address === "NONE" || 
+           !address;
+  }
+
+  async isNativeTAC(address) {
+    const tacNativeAddress = await this.tacSdk.nativeTACAddress();
+    return address === tacNativeAddress;
+  }
+
+  async normalizeAssetAddress(asset) {
+    if (this.isNativeTON(asset.address)) {
+      return {
+        ...asset,
+        address: this.tacSdk.nativeTONAddress,
+        type: 'NATIVE_TON',
+        symbol: 'TON'
+      };
+    }
+
+    if (await this.isNativeTAC(asset.address)) {
+      return {
+        ...asset,
+        address: await this.tacSdk.nativeTACAddress(),
+        type: 'NATIVE_TAC',
+        symbol: 'TAC'
+      };
+    }
+
+    return {
+      ...asset,
+      type: asset.type || 'JETTON'
+    };
+  }
+
+  async convertNativeForBridging(assets, direction) {
+    const convertedAssets = [];
+
+    for (const asset of assets) {
+      if (direction === 'TON_TO_TAC' && this.isNativeTON(asset.address)) {
+        // TON → TAC: Native TON becomes wrapped TON on TAC
+        const tacWrappedAddress = await this.tacSdk.nativeTACAddress();
+        convertedAssets.push({
+          ...asset,
+          originalAddress: asset.address,
+          bridgedAddress: tacWrappedAddress,
+          bridgeType: 'NATIVE_TO_WRAPPED'
+        });
+      } else if (direction === 'TAC_TO_TON' && await this.isNativeTAC(asset.address)) {
+        // TAC → TON: Native TAC becomes jetton on TON
+        convertedAssets.push({
+          ...asset,
+          originalAddress: asset.address,
+          bridgedAddress: 'TBD', // Would need actual jetton address
+          bridgeType: 'WRAPPED_TO_JETTON'
+        });
+      } else {
+        convertedAssets.push(asset);
+      }
+    }
+
+    return convertedAssets;
+  }
+}
+```
+
+## Advanced Address Resolution Patterns
+
+### Address Resolution with Metadata
+
+```javascript
+class EnhancedAddressResolver {
+  constructor(tacSdk) {
+    this.tacSdk = tacSdk;
+    this.metadataCache = new Map();
+    this.addressResolver = new TokenAddressResolver(tacSdk);
+    this.nftResolver = new NFTAddressResolver(tacSdk);
+  }
+
+  async resolveWithMetadata(address, sourceChain = 'TON') {
+    const cacheKey = `metadata_${address}_${sourceChain}`;
+    
+    if (this.metadataCache.has(cacheKey)) {
+      return this.metadataCache.get(cacheKey);
+    }
+
+    try {
+      let result = {
+        originalAddress: address,
+        sourceChain,
+        bridgedAddress: null,
+        targetChain: sourceChain === 'TON' ? 'TAC' : 'TON',
+        metadata: {},
+        assetType: 'UNKNOWN'
+      };
+
+      // Determine asset type and resolve address
+      if (this.isNFTAddress(address)) {
+        result.assetType = 'NFT';
+        if (sourceChain === 'TON') {
+          result.bridgedAddress = await this.nftResolver.resolveNFTCollection(address);
+          result.metadata = await this.nftResolver.getNFTMetadata(address, 'COLLECTION');
+        } else {
+          result.bridgedAddress = await this.nftResolver.resolveNFTFromEVM(address);
+        }
+      } else if (this.isNativeToken(address)) {
+        result.assetType = 'NATIVE';
+        result.metadata = await this.getNativeTokenMetadata(address);
+        result.bridgedAddress = await this.resolveNativeToken(address, sourceChain);
+      } else {
+        result.assetType = 'JETTON';
+        if (sourceChain === 'TON') {
+          result.bridgedAddress = await this.addressResolver.resolveToEVM(address);
+          result.metadata = await this.getJettonMetadata(address);
+        } else {
+          result.bridgedAddress = await this.addressResolver.resolveToTON(address);
+          result.metadata = await this.getERC20Metadata(address);
+        }
+      }
+
+      this.metadataCache.set(cacheKey, result);
+      return result;
+    } catch (error) {
+      console.error(`Failed to resolve address with metadata ${address}:`, error);
+      throw error;
+    }
+  }
+
+  async getJettonMetadata(jettonMasterAddress) {
+    try {
+      // In practice, would query actual jetton metadata
+      return {
+        name: 'Sample Jetton',
+        symbol: 'SMPL',
+        decimals: 9,
+        totalSupply: '1000000000000000000',
+        description: 'Sample jetton for demonstration',
+        image: 'https://example.com/jetton-icon.png'
+      };
+    } catch (error) {
+      console.error(`Failed to get jetton metadata for ${jettonMasterAddress}:`, error);
+      return {};
+    }
+  }
+
+  async getERC20Metadata(erc20Address) {
+    try {
+      // In practice, would query actual ERC20 metadata
+      return {
+        name: 'Bridged Token',
+        symbol: 'BRDG',
+        decimals: 18,
+        totalSupply: '1000000000000000000000000',
+        description: 'Bridged token on TAC EVM',
+        image: 'https://example.com/erc20-icon.png'
+      };
+    } catch (error) {
+      console.error(`Failed to get ERC20 metadata for ${erc20Address}:`, error);
+      return {};
+    }
+  }
+
+  async getNativeTokenMetadata(address) {
+    if (this.tacSdk.nativeTONAddress === address || address === "NONE") {
+      return {
+        name: 'Toncoin',
+        symbol: 'TON',
+        decimals: 9,
+        description: 'Native token of TON blockchain',
+        image: 'https://ton.org/download/ton_symbol.png'
+      };
+    } else {
+      return {
+        name: 'TAC Token',
+        symbol: 'TAC',
+        decimals: 18,
+        description: 'Native token of TAC blockchain',
+        image: 'https://tacchain.network/tac-icon.png'
+      };
+    }
+  }
+
+  async resolveNativeToken(address, sourceChain) {
+    if (sourceChain === 'TON') {
+      return await this.tacSdk.nativeTACAddress();
+    } else {
+      return this.tacSdk.nativeTONAddress;
+    }
+  }
+
+  isNFTAddress(address) {
+    // Simplified NFT detection - in practice would be more sophisticated
+    return address.includes('NFT') || address.includes('Collection');
+  }
+
+  isNativeToken(address) {
+    return address === this.tacSdk.nativeTONAddress || 
+           address === "NONE" || 
+           !address;
+  }
+}
+```
+
+### Batch Address Resolution with Error Handling
+
+```javascript
+class BatchAddressProcessor {
+  constructor(tacSdk) {
+    this.tacSdk = tacSdk;
+    this.resolver = new EnhancedAddressResolver(tacSdk);
+    this.maxConcurrency = 10;
+    this.retryAttempts = 3;
+  }
+
+  async processBatch(addresses, options = {}) {
+    const {
+      sourceChain = 'TON',
+      includeMetadata = false,
+      skipInvalid = true,
+      onProgress = null
+    } = options;
+
+    const results = new Map();
+    const errors = new Map();
+    let processed = 0;
+
+    // Process in chunks to avoid overwhelming the network
+    const chunks = this.chunkArray(addresses, this.maxConcurrency);
+
+    for (const chunk of chunks) {
+      const chunkPromises = chunk.map(async (address) => {
+        try {
+          const result = includeMetadata 
+            ? await this.resolver.resolveWithMetadata(address, sourceChain)
+            : await this.resolveAddressSimple(address, sourceChain);
+          
+          results.set(address, result);
+        } catch (error) {
+          errors.set(address, error.message);
+          
+          if (!skipInvalid) {
+            throw error;
+          }
+        }
+
+        processed++;
+        if (onProgress) {
+          onProgress(processed, addresses.length);
+        }
+      });
+
+      await Promise.allSettled(chunkPromises);
+    }
+
+    return {
+      results,
+      errors,
+      summary: {
+        total: addresses.length,
+        successful: results.size,
+        failed: errors.size,
+        successRate: (results.size / addresses.length) * 100
+      }
+    };
+  }
+
+  async resolveAddressSimple(address, sourceChain) {
+    if (sourceChain === 'TON') {
+      return {
+        originalAddress: address,
+        bridgedAddress: await this.tacSdk.getEVMTokenAddress(address),
+        sourceChain: 'TON',
+        targetChain: 'TAC'
+      };
+    } else {
+      return {
+        originalAddress: address,
+        bridgedAddress: await this.tacSdk.getTVMTokenAddress(address),
+        sourceChain: 'TAC',
+        targetChain: 'TON'
+      };
+    }
+  }
+
+  chunkArray(array, chunkSize) {
+    const chunks = [];
+    for (let i = 0; i < array.length; i += chunkSize) {
+      chunks.push(array.slice(i, i + chunkSize));
+    }
+    return chunks;
+  }
+
+  async retryWithBackoff(operation, maxAttempts = this.retryAttempts) {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        if (attempt === maxAttempts) {
+          throw error;
+        }
+        
+        const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+}
+```
+
+## Address Validation and Verification
+
+### Comprehensive Address Validation
+
+```javascript
+class AddressValidator {
+  constructor(tacSdk) {
+    this.tacSdk = tacSdk;
+  }
+
+  validateTONAddress(address) {
+    const errors = [];
+
+    // Basic format validation
+    if (!address || typeof address !== 'string') {
+      errors.push('Address must be a non-empty string');
+      return { valid: false, errors };
+    }
+
+    // TON address format validation
+    if (address !== "NONE" && !address.startsWith('EQ')) {
+      errors.push('TON address must start with "EQ" or be "NONE" for native TON');
+    }
+
+    // Length validation
+    if (address !== "NONE" && address.length !== 48) {
+      errors.push('TON address must be exactly 48 characters long');
+    }
+
+    // Base64 validation (simplified)
+    if (address !== "NONE" && !/^[A-Za-z0-9+/]+={0,2}$/.test(address.slice(2))) {
+      errors.push('TON address contains invalid base64 characters');
+    }
+
+    return {
+      valid: errors.length === 0,
+      errors,
+      format: 'TON'
+    };
+  }
+
+  validateEVMAddress(address) {
+    const errors = [];
+
+    // Basic format validation
+    if (!address || typeof address !== 'string') {
+      errors.push('Address must be a non-empty string');
+      return { valid: false, errors };
+    }
+
+    // EVM address format validation
+    if (!address.startsWith('0x')) {
+      errors.push('EVM address must start with "0x"');
+    }
+
+    // Length validation
+    if (address.length !== 42) {
+      errors.push('EVM address must be exactly 42 characters long');
+    }
+
+    // Hex validation
+    if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
+      errors.push('EVM address contains invalid hexadecimal characters');
+    }
+
+    return {
+      valid: errors.length === 0,
+      errors,
+      format: 'EVM'
+    };
+  }
+
+  async validateAddressMapping(tonAddress, evmAddress) {
+    const results = {
+      tonValidation: this.validateTONAddress(tonAddress),
+      evmValidation: this.validateEVMAddress(evmAddress),
+      mappingValid: false,
+      errors: []
+    };
+
+    // Skip mapping validation if individual addresses are invalid
+    if (!results.tonValidation.valid || !results.evmValidation.valid) {
+      results.errors.push('Cannot validate mapping with invalid addresses');
+      return results;
+    }
+
+    try {
+      // Verify mapping exists
+      const resolvedEvm = await this.tacSdk.getEVMTokenAddress(tonAddress);
+      const resolvedTon = await this.tacSdk.getTVMTokenAddress(evmAddress);
+
+      if (resolvedEvm.toLowerCase() === evmAddress.toLowerCase() &&
+          resolvedTon === tonAddress) {
+        results.mappingValid = true;
+      } else {
+        results.errors.push('Address mapping does not match expected values');
+      }
+    } catch (error) {
+      results.errors.push(`Mapping validation failed: ${error.message}`);
+    }
+
+    return results;
+  }
+
+  async verifyAddressExists(address, chain = 'TON') {
+    try {
+      if (chain === 'TON') {
+        const exists = await this.tacSdk.isContractDeployedOnTVM(address);
+        return {
+          exists,
+          chain: 'TON',
+          address
+        };
+      } else {
+        // For EVM addresses, would need additional verification method
+        return {
+          exists: true, // Placeholder
+          chain: 'EVM',
+          address
+        };
+      }
+    } catch (error) {
+      return {
+        exists: false,
+        chain,
+        address,
+        error: error.message
+      };
+    }
+  }
+
+  async validateAssetsList(assets) {
+    const validationResults = [];
+
+    for (const asset of assets) {
+      const result = {
+        asset,
+        valid: true,
+        errors: []
+      };
+
+      // Validate address format
+      if (asset.address) {
+        const addressValidation = this.validateTONAddress(asset.address);
+        if (!addressValidation.valid) {
+          result.valid = false;
+          result.errors.push(...addressValidation.errors);
+        } else {
+          // Verify address exists
+          const existsCheck = await this.verifyAddressExists(asset.address);
+          if (!existsCheck.exists) {
+            result.valid = false;
+            result.errors.push('Contract does not exist or is not deployed');
+          }
+        }
+      }
+
+      // Validate amount
+      if (asset.amount !== undefined) {
+        if (typeof asset.amount !== 'number' || asset.amount <= 0) {
+          result.valid = false;
+          result.errors.push('Amount must be a positive number');
+        }
+      }
+
+      // Validate asset type
+      if (asset.type && !['FT', 'NFT'].includes(asset.type)) {
+        result.valid = false;
+        result.errors.push('Asset type must be "FT" or "NFT"');
+      }
+
+      validationResults.push(result);
+    }
+
+    return {
+      results: validationResults,
+      allValid: validationResults.every(r => r.valid),
+      invalidCount: validationResults.filter(r => !r.valid).length
+    };
+  }
+}
+```
+
+## Caching and Performance Optimization
+
+### Advanced Caching Strategy
+
+```javascript
+class AddressCacheManager {
+  constructor(options = {}) {
+    this.cache = new Map();
+    this.maxSize = options.maxSize || 1000;
+    this.ttl = options.ttl || 3600000; // 1 hour default
+    this.hitCount = 0;
+    this.missCount = 0;
+  }
+
+  get(key) {
+    const entry = this.cache.get(key);
+    
+    if (!entry) {
+      this.missCount++;
+      return null;
+    }
+
+    // Check if entry has expired
+    if (Date.now() > entry.expiry) {
+      this.cache.delete(key);
+      this.missCount++;
+      return null;
+    }
+
+    this.hitCount++;
+    entry.lastAccessed = Date.now();
+    return entry.value;
+  }
+
+  set(key, value) {
+    // Implement LRU eviction if cache is full
+    if (this.cache.size >= this.maxSize) {
+      this.evictLRU();
+    }
+
+    const entry = {
+      value,
+      expiry: Date.now() + this.ttl,
+      lastAccessed: Date.now(),
+      createdAt: Date.now()
+    };
+
+    this.cache.set(key, entry);
+  }
+
+  evictLRU() {
+    let lruKey = null;
+    let lruTime = Date.now();
+
+    for (const [key, entry] of this.cache.entries()) {
+      if (entry.lastAccessed < lruTime) {
+        lruTime = entry.lastAccessed;
+        lruKey = key;
+      }
+    }
+
+    if (lruKey) {
+      this.cache.delete(lruKey);
+    }
+  }
+
+  clear() {
+    this.cache.clear();
+    this.hitCount = 0;
+    this.missCount = 0;
+  }
+
+  getStats() {
+    const totalRequests = this.hitCount + this.missCount;
+    return {
+      size: this.cache.size,
+      maxSize: this.maxSize,
+      hitCount: this.hitCount,
+      missCount: this.missCount,
+      hitRate: totalRequests > 0 ? (this.hitCount / totalRequests) * 100 : 0,
+      totalRequests
+    };
+  }
+
+  // Preload commonly used addresses
+  async preloadAddresses(addressPairs) {
+    for (const { tonAddress, evmAddress } of addressPairs) {
+      this.set(`ton_to_evm_${tonAddress}`, evmAddress);
+      this.set(`evm_to_ton_${evmAddress}`, tonAddress);
+    }
+  }
+
+  // Batch update for efficiency
+  setBatch(entries) {
+    for (const { key, value } of entries) {
+      this.set(key, value);
+    }
+  }
+}
+```
+
+### Performance-Optimized Address Resolution
+
+```javascript
+class OptimizedAddressResolver {
+  constructor(tacSdk) {
+    this.tacSdk = tacSdk;
+    this.cache = new AddressCacheManager({
+      maxSize: 2000,
+      ttl: 7200000 // 2 hours
+    });
+    this.pendingRequests = new Map();
+  }
+
+  async resolveToEVM(tonAddress) {
+    const cacheKey = `ton_to_evm_${tonAddress}`;
+    
+    // Check cache first
+    const cached = this.cache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    // Check if request is already pending to avoid duplicate calls
+    if (this.pendingRequests.has(cacheKey)) {
+      return await this.pendingRequests.get(cacheKey);
+    }
+
+    // Create pending request
+    const requestPromise = this.tacSdk.getEVMTokenAddress(tonAddress)
+      .then(address => {
+        this.cache.set(cacheKey, address);
+        this.cache.set(`evm_to_ton_${address}`, tonAddress); // Cache reverse mapping
+        this.pendingRequests.delete(cacheKey);
+        return address;
+      })
+      .catch(error => {
+        this.pendingRequests.delete(cacheKey);
+        throw error;
+      });
+
+    this.pendingRequests.set(cacheKey, requestPromise);
+    return await requestPromise;
+  }
+
+  async resolveToTON(evmAddress) {
+    const cacheKey = `evm_to_ton_${evmAddress}`;
+    
+    // Check cache first
+    const cached = this.cache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    // Check pending requests
+    if (this.pendingRequests.has(cacheKey)) {
+      return await this.pendingRequests.get(cacheKey);
+    }
+
+    // Create pending request
+    const requestPromise = this.tacSdk.getTVMTokenAddress(evmAddress)
+      .then(address => {
+        this.cache.set(cacheKey, address);
+        this.cache.set(`ton_to_evm_${address}`, evmAddress); // Cache reverse mapping
+        this.pendingRequests.delete(cacheKey);
+        return address;
+      })
+      .catch(error => {
+        this.pendingRequests.delete(cacheKey);
+        throw error;
+      });
+
+    this.pendingRequests.set(cacheKey, requestPromise);
+    return await requestPromise;
+  }
+
+  async warmupCache(commonAddresses) {
+    console.log(`Warming up cache with ${commonAddresses.length} addresses...`);
+    
+    const warmupPromises = commonAddresses.map(async (address) => {
+      try {
+        if (address.startsWith('EQ') || address === 'NONE') {
+          await this.resolveToEVM(address);
+        } else if (address.startsWith('0x')) {
+          await this.resolveToTON(address);
+        }
+      } catch (error) {
+        console.warn(`Failed to warmup address ${address}:`, error.message);
+      }
+    });
+
+    await Promise.allSettled(warmupPromises);
+    console.log('Cache warmup completed');
+    console.log('Cache stats:', this.cache.getStats());
+  }
+
+  getCachePerformance() {
+    return this.cache.getStats();
+  }
+
+  clearCache() {
+    this.cache.clear();
+    this.pendingRequests.clear();
+  }
+}
+```
+
+<Note>
+Efficient address mapping is crucial for cross-chain application performance. Implement proper caching strategies and always validate addresses before use to ensure reliable operation.
+</Note>

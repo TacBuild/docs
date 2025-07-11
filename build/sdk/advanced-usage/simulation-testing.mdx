@@ -1,0 +1,1096 @@
+---
+title: Simulation & Testing
+description: "Advanced testing strategies and simulation techniques for robust cross-chain applications"
+---
+
+Testing cross-chain applications requires sophisticated strategies that account for multi-network interactions, asynchronous execution, and complex failure modes. The TAC SDK provides comprehensive simulation and testing tools to help developers build reliable hybrid dApps.
+
+## Transaction Simulation
+
+The SDK's simulation capabilities allow you to test operations before execution, estimate costs, and validate parameters without spending real assets.
+
+### Basic Transaction Simulation
+
+```javascript
+const simulateTransaction = async (evmProxyMsg, sender, assets) => {
+  try {
+    const simulation = await tacSdk.getTransactionSimulationInfo(
+      evmProxyMsg,
+      sender,
+      assets
+    );
+
+    console.log("Simulation Results:");
+    console.log(
+      "- Estimated Gas:",
+      simulation.simulation.estimatedGas.toString()
+    );
+    console.log("- Protocol Fee:", simulation.feeParams.protocolFee.toString());
+    console.log(
+      "- EVM Executor Fee:",
+      simulation.feeParams.evmExecutorFee.toString()
+    );
+    console.log(
+      "- TON Executor Fee:",
+      simulation.feeParams.tvmExecutorFee.toString()
+    );
+    console.log("- Gas Limit:", simulation.feeParams.gasLimit.toString());
+
+    console.log("- Is Round Trip:", simulation.feeParams.isRoundTrip);
+
+    return simulation;
+  } catch (error) {
+    console.error("Simulation failed:", error);
+    throw error;
+  }
+};
+```
+
+### Advanced EVM Simulation
+
+For detailed EVM execution simulation:
+
+```javascript
+const simulateEVMExecution = async (evmOperation) => {
+  try {
+    const simulationRequest = {
+      evmTargetAddress: evmOperation.evmTargetAddress,
+      methodName: evmOperation.methodName,
+      encodedParameters: evmOperation.encodedParameters,
+      gasLimit: evmOperation.gasLimit || 500000n,
+      caller: await sender.getSenderAddress(),
+    };
+
+    const result = await tacSdk.simulateTACMessage(simulationRequest);
+
+    console.log("EVM Simulation Results:");
+    console.log("- Success:", result.success);
+    console.log("- Gas Used:", result.gasUsed?.toString());
+    console.log("- Return Data:", result.returnData);
+    console.log("- Logs:", result.logs);
+
+    if (result.revertReason) {
+      console.log("- Revert Reason:", result.revertReason);
+    }
+
+    return result;
+  } catch (error) {
+    console.error("EVM simulation failed:", error);
+    throw error;
+  }
+};
+```
+
+## Comprehensive Testing Framework
+
+### Test Environment Setup
+
+```javascript
+class TACTestEnvironment {
+  constructor() {
+    this.tacSdk = null;
+    this.testSenders = [];
+    this.deployedContracts = new Map();
+    this.testAssets = new Map();
+  }
+
+  async setup() {
+    // Initialize SDK for testing
+    this.tacSdk = await TacSdk.create({
+      network: Network.TESTNET,
+      delay: 500, // Faster for testing
+    });
+
+    // Create test senders
+    await this.createTestSenders();
+
+    // Deploy test contracts
+    await this.deployTestContracts();
+
+    // Prepare test assets
+    await this.prepareTestAssets();
+
+    console.log("Test environment initialized");
+  }
+
+  async createTestSenders() {
+    // Create multiple test wallets with different configurations
+    const testMnemonics = [
+      process.env.TEST_MNEMONIC_1,
+      process.env.TEST_MNEMONIC_2,
+      process.env.TEST_MNEMONIC_3,
+    ];
+
+    for (let i = 0; i < testMnemonics.length; i++) {
+      if (testMnemonics[i]) {
+        const sender = await SenderFactory.getSender({
+          network: Network.TESTNET,
+          version: "V4",
+          mnemonic: testMnemonics[i],
+        });
+
+        this.testSenders.push({
+          id: `test_sender_${i}`,
+          sender,
+          address: sender.getSenderAddress(),
+        });
+      }
+    }
+  }
+
+  async deployTestContracts() {
+    // In a real implementation, would deploy actual test contracts
+    this.deployedContracts.set("testERC20", "0xTestERC20Contract...");
+    this.deployedContracts.set("testDEX", "0xTestDEXContract...");
+    this.deployedContracts.set("testNFT", "0xTestNFTContract...");
+  }
+
+  async prepareTestAssets() {
+    // Prepare test jettons and assets
+    this.testAssets.set("testJetton1", {
+      address: "EQTestJettonMaster1...",
+      decimals: 9,
+      symbol: "TST1",
+    });
+
+    this.testAssets.set("testJetton2", {
+      address: "EQTestJettonMaster2...",
+      decimals: 6,
+      symbol: "TST2",
+    });
+  }
+
+  getTestSender(id = "test_sender_0") {
+    const testSender = this.testSenders.find((s) => s.id === id);
+    if (!testSender) {
+      throw new Error(`Test sender ${id} not found`);
+    }
+    return testSender.sender;
+  }
+
+  getTestContract(name) {
+    const address = this.deployedContracts.get(name);
+    if (!address) {
+      throw new Error(`Test contract ${name} not found`);
+    }
+    return address;
+  }
+
+  getTestAsset(name) {
+    const asset = this.testAssets.get(name);
+    if (!asset) {
+      throw new Error(`Test asset ${name} not found`);
+    }
+    return asset;
+  }
+
+  async cleanup() {
+    if (this.tacSdk) {
+      await this.tacSdk.closeConnections();
+    }
+  }
+}
+```
+
+### Unit Testing Cross-Chain Operations
+
+```javascript
+describe("Cross-Chain Transaction Tests", () => {
+  let testEnv;
+  let sender;
+
+  beforeAll(async () => {
+    testEnv = new TACTestEnvironment();
+    await testEnv.setup();
+    sender = testEnv.getTestSender();
+  });
+
+  afterAll(async () => {
+    await testEnv.cleanup();
+  });
+
+  describe("Basic Cross-Chain Transactions", () => {
+    test("should simulate successful token transfer", async () => {
+      const evmProxyMsg = {
+        evmTargetAddress: testEnv.getTestContract("testERC20"),
+        methodName: "transfer(address,uint256)",
+        encodedParameters: ethers.utils.defaultAbiCoder.encode(
+          ["address", "uint256"],
+          ["0xRecipientAddress...", ethers.utils.parseEther("100")]
+        ),
+      };
+
+      const assets = [{ amount: 1.0 }]; // 1 TON
+
+      const simulation = await testEnv.tacSdk.getTransactionSimulationInfo(
+        evmProxyMsg,
+        sender,
+        assets
+      );
+
+      expect(simulation.success).toBe(true);
+      expect(simulation.estimatedGas).toBeGreaterThan(0n);
+      expect(simulation.protocolFee).toBeGreaterThan(0n);
+    });
+
+    test("should handle insufficient balance simulation", async () => {
+      const largeAssets = [{ amount: 1000000 }]; // Unrealistically large amount
+
+      const evmProxyMsg = {
+        evmTargetAddress: testEnv.getTestContract("testERC20"),
+        methodName: "transfer(address,uint256)",
+        encodedParameters: ethers.utils.defaultAbiCoder.encode(
+          ["address", "uint256"],
+          ["0xRecipientAddress...", ethers.utils.parseEther("100")]
+        ),
+      };
+
+      await expect(
+        testEnv.tacSdk.getTransactionSimulationInfo(
+          evmProxyMsg,
+          sender,
+          largeAssets
+        )
+      ).rejects.toThrow(/insufficient balance/i);
+    });
+
+    test("should execute and track cross-chain transaction", async () => {
+      const evmProxyMsg = {
+        evmTargetAddress: testEnv.getTestContract("testERC20"),
+        methodName: "transfer(address,uint256)",
+        encodedParameters: ethers.utils.defaultAbiCoder.encode(
+          ["address", "uint256"],
+          ["0xRecipientAddress...", ethers.utils.parseEther("10")]
+        ),
+      };
+
+      const assets = [{ amount: 0.1 }]; // Small amount for testing
+
+      const transactionLinker = await testEnv.tacSdk.sendCrossChainTransaction(
+        evmProxyMsg,
+        sender,
+        assets
+      );
+
+      expect(transactionLinker.operationId).toBeDefined();
+      expect(transactionLinker.caller).toBe(sender.getSenderAddress());
+
+      // Wait for and verify completion
+      const tracker = new OperationTracker(Network.TESTNET);
+
+      // Poll for completion with timeout
+      let attempts = 0;
+      const maxAttempts = 30; // 5 minutes max
+      let finalStatus = "PENDING";
+
+      while (attempts < maxAttempts && finalStatus === "PENDING") {
+        await new Promise((resolve) => setTimeout(resolve, 10000)); // Wait 10 seconds
+        finalStatus = await tracker.getSimplifiedOperationStatus(
+          transactionLinker
+        );
+        attempts++;
+      }
+
+      expect(["SUCCESSFUL", "FAILED"]).toContain(finalStatus);
+    }, 300000); // 5 minute timeout
+  });
+
+  describe("Asset Bridging Tests", () => {
+    test("should bridge jetton tokens", async () => {
+      const testAsset = testEnv.getTestAsset("testJetton1");
+
+      const assets = [
+        {
+          address: testAsset.address,
+          amount: 100.0,
+        },
+      ];
+
+      const evmProxyMsg = {
+        evmTargetAddress: testEnv.getTestContract("testDEX"),
+        methodName: "swap(uint256)",
+        encodedParameters: ethers.utils.defaultAbiCoder.encode(
+          ["uint256"],
+          [ethers.utils.parseUnits("100", testAsset.decimals)]
+        ),
+      };
+
+      const simulation = await testEnv.tacSdk.getTransactionSimulationInfo(
+        evmProxyMsg,
+        sender,
+        assets
+      );
+
+      expect(simulation.success).toBe(true);
+    });
+
+    test("should handle invalid jetton address", async () => {
+      const invalidAssets = [
+        {
+          address: "EQInvalidAddress...",
+          amount: 10.0,
+        },
+      ];
+
+      const evmProxyMsg = {
+        evmTargetAddress: testEnv.getTestContract("testDEX"),
+        methodName: "swap(uint256)",
+        encodedParameters: "0x",
+      };
+
+      await expect(
+        testEnv.tacSdk.getTransactionSimulationInfo(
+          evmProxyMsg,
+          sender,
+          invalidAssets
+        )
+      ).rejects.toThrow();
+    });
+  });
+
+  describe("Error Handling Tests", () => {
+    test("should handle invalid EVM contract address", async () => {
+      const evmProxyMsg = {
+        evmTargetAddress: "0xInvalidContract...",
+        methodName: "nonexistentMethod()",
+        encodedParameters: "0x",
+      };
+
+      const simulation = await testEnv.tacSdk.getTransactionSimulationInfo(
+        evmProxyMsg,
+        sender,
+        []
+      );
+
+      expect(simulation.success).toBe(false);
+      expect(simulation.error).toBeDefined();
+    });
+
+    test("should handle malformed method signatures", async () => {
+      const evmProxyMsg = {
+        evmTargetAddress: testEnv.getTestContract("testERC20"),
+        methodName: "invalidMethod(invalidType)", // Invalid parameter type
+        encodedParameters: "0x",
+      };
+
+      await expect(
+        testEnv.tacSdk.getTransactionSimulationInfo(evmProxyMsg, sender, [])
+      ).rejects.toThrow();
+    });
+  });
+});
+```
+
+### Integration Testing
+
+```javascript
+class CrossChainIntegrationTester {
+  constructor(tacSdk) {
+    this.tacSdk = tacSdk;
+    this.testScenarios = [];
+  }
+
+  addTestScenario(name, scenario) {
+    this.testScenarios.push({ name, scenario });
+  }
+
+  async runAllTests() {
+    const results = [];
+
+    for (const { name, scenario } of this.testScenarios) {
+      console.log(`Running test scenario: ${name}`);
+
+      try {
+        const startTime = Date.now();
+        const result = await this.runTestScenario(scenario);
+        const duration = Date.now() - startTime;
+
+        results.push({
+          name,
+          success: true,
+          result,
+          duration,
+        });
+
+        console.log(`✓ ${name} completed in ${duration}ms`);
+      } catch (error) {
+        results.push({
+          name,
+          success: false,
+          error: error.message,
+          duration: Date.now() - startTime,
+        });
+
+        console.log(`✗ ${name} failed: ${error.message}`);
+      }
+    }
+
+    return this.generateTestReport(results);
+  }
+
+  async runTestScenario(scenario) {
+    const results = [];
+
+    for (const step of scenario.steps) {
+      const stepResult = await this.executeTestStep(step);
+      results.push(stepResult);
+
+      // Verify step completion if required
+      if (step.verifyCompletion) {
+        await this.verifyStepCompletion(stepResult, step.expectedOutcome);
+      }
+    }
+
+    return results;
+  }
+
+  async executeTestStep(step) {
+    switch (step.type) {
+      case "SIMULATE":
+        return await this.executeSimulationStep(step);
+      case "EXECUTE":
+        return await this.executeTransactionStep(step);
+      case "VERIFY":
+        return await this.executeVerificationStep(step);
+      case "WAIT":
+        return await this.executeWaitStep(step);
+      default:
+        throw new Error(`Unknown step type: ${step.type}`);
+    }
+  }
+
+  async executeSimulationStep(step) {
+    const simulation = await this.tacSdk.getTransactionSimulationInfo(
+      step.evmProxyMsg,
+      step.sender,
+      step.assets
+    );
+
+    return {
+      type: "SIMULATION",
+      success: simulation.success,
+      estimatedGas: simulation.estimatedGas,
+      fees: {
+        protocol: simulation.protocolFee,
+        evmExecutor: simulation.evmExecutorFee,
+        tvmExecutor: simulation.tvmExecutorFee,
+      },
+    };
+  }
+
+  async executeTransactionStep(step) {
+    const transactionLinker = await this.tacSdk.sendCrossChainTransaction(
+      step.evmProxyMsg,
+      step.sender,
+      step.assets,
+      step.options
+    );
+
+    return {
+      type: "TRANSACTION",
+      transactionLinker,
+      operationId: transactionLinker.operationId,
+      timestamp: Date.now(),
+    };
+  }
+
+  async executeVerificationStep(step) {
+    // Verify balances, contract states, etc.
+    const verifications = [];
+
+    if (step.verifyBalances) {
+      for (const balance of step.verifyBalances) {
+        const actualBalance = await this.tacSdk.getUserJettonBalance(
+          balance.address,
+          balance.tokenAddress
+        );
+
+        verifications.push({
+          type: "BALANCE",
+          expected: balance.expectedAmount,
+          actual: actualBalance,
+          match: actualBalance === balance.expectedAmount,
+        });
+      }
+    }
+
+    return {
+      type: "VERIFICATION",
+      verifications,
+      allPassed: verifications.every((v) => v.match),
+    };
+  }
+
+  async executeWaitStep(step) {
+    await new Promise((resolve) => setTimeout(resolve, step.duration));
+    return {
+      type: "WAIT",
+      duration: step.duration,
+    };
+  }
+
+  generateTestReport(results) {
+    const totalTests = results.length;
+    const passedTests = results.filter((r) => r.success).length;
+    const failedTests = totalTests - passedTests;
+    const totalDuration = results.reduce((sum, r) => sum + r.duration, 0);
+
+    return {
+      summary: {
+        total: totalTests,
+        passed: passedTests,
+        failed: failedTests,
+        successRate: (passedTests / totalTests) * 100,
+        totalDuration,
+      },
+      results,
+      recommendations: this.generateRecommendations(results),
+    };
+  }
+
+  generateRecommendations(results) {
+    const recommendations = [];
+
+    const failedTests = results.filter((r) => !r.success);
+    if (failedTests.length > 0) {
+      recommendations.push({
+        type: "FAILURE_ANALYSIS",
+        message: `${failedTests.length} tests failed. Review error messages and fix underlying issues.`,
+        failedTests: failedTests.map((t) => ({ name: t.name, error: t.error })),
+      });
+    }
+
+    const slowTests = results.filter((r) => r.duration > 60000); // > 1 minute
+    if (slowTests.length > 0) {
+      recommendations.push({
+        type: "PERFORMANCE",
+        message: `${slowTests.length} tests took longer than 1 minute. Consider optimizing these operations.`,
+        slowTests: slowTests.map((t) => ({
+          name: t.name,
+          duration: t.duration,
+        })),
+      });
+    }
+
+    return recommendations;
+  }
+}
+```
+
+### Load Testing
+
+```javascript
+class CrossChainLoadTester {
+  constructor(tacSdk) {
+    this.tacSdk = tacSdk;
+    this.testResults = [];
+  }
+
+  async runLoadTest(testConfig) {
+    const { concurrentUsers, transactionsPerUser, rampUpTime, testDuration } =
+      testConfig;
+
+    console.log(
+      `Starting load test: ${concurrentUsers} users, ${transactionsPerUser} tx/user`
+    );
+
+    const startTime = Date.now();
+    const promises = [];
+
+    // Create concurrent users
+    for (let i = 0; i < concurrentUsers; i++) {
+      const userPromise = this.simulateUser(i, transactionsPerUser, rampUpTime);
+      promises.push(userPromise);
+    }
+
+    // Wait for all users to complete
+    const userResults = await Promise.allSettled(promises);
+    const endTime = Date.now();
+
+    return this.analyzeLoadTestResults(userResults, startTime, endTime);
+  }
+
+  async simulateUser(userId, transactionCount, rampUpTime) {
+    // Stagger user start times
+    const delay = (userId * rampUpTime) / 1000;
+    await new Promise((resolve) => setTimeout(resolve, delay));
+
+    const userResults = [];
+    const sender = await this.createTestSender(userId);
+
+    for (let txIndex = 0; txIndex < transactionCount; txIndex++) {
+      try {
+        const startTime = Date.now();
+
+        const transaction = this.generateTestTransaction(userId, txIndex);
+        const result = await this.tacSdk.sendCrossChainTransaction(
+          transaction.evmProxyMsg,
+          sender,
+          transaction.assets
+        );
+
+        const endTime = Date.now();
+
+        userResults.push({
+          userId,
+          transactionIndex: txIndex,
+          success: true,
+          duration: endTime - startTime,
+          operationId: result.operationId,
+        });
+      } catch (error) {
+        userResults.push({
+          userId,
+          transactionIndex: txIndex,
+          success: false,
+          error: error.message,
+          duration: Date.now() - startTime,
+        });
+      }
+
+      // Brief pause between transactions
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+
+    return userResults;
+  }
+
+  async createTestSender(userId) {
+    // In practice, would create unique test wallets
+    return await SenderFactory.getSender({
+      network: Network.TESTNET,
+      version: "V4",
+      mnemonic: process.env[`TEST_MNEMONIC_${userId % 3}`], // Cycle through available mnemonics
+    });
+  }
+
+  generateTestTransaction(userId, txIndex) {
+    return {
+      evmProxyMsg: {
+        evmTargetAddress: "0xTestContract...",
+        methodName: "testMethod(uint256)",
+        encodedParameters: ethers.utils.defaultAbiCoder.encode(
+          ["uint256"],
+          [BigInt(userId * 1000 + txIndex)]
+        ),
+      },
+      assets: [{ amount: 0.01 }], // Small amount for load testing
+    };
+  }
+
+  analyzeLoadTestResults(userResults, startTime, endTime) {
+    const allTransactions = userResults
+      .filter((result) => result.status === "fulfilled")
+      .flatMap((result) => result.value);
+
+    const successfulTx = allTransactions.filter((tx) => tx.success);
+    const failedTx = allTransactions.filter((tx) => !tx.success);
+
+    const durations = successfulTx.map((tx) => tx.duration);
+    const totalDuration = endTime - startTime;
+
+    return {
+      loadTestSummary: {
+        totalUsers: userResults.length,
+        totalTransactions: allTransactions.length,
+        successfulTransactions: successfulTx.length,
+        failedTransactions: failedTx.length,
+        successRate: (successfulTx.length / allTransactions.length) * 100,
+        totalTestDuration: totalDuration,
+        throughput: (successfulTx.length / totalDuration) * 1000, // tx/second
+      },
+      performanceMetrics: {
+        averageResponseTime:
+          durations.reduce((a, b) => a + b, 0) / durations.length,
+        minResponseTime: Math.min(...durations),
+        maxResponseTime: Math.max(...durations),
+        p95ResponseTime: this.calculatePercentile(durations, 0.95),
+        p99ResponseTime: this.calculatePercentile(durations, 0.99),
+      },
+      errorAnalysis: this.analyzeErrors(failedTx),
+      recommendations: this.generateLoadTestRecommendations(
+        successfulTx,
+        failedTx,
+        totalDuration
+      ),
+    };
+  }
+
+  calculatePercentile(arr, percentile) {
+    const sorted = [...arr].sort((a, b) => a - b);
+    const index = Math.ceil(sorted.length * percentile) - 1;
+    return sorted[index];
+  }
+
+  analyzeErrors(failedTransactions) {
+    const errorCounts = {};
+
+    failedTransactions.forEach((tx) => {
+      const errorType = this.categorizeError(tx.error);
+      errorCounts[errorType] = (errorCounts[errorType] || 0) + 1;
+    });
+
+    return {
+      totalErrors: failedTransactions.length,
+      errorTypes: errorCounts,
+      mostCommonError:
+        Object.entries(errorCounts).sort(([, a], [, b]) => b - a)[0]?.[0] ||
+        "None",
+    };
+  }
+
+  categorizeError(errorMessage) {
+    if (errorMessage.includes("insufficient balance"))
+      return "INSUFFICIENT_BALANCE";
+    if (errorMessage.includes("network")) return "NETWORK_ERROR";
+    if (errorMessage.includes("timeout")) return "TIMEOUT";
+    if (errorMessage.includes("gas")) return "GAS_ERROR";
+    return "OTHER";
+  }
+
+  generateLoadTestRecommendations(successful, failed, duration) {
+    const recommendations = [];
+
+    if (failed.length > successful.length * 0.05) {
+      // > 5% failure rate
+      recommendations.push({
+        type: "HIGH_FAILURE_RATE",
+        message:
+          "Failure rate exceeds 5%. Investigate network stability and error handling.",
+        priority: "HIGH",
+      });
+    }
+
+    const avgDuration =
+      successful.reduce((sum, tx) => sum + tx.duration, 0) / successful.length;
+    if (avgDuration > 30000) {
+      // > 30 seconds average
+      recommendations.push({
+        type: "SLOW_RESPONSE_TIME",
+        message:
+          "Average response time exceeds 30 seconds. Consider optimization.",
+        priority: "MEDIUM",
+      });
+    }
+
+    return recommendations;
+  }
+}
+```
+
+## Test Data Management
+
+### Test Asset Factory
+
+```javascript
+class TestAssetFactory {
+  constructor(tacSdk) {
+    this.tacSdk = tacSdk;
+    this.createdAssets = [];
+  }
+
+  async createTestJetton(config) {
+    const jettonConfig = {
+      name: config.name || "Test Jetton",
+      symbol: config.symbol || "TEST",
+      decimals: config.decimals || 9,
+      totalSupply: config.totalSupply || 1000000,
+      description: config.description || "Test jetton for SDK testing",
+    };
+
+    // In practice, would deploy actual jetton contract
+    const mockJettonAddress = `EQTestJetton${Date.now()}...`;
+
+    const asset = {
+      address: mockJettonAddress,
+      ...jettonConfig,
+      createdAt: Date.now(),
+    };
+
+    this.createdAssets.push(asset);
+    return asset;
+  }
+
+  async createTestNFTCollection(config) {
+    const nftConfig = {
+      name: config.name || "Test NFT Collection",
+      description: config.description || "Test NFT collection for SDK testing",
+      image: config.image || "https://example.com/test-nft.png",
+      itemCount: config.itemCount || 10,
+    };
+
+    // Mock NFT collection address
+    const mockCollectionAddress = `EQTestNFT${Date.now()}...`;
+
+    const collection = {
+      address: mockCollectionAddress,
+      ...nftConfig,
+      createdAt: Date.now(),
+    };
+
+    this.createdAssets.push(collection);
+    return collection;
+  }
+
+  async distributeTestAssets(recipients, assetAddress, amount) {
+    const distributions = [];
+
+    for (const recipient of recipients) {
+      // In practice, would send actual tokens
+      distributions.push({
+        recipient,
+        assetAddress,
+        amount,
+        timestamp: Date.now(),
+        status: "MOCK_DISTRIBUTED",
+      });
+    }
+
+    return distributions;
+  }
+
+  async cleanup() {
+    // Clean up any created test assets
+    console.log(`Cleaning up ${this.createdAssets.length} test assets`);
+    this.createdAssets = [];
+  }
+
+  getCreatedAssets() {
+    return [...this.createdAssets];
+  }
+}
+```
+
+### Mock Services for Testing
+
+```javascript
+class MockTACServices {
+  constructor() {
+    this.mockResponses = new Map();
+    this.callCounts = new Map();
+  }
+
+  setMockResponse(method, response) {
+    this.mockResponses.set(method, response);
+  }
+
+  getMockResponse(method) {
+    const count = this.callCounts.get(method) || 0;
+    this.callCounts.set(method, count + 1);
+
+    return this.mockResponses.get(method);
+  }
+
+  getCallCount(method) {
+    return this.callCounts.get(method) || 0;
+  }
+
+  reset() {
+    this.mockResponses.clear();
+    this.callCounts.clear();
+  }
+
+  // Mock specific methods
+  mockSuccessfulTransaction() {
+    this.setMockResponse("sendCrossChainTransaction", {
+      operationId: "mock_op_" + Date.now(),
+      caller: "EQMockSender...",
+      shardCount: 1,
+      shardsKey: "mock_shard_key",
+      timestamp: Date.now(),
+    });
+  }
+
+  mockFailedTransaction(error = "Mock transaction failure") {
+    this.setMockResponse("sendCrossChainTransaction", {
+      error,
+      success: false,
+    });
+  }
+
+  mockSimulationSuccess(gasEstimate = 250000n) {
+    this.setMockResponse("getTransactionSimulationInfo", {
+      success: true,
+      estimatedGas: gasEstimate,
+      protocolFee: 10000000n,
+      evmExecutorFee: 50000000n,
+      tvmExecutorFee: 100000000n,
+    });
+  }
+
+  mockSimulationFailure(error = "Mock simulation failure") {
+    this.setMockResponse("getTransactionSimulationInfo", {
+      success: false,
+      error,
+    });
+  }
+}
+```
+
+## Test Reporting and Analytics
+
+### Test Report Generator
+
+```javascript
+class TestReportGenerator {
+  constructor() {
+    this.testResults = [];
+  }
+
+  addTestResult(result) {
+    this.testResults.push({
+      ...result,
+      timestamp: Date.now(),
+    });
+  }
+
+  generateReport() {
+    const report = {
+      summary: this.generateSummary(),
+      performance: this.analyzePerformance(),
+      coverage: this.analyzeCoverage(),
+      recommendations: this.generateRecommendations(),
+      generatedAt: new Date().toISOString(),
+    };
+
+    return report;
+  }
+
+  generateSummary() {
+    const total = this.testResults.length;
+    const passed = this.testResults.filter((r) => r.success).length;
+    const failed = total - passed;
+
+    return {
+      totalTests: total,
+      passed,
+      failed,
+      successRate: total > 0 ? (passed / total) * 100 : 0,
+      averageDuration: this.calculateAverageDuration(),
+    };
+  }
+
+  analyzePerformance() {
+    const durations = this.testResults.map((r) => r.duration).filter((d) => d);
+
+    return {
+      averageExecutionTime:
+        durations.reduce((a, b) => a + b, 0) / durations.length,
+      medianExecutionTime: this.calculateMedian(durations),
+      p95ExecutionTime: this.calculatePercentile(durations, 0.95),
+      slowestTest: Math.max(...durations),
+      fastestTest: Math.min(...durations),
+    };
+  }
+
+  analyzeCoverage() {
+    const testedMethods = new Set();
+    const testedAssetTypes = new Set();
+
+    this.testResults.forEach((result) => {
+      if (result.methodName) testedMethods.add(result.methodName);
+      if (result.assetTypes)
+        result.assetTypes.forEach((type) => testedAssetTypes.add(type));
+    });
+
+    return {
+      testedMethods: Array.from(testedMethods),
+      testedAssetTypes: Array.from(testedAssetTypes),
+      methodCoverage: testedMethods.size,
+      assetTypeCoverage: testedAssetTypes.size,
+    };
+  }
+
+  generateRecommendations() {
+    const recommendations = [];
+    const summary = this.generateSummary();
+
+    if (summary.successRate < 95) {
+      recommendations.push({
+        type: "RELIABILITY",
+        message:
+          "Test success rate is below 95%. Investigate and fix failing tests.",
+        priority: "HIGH",
+      });
+    }
+
+    const performance = this.analyzePerformance();
+    if (performance.averageExecutionTime > 60000) {
+      recommendations.push({
+        type: "PERFORMANCE",
+        message:
+          "Average test execution time exceeds 1 minute. Consider optimization.",
+        priority: "MEDIUM",
+      });
+    }
+
+    return recommendations;
+  }
+
+  calculateAverageDuration() {
+    const durations = this.testResults.map((r) => r.duration).filter((d) => d);
+    return durations.length > 0
+      ? durations.reduce((a, b) => a + b, 0) / durations.length
+      : 0;
+  }
+
+  calculateMedian(arr) {
+    const sorted = [...arr].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 !== 0
+      ? sorted[mid]
+      : (sorted[mid - 1] + sorted[mid]) / 2;
+  }
+
+  calculatePercentile(arr, percentile) {
+    const sorted = [...arr].sort((a, b) => a - b);
+    const index = Math.ceil(sorted.length * percentile) - 1;
+    return sorted[index];
+  }
+
+  exportReport(format = "json") {
+    const report = this.generateReport();
+
+    switch (format) {
+      case "json":
+        return JSON.stringify(report, null, 2);
+      case "csv":
+        return this.convertToCSV(report);
+      default:
+        throw new Error(`Unsupported export format: ${format}`);
+    }
+  }
+
+  convertToCSV(report) {
+    const headers = ["Test Name", "Success", "Duration", "Error"];
+    const rows = this.testResults.map((result) => [
+      result.name || "Unknown",
+      result.success || false,
+      result.duration || 0,
+      result.error || "",
+    ]);
+
+    return [headers, ...rows].map((row) => row.join(",")).join("\n");
+  }
+}
+```
+
+## What's Next?
+
+Complete your SDK mastery with the final advanced topics:
+
+<CardGroup cols={2}>
+  <Card
+    title="Token Address Mapping"
+    icon="route"
+    href="/build/sdk/advanced-usage/token-address-mapping"
+  >
+    Master cross-chain token address resolution and management
+  </Card>
+</CardGroup>
+
+<Note>
+  Comprehensive testing is crucial for cross-chain applications. Always test on
+  testnet first, implement proper error handling, and use simulation to validate
+  operations before execution.
+</Note>

@@ -1,0 +1,8 @@
+extends: spelling
+message: "Did you really mean '%s'?"
+level: error
+scope: raw
+tokens:
+  - "[A-Za-z][A-Za-z']+"
+accept:
+  - TAC/accept.txt

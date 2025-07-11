@@ -1,0 +1,735 @@
+---
+title: Asset Bridging
+description: "Deep dive into asset bridging mechanics, strategies, and advanced patterns for cross-chain asset management"
+---
+
+Asset bridging is the foundation of TAC's hybrid dApp functionality, enabling seamless movement of value between TON and TAC EVM ecosystems. The TAC SDK handles the complex mechanics of locking, minting, burning, and unlocking assets while providing developers with simple, intuitive interfaces.
+
+<Warning>
+  Asset bridging involves irreversible operations. Always validate asset
+  addresses and amounts carefully, test on testnet first, and implement proper
+  error handling for production applications.
+</Warning>
+
+## Understanding Asset Bridging
+
+Asset bridging in TAC involves sophisticated mechanisms that ensure asset security and maintain proper accounting across both networks:
+
+<Steps>
+  <Step title="Asset Locking" icon="lock">
+    Original assets are locked in secure contracts on the source chain, ensuring
+    they cannot be double-spent while bridged versions exist.
+  </Step>
+
+<Step title="Cross-Chain Messaging" icon="arrow-left-right">
+  Cryptographically verified messages are sent between chains containing asset
+  transfer information and execution instructions.
+</Step>
+
+<Step title="Asset Minting" icon="coins">
+  Equivalent assets are minted on the destination chain, maintaining 1:1 backing
+  with the locked originals.
+</Step>
+
+<Step title="Execution & Usage" icon="play">
+  Bridged assets can be used in target chain applications just like native
+  assets, with full DeFi compatibility.
+</Step>
+
+  <Step title="Return Process" icon="undo">
+    When assets return, bridged versions are burned and original assets are
+    unlocked, completing the cycle.
+  </Step>
+</Steps>
+
+## Asset Types and Support
+
+The TAC SDK supports comprehensive asset bridging across multiple token standards:
+
+### Native Tokens
+
+<Tabs>
+  <Tab title="TON Native">
+    ```javascript
+    import { AssetType } from "@tonappchain/sdk";
+    
+    // Bridge native TON to TAC
+    const assets = [
+      { 
+        type: AssetType.FT,
+        amount: 5.0 
+      } // Bridge 5 TON
+    ];
+    
+    const transactionLinker = await tacSdk.sendCrossChainTransaction(
+      evmProxyMsg,
+      sender,
+      assets
+    );
+    ```
+    
+    **Characteristics:**
+    - No address needed (automatically recognized)
+    - Becomes wrapped TON (wTON) on TAC EVM
+    - Direct 1:1 conversion rate
+    - Gas-efficient bridging
+  </Tab>
+  
+  <Tab title="TAC Native">
+    ```javascript
+    // Get TAC token address for bridging back to TON
+    const tacTokenAddress = await tacSdk.nativeTACAddress();
+    
+    // Bridge TAC back to TON (from TAC to TON direction)
+    await tacSdk.bridgeTokensToTON(
+      evmSigner,           // Ethereum wallet
+      ethers.parseEther('2.0'), // 2 TAC
+      tonRecipientAddress, // TON destination
+      []                   // No additional assets
+    );
+    ```
+    
+    **Characteristics:**
+    - Requires EVM signer for TAC to TON direction
+    - Becomes jetton on TON side
+    - Maintains full value backing
+    - Supports both directions seamlessly
+  </Tab>
+</Tabs>
+
+### Jetton Tokens (TON Fungible Tokens)
+
+```javascript
+// Bridge jetton tokens to TAC
+const jettonAssets = [
+  {
+    type: AssetType.FT,
+    address: "EQJettonMasterContractAddress...", // Jetton master contract
+    amount: 1000.0, // Human-readable amount
+    decimals: 9, // Optional: specify decimals
+  },
+];
+
+// Advanced jetton bridging with raw amounts
+const rawJettonAssets = [
+  {
+    type: AssetType.FT, // Fungible Token
+    address: "EQJettonMasterContractAddress...",
+    rawAmount: 1000000000000n, // Raw amount (1000 tokens with 9 decimals)
+  },
+];
+```
+
+### NFT Collections and Items
+
+```javascript
+// Bridge NFT by collection and item index
+const nftCollectionAssets = [
+  {
+    type: AssetType.NFT,
+    collectionAddress: "EQNFTCollectionContractAddress...",
+    itemIndex: 123n, // Specific NFT item index
+  },
+];
+
+// Bridge specific NFT item by direct address
+const specificNftAssets = [
+  {
+    type: AssetType.NFT,
+    address: "EQSpecificNFTItemAddress...", // Direct NFT item address
+  },
+];
+```
+
+## Advanced Asset Configuration
+
+### Precision and Decimal Handling
+
+The SDK provides flexible approaches to handle token decimals and precision:
+
+```javascript
+// Automatic decimal detection (recommended)
+const autoAssets = [
+  {
+    type: AssetType.FT,
+    address: "EQJettonMasterAddress...",
+    amount: 100.5, // SDK automatically handles decimals
+  },
+];
+
+// Manual decimal specification for precision control
+const preciseAssets = [
+  {
+    type: AssetType.FT,
+    address: "EQJettonMasterAddress...",
+    amount: 100.123456789, // High precision amount
+    decimals: 9, // Explicit decimal specification
+  },
+];
+
+// Raw amount for maximum control
+const rawAssets = [
+  {
+    type: AssetType.FT,
+    address: "EQJettonMasterAddress...",
+    rawAmount: 100123456789n, // Exact raw amount
+  },
+];
+```
+
+### Multi-Asset Transactions
+
+Bridge multiple asset types in a single transaction:
+
+```javascript
+const multiAssetBridging = async () => {
+  const complexAssets = [
+    // Native TON for gas and value
+    { type: AssetType.FT, amount: 2.0 },
+
+    // Jetton token for DeFi operations
+    {
+      type: AssetType.FT,
+      address: "EQStablecoinMasterAddress...",
+      amount: 1000.0,
+    },
+
+    // Another jetton for multi-token operations
+    {
+      type: AssetType.FT,
+      address: "EQLiquidityTokenAddress...",
+      amount: 50.0,
+    },
+
+    // NFT for gaming or collectibles
+    {
+      type: AssetType.NFT,
+      address: "EQGameNFTItemAddress...", // Direct NFT item address
+    },
+  ];
+
+  const evmProxyMsg = {
+    evmTargetAddress: complexDeFiContractAddress,
+    methodName: "multiAssetOperation(uint256,uint256,uint256)",
+    encodedParameters: encodedComplexParams,
+    gasLimit: 800000n,
+  };
+
+  return await tacSdk.sendCrossChainTransaction(
+    evmProxyMsg,
+    sender,
+    complexAssets
+  );
+};
+```
+
+## Token Address Mapping
+
+Understanding and working with cross-chain token addresses:
+
+### TON to TAC Address Resolution
+
+```javascript
+// Get EVM equivalent of TON token
+const getEvmTokenAddress = async (tonTokenAddress) => {
+  try {
+    const evmAddress = await tacSdk.getEVMTokenAddress(tonTokenAddress);
+    console.log(`TON token ${tonTokenAddress} maps to EVM token ${evmAddress}`);
+    return evmAddress;
+  } catch (error) {
+    console.error("Token mapping failed:", error);
+    return null;
+  }
+};
+
+// Reverse mapping: EVM to TON
+const getTonTokenAddress = async (evmTokenAddress) => {
+  try {
+    const tonAddress = await tacSdk.getTVMTokenAddress(evmTokenAddress);
+    console.log(`EVM token ${evmTokenAddress} maps to TON token ${tonAddress}`);
+    return tonAddress;
+  } catch (error) {
+    console.error("Reverse token mapping failed:", error);
+    return null;
+  }
+};
+```
+
+### NFT Address Resolution
+
+```javascript
+// Get EVM NFT contract from TON NFT collection
+const getEvmNftAddress = async (tonNftCollectionAddress) => {
+  const evmNftAddress = await tacSdk.getEVMNFTAddress(
+    tonNftCollectionAddress,
+    "COLLECTION" // Specify address type
+  );
+  return evmNftAddress;
+};
+
+// Get specific NFT item mapping
+const getEvmNftItemAddress = async (tonNftItemAddress) => {
+  const evmNftAddress = await tacSdk.getEVMNFTAddress(
+    tonNftItemAddress,
+    "ITEM" // Specify this is an item address
+  );
+  return evmNftAddress;
+};
+
+// Reverse: Get TON NFT address from EVM
+const getTonNftAddress = async (evmNftAddress, tokenId = null) => {
+  const tonNftAddress = await tacSdk.getTVMNFTAddress(
+    evmNftAddress,
+    tokenId // Optional: specific token ID
+  );
+  return tonNftAddress;
+};
+```
+
+## Asset Balance Management
+
+### Query User Balances
+
+```javascript
+const getUserAssetBalances = async (userAddress) => {
+  // Get jetton balance (basic)
+  const jettonBalance = await tacSdk.getUserJettonBalance(
+    userAddress,
+    jettonMasterAddress
+  );
+  console.log("Raw jetton balance:", jettonBalance.toString());
+
+  // Get jetton balance (extended with metadata)
+  const extendedBalance = await tacSdk.getUserJettonBalanceExtended(
+    userAddress,
+    jettonMasterAddress
+  );
+
+  console.log("Balance Details:");
+  console.log("- Raw amount:", extendedBalance.rawAmount.toString());
+  console.log("- Decimals:", extendedBalance.decimals);
+  console.log("- Human readable:", extendedBalance.amount);
+  console.log("- Symbol:", extendedBalance.symbol);
+  console.log("- Name:", extendedBalance.name);
+
+  return extendedBalance;
+};
+```
+
+### Jetton Wallet Management
+
+```javascript
+const getJettonWalletInfo = async (userAddress, jettonMasterAddress) => {
+  // Get user's jetton wallet address
+  const jettonWalletAddress = await tacSdk.getUserJettonWalletAddress(
+    userAddress,
+    jettonMasterAddress
+  );
+
+  console.log("Jetton wallet address:", jettonWalletAddress);
+
+  // Check if wallet exists and is deployed
+  const isDeployed = await tacSdk.isContractDeployedOnTVM(jettonWalletAddress);
+  console.log("Wallet deployed:", isDeployed);
+
+  return {
+    address: jettonWalletAddress,
+    deployed: isDeployed,
+  };
+};
+```
+
+## Asset Validation and Safety
+
+### Pre-Transaction Validation
+
+```javascript
+const validateAssetsBridging = async (assets, senderAddress) => {
+  const validationResults = [];
+
+  for (const asset of assets) {
+    const result = {
+      asset,
+      valid: true,
+      issues: [],
+    };
+
+    try {
+      if (asset.address) {
+        // Validate jetton/NFT contract exists
+        const contractExists = await tacSdk.isContractDeployedOnTVM(
+          asset.address
+        );
+        if (!contractExists) {
+          result.valid = false;
+          result.issues.push("Contract does not exist or is not deployed");
+        }
+
+        // For jettons, check user has sufficient balance
+        if (asset.type !== "NFT") {
+          const balance = await tacSdk.getUserJettonBalance(
+            senderAddress,
+            asset.address
+          );
+
+          const requiredAmount =
+            typeof asset.amount === "number"
+              ? BigInt(Math.floor(asset.amount * 10 ** 9)) // Assume 9 decimals
+              : asset.amount;
+
+          if (balance < requiredAmount) {
+            result.valid = false;
+            result.issues.push(
+              `Insufficient balance: has ${balance}, needs ${requiredAmount}`
+            );
+          }
+        }
+      } else {
+        // Native TON - would need to check wallet balance via other means
+        console.log("Native TON validation - implement wallet balance check");
+      }
+    } catch (error) {
+      result.valid = false;
+      result.issues.push(`Validation error: ${error.message}`);
+    }
+
+    validationResults.push(result);
+  }
+
+  return validationResults;
+};
+
+// Usage
+const validationResults = await validateAssetsBridging(assets, senderAddress);
+const allValid = validationResults.every((r) => r.valid);
+
+if (!allValid) {
+  console.error("Asset validation failed:");
+  validationResults.forEach((r) => {
+    if (!r.valid) {
+      console.error(
+        `- ${r.asset.address || "Native TON"}: ${r.issues.join(", ")}`
+      );
+    }
+  });
+} else {
+  console.log("All assets validated successfully");
+}
+```
+
+### Safe Asset Handling
+
+```javascript
+class SafeAssetBridger {
+  constructor(tacSdk) {
+    this.tacSdk = tacSdk;
+    this.maxRetries = 3;
+    this.confirmationThreshold = 2; // Require 2 confirmations
+  }
+
+  async safelyBridgeAssets(evmProxyMsg, sender, assets) {
+    // Step 1: Validate all assets
+    const validation = await this.validateAssets(
+      assets,
+      sender.getSenderAddress()
+    );
+    if (!validation.valid) {
+      throw new Error(
+        `Asset validation failed: ${validation.errors.join(", ")}`
+      );
+    }
+
+    // Step 2: Simulate transaction
+    const simulation = await this.tacSdk.getTransactionSimulationInfo(
+      evmProxyMsg,
+      sender,
+      assets
+    );
+
+    if (!simulation.success) {
+      throw new Error(`Transaction simulation failed: ${simulation.error}`);
+    }
+
+    // Step 3: Execute with retry logic
+    let lastError;
+    for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
+      try {
+        const result = await this.tacSdk.sendCrossChainTransaction(
+          evmProxyMsg,
+          sender,
+          assets
+        );
+
+        // Step 4: Monitor for confirmations
+        const confirmed = await this.waitForConfirmations(
+          result,
+          this.confirmationThreshold
+        );
+
+        if (confirmed) {
+          return result;
+        } else {
+          throw new Error(
+            "Transaction did not receive sufficient confirmations"
+          );
+        }
+      } catch (error) {
+        lastError = error;
+        console.warn(`Attempt ${attempt} failed:`, error.message);
+
+        if (attempt < this.maxRetries) {
+          await new Promise((resolve) => setTimeout(resolve, 5000 * attempt));
+        }
+      }
+    }
+
+    throw new Error(
+      `Failed after ${this.maxRetries} attempts: ${lastError.message}`
+    );
+  }
+
+  async validateAssets(assets, senderAddress) {
+    // Implementation from previous validation example
+    const results = await validateAssetsBridging(assets, senderAddress);
+
+    return {
+      valid: results.every((r) => r.valid),
+      errors: results.flatMap((r) => r.issues),
+    };
+  }
+
+  async waitForConfirmations(transactionLinker, requiredConfirmations) {
+    const tracker = new OperationTracker(this.tacSdk.network);
+    let confirmations = 0;
+    let attempts = 0;
+    const maxAttempts = 60; // 10 minutes with 10-second intervals
+
+    while (confirmations < requiredConfirmations && attempts < maxAttempts) {
+      try {
+        const status = await tracker.getSimplifiedOperationStatus(
+          transactionLinker
+        );
+
+        if (status === "SUCCESSFUL") {
+          confirmations++;
+          console.log(`Confirmation ${confirmations}/${requiredConfirmations}`);
+        } else if (status === "FAILED") {
+          return false;
+        }
+
+        if (confirmations >= requiredConfirmations) {
+          return true;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 10000));
+        attempts++;
+      } catch (error) {
+        console.warn("Confirmation check failed:", error.message);
+        attempts++;
+      }
+    }
+
+    return confirmations >= requiredConfirmations;
+  }
+}
+```
+
+## Return Bridging (TAC to TON)
+
+For returning assets from TAC back to TON:
+
+```javascript
+const bridgeAssetsBackToTon = async (evmSigner, tonRecipient) => {
+  // Bridge native TAC back to TON
+  const tacAmount = ethers.utils.parseEther("1.0"); // 1 TAC
+
+  const txHash = await tacSdk.bridgeTokensToTON(
+    evmSigner, // Ethereum wallet signer
+    tacAmount, // Amount to bridge back
+    tonRecipient, // TON recipient address
+    [], // Additional assets (empty for simple case)
+    undefined // Use default executor fee
+  );
+
+  console.log("Bridge transaction hash:", txHash);
+  return txHash;
+};
+
+// Bridge multiple assets back to TON
+const bridgeMultipleAssetsToTon = async (evmSigner, tonRecipient) => {
+  const tacAmount = ethers.utils.parseEther("0.5");
+
+  // Include additional bridged assets
+  const additionalAssets = [
+    {
+      type: "FT",
+      address: evmJettonEquivalentAddress,
+      amount: ethers.utils.parseUnits("100", 9), // 100 tokens with 9 decimals
+      decimals: 9,
+    },
+    {
+      type: "NFT",
+      address: evmNftContractAddress,
+      amount: 1n,
+      nftItemAddress: specificNftItemAddress,
+    },
+  ];
+
+  const txHash = await tacSdk.bridgeTokensToTON(
+    evmSigner,
+    tacAmount,
+    tonRecipient,
+    additionalAssets
+  );
+
+  return txHash;
+};
+```
+
+## Monitoring Asset States
+
+Track asset movements across the bridging lifecycle:
+
+```javascript
+class AssetStateMonitor {
+  constructor(tacSdk) {
+    this.tacSdk = tacSdk;
+    this.tracker = new OperationTracker(tacSdk.network);
+  }
+
+  async monitorAssetJourney(transactionLinker, originalAssets) {
+    const journey = {
+      originalAssets,
+      stages: [],
+      currentStage: "INITIATED",
+      bridgedAmounts: {},
+      errors: [],
+    };
+
+    try {
+      // Monitor the bridging process
+      const stages = await this.tracker.getStageProfiling(
+        transactionLinker.operationId
+      );
+
+      journey.stages = this.interpretStages(stages);
+      journey.currentStage = this.getCurrentStage(stages);
+
+      // Check final asset states
+      if (journey.currentStage === "COMPLETED") {
+        journey.bridgedAmounts = await this.verifyBridgedAmounts(
+          originalAssets,
+          transactionLinker
+        );
+      }
+    } catch (error) {
+      journey.errors.push(error.message);
+    }
+
+    return journey;
+  }
+
+  interpretStages(stages) {
+    const interpretedStages = [];
+
+    if (stages.tonTransactionSent) {
+      interpretedStages.push({
+        stage: "TON_TRANSACTION_SENT",
+        timestamp: stages.tonTransactionSent,
+        description: "Transaction submitted to TON network",
+      });
+    }
+
+    if (stages.assetsLocked) {
+      interpretedStages.push({
+        stage: "ASSETS_LOCKED",
+        timestamp: stages.assetsLocked,
+        description: "Assets locked in bridging contracts",
+      });
+    }
+
+    if (stages.crossChainRouted) {
+      interpretedStages.push({
+        stage: "CROSS_CHAIN_ROUTED",
+        timestamp: stages.crossChainRouted,
+        description: "Message routed to TAC network",
+      });
+    }
+
+    if (stages.evmExecutionCompleted) {
+      interpretedStages.push({
+        stage: "ASSETS_MINTED",
+        timestamp: stages.evmExecutionCompleted,
+        description: "Assets minted on TAC and available for use",
+      });
+    }
+
+    return interpretedStages;
+  }
+
+  getCurrentStage(stages) {
+    if (stages.evmExecutionCompleted) return "COMPLETED";
+    if (stages.crossChainRouted) return "ROUTING";
+    if (stages.assetsLocked) return "LOCKED";
+    if (stages.tonTransactionSent) return "PROCESSING";
+    return "INITIATED";
+  }
+
+  async verifyBridgedAmounts(originalAssets, transactionLinker) {
+    const bridgedAmounts = {};
+
+    for (const asset of originalAssets) {
+      try {
+        if (asset.address) {
+          // Get EVM equivalent address
+          const evmAddress = await this.tacSdk.getEVMTokenAddress(
+            asset.address
+          );
+          bridgedAmounts[asset.address] = {
+            originalAmount: asset.amount,
+            evmAddress,
+            bridged: true, // In production, would verify actual EVM balance
+          };
+        } else {
+          // Native TON
+          const tacAddress = await this.tacSdk.nativeTACAddress();
+          bridgedAmounts["NATIVE_TON"] = {
+            originalAmount: asset.amount,
+            evmAddress: tacAddress,
+            bridged: true,
+          };
+        }
+      } catch (error) {
+        bridgedAmounts[asset.address || "NATIVE_TON"] = {
+          originalAmount: asset.amount,
+          error: error.message,
+          bridged: false,
+        };
+      }
+    }
+
+    return bridgedAmounts;
+  }
+}
+```
+
+## What's Next?
+
+Master advanced cross-chain operations and error handling:
+
+<CardGroup cols={2}>
+  <Card
+    title="Simulation Testing"
+    icon="arrow-left-right"
+    href="/build/sdk/advanced-usage/simulation-testing"
+  >
+    Explore advanced simulation testing patterns and optimizations
+  </Card>
+  <Card
+    title="Token Address Mapping"
+    icon="route"
+    href="/build/sdk/advanced-usage/token-address-mapping"
+  >
+    Master token address resolution across networks
+  </Card>
+</CardGroup>

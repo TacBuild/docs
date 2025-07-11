@@ -1,0 +1,422 @@
+---
+title: Hardhat
+description: "Deploy, test, and verify Solidity contracts on TAC using Hardhat - the complete development environment"
+---
+
+TAC EVM Layer provides full compatibility with Hardhat, Ethereum's most popular development framework. Deploy your existing Solidity contracts without modification, test, and verify contracts on the block explorer.
+
+## Installation & Setup
+
+Setting up Hardhat for TAC development requires no special configuration - it works exactly like any other EVM chain.
+
+<Steps>
+  <Step title="Initialize Project" icon="folder-plus">
+    Create a new Hardhat project or navigate to your existing project:
+    
+    ```bash
+    mkdir my-tac-project && cd my-tac-project
+    npm init -y
+    npm install --save-dev hardhat
+    npx hardhat
+    ```
+    
+    Select "Create a JavaScript project" or "Create a TypeScript project" based on your preference.
+  </Step>
+
+<Step title="Install Dependencies" icon="package">
+
+Install essential dependencies for TAC development:
+
+```bash Core dependencies
+ npm install --save-dev @nomicfoundation/hardhat-toolbox
+ npm install --save-dev @nomicfoundation/hardhat-verify
+ npm install @openzeppelin/contracts
+
+```
+
+</Step>
+
+  <Step title="Configure Networks" icon="settings">
+    Update `hardhat.config.js` to include TAC networks:
+    
+    ```javascript hardhat.config.js
+    require("@nomicfoundation/hardhat-toolbox");
+    require("@nomicfoundation/hardhat-verify");
+    
+    module.exports = {
+      solidity: {
+        version: "0.8.19",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
+      },
+      networks: {
+        // TAC Saint Petersburg Testnet
+        tac_testnet: {
+          url: "https://spb.rpc.tac.build",
+          chainId: 2391,
+          accounts: [process.env.PRIVATE_KEY || ""],
+          gasPrice: 20000000000, // 20 gwei
+        },
+        // TAC Mainnet
+        tac_mainnet: {
+          url: "https://rpc.tac.build",
+          chainId: 239,
+          accounts: [process.env.PRIVATE_KEY || ""],
+          gasPrice: 20000000000, // 20 gwei
+        }
+      },
+    };
+    ```
+  </Step>
+
+  <Step title="Environment Setup" icon="key">
+    Create a `.env` file for your private key:
+    
+    ```bash
+    # .env
+    PRIVATE_KEY=your_private_key_here
+    ```
+    
+    <Warning>
+      Never commit your private key to version control. Add `.env` to your `.gitignore` file.
+    </Warning>
+  </Step>
+</Steps>
+
+## Contract Development
+
+Develop contracts for TAC exactly as you would for Ethereum - full Solidity compatibility is maintained.
+
+### Basic Contract Example
+
+```solidity
+// contracts/SimpleStorage.sol
+pragma solidity ^0.8.19;
+
+contract SimpleStorage {
+    uint256 private storedData;
+
+    event DataStored(uint256 indexed value, address indexed sender);
+
+    constructor(uint256 _initialValue) {
+        storedData = _initialValue;
+    }
+
+    function set(uint256 _value) external {
+        storedData = _value;
+        emit DataStored(_value, msg.sender);
+    }
+
+    function get() external view returns (uint256) {
+        return storedData;
+    }
+}
+```
+
+### TAC Cross-Chain Proxy Contract
+
+For contracts that need to receive messages from TON, inherit from the TAC proxy base:
+
+```solidity
+// contracts/TacEnabledContract.sol
+pragma solidity ^0.8.19;
+
+import "@tac/proxy-contracts/TacProxyV1.sol";
+
+contract TacEnabledContract is TacProxyV1 {
+    uint256 public counter;
+    mapping(address => uint256) public userCounters;
+
+    event CounterIncremented(address indexed user, uint256 newValue);
+
+    constructor(address _crossChainLayer) TacProxyV1(_crossChainLayer) {
+        counter = 0;
+    }
+
+    // Function callable from EVM
+    function incrementCounter() external {
+        counter++;
+        userCounters[msg.sender]++;
+        emit CounterIncremented(msg.sender, counter);
+    }
+
+    // Function callable from TON via cross-chain message
+    function incrementFromTON(bytes calldata tacHeader, bytes calldata args)
+        external
+        _onlyCrossChainLayer
+    {
+        // Decode TAC header to get TON user info
+        TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
+
+        // Increment counter for cross-chain user
+        counter++;
+        userCounters[header.sender]++;
+
+        emit CounterIncremented(header.sender, counter);
+
+        // Optionally send result back to TON
+        OutMessageV1 memory response = OutMessageV1({
+            target: header.sender,
+            methodName: "counterUpdated",
+            arguments: abi.encode(counter)
+        });
+
+        _sendMessageV1(response);
+    }
+}
+```
+
+## Testing
+
+### Local Testing
+
+```javascript
+// test/SimpleStorage.test.js
+const { expect } = require("chai");
+const { ethers } = require("hardhat");
+
+describe("SimpleStorage", function () {
+  let simpleStorage;
+  let owner;
+  let addr1;
+
+  beforeEach(async function () {
+    [owner, addr1] = await ethers.getSigners();
+
+    const SimpleStorage = await ethers.getContractFactory("SimpleStorage");
+    simpleStorage = await SimpleStorage.deploy(42);
+    await simpleStorage.deployed();
+  });
+
+  it("Should initialize with correct value", async function () {
+    expect(await simpleStorage.get()).to.equal(42);
+  });
+
+  it("Should store and retrieve values", async function () {
+    const tx = await simpleStorage.set(100);
+    await tx.wait();
+
+    expect(await simpleStorage.get()).to.equal(100);
+  });
+
+  it("Should emit DataStored event", async function () {
+    await expect(simpleStorage.set(200))
+      .to.emit(simpleStorage, "DataStored")
+      .withArgs(200, owner.address);
+  });
+});
+```
+
+### Run Tests
+
+```bash
+# Run tests locally
+npx hardhat test
+
+# Run tests against TAC testnet
+npx hardhat test --network tac_testnet
+```
+
+## Deployment
+
+Deploy contracts to TAC using standard Hardhat deployment scripts.
+
+### Deployment Script
+
+```javascript
+// scripts/deploy.js
+const { ethers } = require("hardhat");
+
+async function main() {
+  const [deployer] = await ethers.getSigners();
+
+  console.log("Deploying contracts with account:", deployer.address);
+  console.log("Account balance:", (await deployer.getBalance()).toString());
+
+  // Deploy SimpleStorage
+  const SimpleStorage = await ethers.getContractFactory("SimpleStorage");
+  const simpleStorage = await SimpleStorage.deploy(42);
+  await simpleStorage.deployed();
+
+  console.log("SimpleStorage deployed to:", simpleStorage.address);
+
+  // Deploy TAC-enabled contract (if you have CrossChainLayer address)
+  const crossChainLayerAddress = "0x..."; // Get from TAC documentation
+
+  if (crossChainLayerAddress) {
+    const TacEnabledContract = await ethers.getContractFactory(
+      "TacEnabledContract"
+    );
+    const tacContract = await TacEnabledContract.deploy(crossChainLayerAddress);
+    await tacContract.deployed();
+
+    console.log("TacEnabledContract deployed to:", tacContract.address);
+  }
+
+  // Save deployment info
+  const deploymentInfo = {
+    network: network.name,
+    simpleStorage: simpleStorage.address,
+    deployer: deployer.address,
+    blockNumber: await ethers.provider.getBlockNumber(),
+  };
+
+  console.log("Deployment info:", deploymentInfo);
+}
+
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+```
+
+### Deploy Commands
+
+<Tabs>
+  <Tab title="Testnet Deployment">
+    ```bash
+    # Deploy to TAC Saint Petersburg testnet
+    npx hardhat run scripts/deploy.js --network tac_testnet
+    ```
+    
+    Expected output:
+    ```
+    Deploying contracts with account: 0x742d35Cc6473...
+    Account balance: 1000000000000000000
+    SimpleStorage deployed to: 0x5FbDB2315678afecb367f032d93F642f64180aa3
+    ```
+  </Tab>
+
+  <Tab title="Mainnet Deployment">
+    ```bash
+    # Deploy to TAC mainnet (production)
+    npx hardhat run scripts/deploy.js --network tac_mainnet
+    ```
+    <Warning>
+      Ensure you have sufficient TAC tokens for gas fees before deploying to mainnet.
+    </Warning>
+  </Tab>
+</Tabs>
+
+## Advanced Configuration
+
+### Gas Optimization
+
+```javascript
+// hardhat.config.js - Optimized for TAC
+module.exports = {
+  solidity: {
+    version: "0.8.19",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200, // Adjust based on usage frequency
+      },
+      viaIR: true, // Enable for better optimization
+    },
+  },
+  networks: {
+    tac_testnet: {
+      url: "https://spb.rpc.tac.build",
+      chainId: 2391,
+      accounts: [process.env.PRIVATE_KEY],
+      gas: 20000000, // Block gas limit
+      gasPrice: 20000000000, // 20 gwei
+      timeout: 60000, // 1 minute timeout
+    },
+  },
+};
+```
+
+### Multiple Environment Setup
+
+```javascript
+// hardhat.config.js
+const { PRIVATE_KEY_DEV, PRIVATE_KEY_PROD } = process.env;
+
+module.exports = {
+  networks: {
+    tac_testnet: {
+      url: "https://spb.rpc.tac.build",
+      chainId: 2391,
+      accounts: PRIVATE_KEY_DEV ? [PRIVATE_KEY_DEV] : [],
+    },
+    tac_mainnet: {
+      url: "https://rpc.tac.build",
+      chainId: 239,
+      accounts: PRIVATE_KEY_PROD ? [PRIVATE_KEY_PROD] : [],
+    },
+  },
+};
+```
+
+## Common Issues & Solutions
+
+<AccordionGroup>
+  <Accordion title="Connection Issues" icon="wifi-off">
+    **Problem**: RPC connection failures or timeouts
+    
+    **Solutions**:
+    - Verify RPC URLs are correct
+    - Check network connectivity
+    - Increase timeout in network configuration
+    - Try alternative RPC endpoints if available
+    
+    ```javascript
+    networks: {
+      tac_testnet: {
+        url: "https://spb.rpc.tac.build",
+        timeout: 60000, // Increase timeout
+        httpHeaders: {
+          "User-Agent": "hardhat"
+        }
+      }
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Gas Estimation Failures" icon="fuel">
+    **Problem**: Gas estimation fails for complex transactions
+    
+    **Solutions**:
+    - Set manual gas limit in deployment scripts
+    - Use gas reporter for optimization
+    - Test with smaller contract chunks
+    
+    ```javascript
+    const tx = await contract.deploy({
+      gasLimit: 5000000, // Manual gas limit
+      gasPrice: ethers.utils.parseUnits("20", "gwei")
+    });
+    ```
+  </Accordion>
+  
+ 
+</AccordionGroup>
+
+## Next Steps
+
+With Hardhat configured for TAC, you can now build sophisticated smart contracts that work with both EVM and TON ecosystems.
+
+<CardGroup cols={2}>
+  <Card
+    title="Foundry Setup"
+    icon="hammer"
+    href="/build/smart-contracts/tools/foundry"
+  >
+    Alternative development framework with advanced testing features
+  </Card>
+  <Card
+    title="TAC Proxy Development"
+    icon="arrow-left-right"
+    href="/build/smart-contracts/develop-tac-proxy"
+  >
+    Build contracts that receive cross-chain messages from TON
+  </Card>
+</CardGroup>

@@ -1,0 +1,255 @@
+---
+title: TAC EVM Layer
+description: "A complete Layer 1 blockchain providing full EVM compatibility built on Cosmos SDK"
+---
+
+The TAC EVM Layer is a fully-fledged Layer-1 blockchain environment based on Cosmos SDK technology. It provides a secure and scalable execution environment specifically optimized for Ethereum-compatible smart contracts, allowing existing EVM dApps to be deployed without modifications or code rewrites, achieving ≈2-second finality through dPoS.
+
+## Technical Foundation
+
+TAC EVM Layer combines proven blockchain technologies to deliver a robust execution environment that feels familiar to Ethereum developers.
+
+<Frame caption="TAC EVM Layer built on battle-tested infrastructure">
+  <img
+    src="/images/evm-layer-architecture.png"
+    alt="TAC EVM Layer technical stack"
+  />
+</Frame>
+
+### Core Technology Stack
+
+<AccordionGroup>
+  <Accordion title="Cosmos SDK - Application Framework" icon="blocks">
+    The latest Cosmos SDK provides the modular blockchain framework that powers
+    TAC EVM Layer. This battle-tested foundation offers built-in modules for
+    staking, governance, and inter-blockchain communication, while allowing
+    custom modules for TAC-specific functionality. 
+    
+    The SDK's modular architecture enables TAC to implement features like the TON Adapter
+    integration directly at the blockchain level, rather than as external
+    bolt-on solutions.
+  </Accordion>
+
+<Accordion title="Native EVM Integration" icon="settings">
+
+TAC EVM Layer implements native EVM execution directly within the Cosmos SDK
+framework. This isn't a compatibility layer or virtual machine running on top
+of another VM - it's true EVM execution with modern consensus guarantees.
+
+Every Ethereum opcode, gas calculation, and state transition rule works
+exactly as it does on Ethereum mainnet, ensuring 100% compatibility for
+existing Solidity contracts.
+
+</Accordion>
+
+
+</AccordionGroup>
+
+## Performance Characteristics
+
+TAC EVM Layer maintains the security guarantees developers expect from a production blockchain built on Cosmos SDK.
+
+<Tabs>
+  <Tab title="Finality">
+
+    **≈2-second finality** through Tendermint consensus mechanism provides
+    deterministic execution and fast block confirmation. Transactions are
+    irreversibly confirmed with minimal latency.
+
+    **No reorganizations** are possible due to Tendermint's BFT consensus model. This
+    eliminates edge cases where transactions might be reversed or reordered
+    after confirmation.
+
+  </Tab>
+
+<Tab title="Throughput">
+
+**Configurable gas limits** allow the network to adapt to demand through
+governance proposals, balancing throughput with
+decentralization requirements.
+
+**Parallel execution potential** exists within the Cosmos SDK framework, enabling future optimizations as the network grows.
+
+</Tab>
+
+  <Tab title="Cost Efficiency">
+
+    **EIP-1559 gas management** provides predictable transaction fees with
+    automatic fee adjustment based on network demand. Users get the same fee
+    predictability they expect from modern Ethereum.
+
+    **Fee token flexibility** allows transaction fees to be paid in TAC tokens, while still
+    supporting ETH-denominated gas calculations for contract compatibility.
+
+  </Tab>
+</Tabs>
+
+## Developer Experience
+
+TAC EVM Layer maintains complete compatibility with the Ethereum development ecosystem while providing enhanced debugging and development capabilities.
+
+### Tool Compatibility
+
+Every tool in the Ethereum ecosystem works seamlessly with TAC EVM Layer:
+
+<Columns cols={2}>
+  <Card title="Development Frameworks" icon="hammer">
+    Hardhat, Truffle, Foundry, and Remix work without configuration changes.
+    Deploy scripts, test suites, and build processes transfer directly.
+  </Card>
+
+  <Card title="Wallet Integration" icon="wallet">
+    MetaMask, WalletConnect, and other Web3 wallets connect by simply adding TAC
+    as a custom network. No special plugins required.
+  </Card>
+</Columns>
+
+<Columns cols={2}>
+  <Card title="JavaScript Libraries" icon="code">
+    Web3.js, Ethers.js, and Viem work exactly as they do with Ethereum. Contract
+    ABIs and interaction patterns remain identical.
+  </Card>
+
+  <Card title="Infrastructure Tools" icon="server">
+    Block explorers, indexers, and monitoring tools designed for Ethereum can
+    index TAC EVM Layer with minimal configuration.
+  </Card>
+</Columns>
+
+## Security Model
+
+TAC EVM Layer employs a dual-layer security approach that provides both immediate operational security and long-term economic security.
+
+### Primary Security: Delegated Proof of Stake
+
+The core security of TAC EVM Layer comes from a delegated Proof of Stake consensus mechanism built on the latest Cosmos SDK.
+
+- **Validator Selection**: The network supports a configurable number of validators (to be determined before mainnet launch). Anyone can become a validator by staking TAC tokens and maintaining the required infrastructure.
+
+- **Delegation System**: TAC token holders can delegate their stake to validators, earning rewards while contributing to network security. This allows broader participation in securing the network without requiring users to run validator infrastructure.
+
+- **Immediate Finality**: The BFT consensus provides immediate finality with a 67% supermajority requirement. This means transactions are final the moment they're included in a block, with no possibility of reversal.
+
+- **Slashing Protection**: Validators face automatic slashing for provable misbehavior like double-signing or extended downtime. This creates strong economic incentives for reliable, honest participation.
+
+### Enhanced Security: Babylon Bitcoin Staking
+
+TAC EVM Layer integrates with Babylon's Bitcoin staking protocol to add an additional layer of economic security.
+
+<Warning>
+  Bitcoin staking provides enhanced security but introduces slight delays in
+  finality. Most applications can rely on the immediate dPoS finality for
+  optimal user experience.
+</Warning>
+
+<AccordionGroup>
+  <Accordion title="How Bitcoin Staking Works" icon="bitcoin">
+
+    Bitcoin holders can stake their BTC in a self-custodial manner directly on
+    the Bitcoin blockchain. They delegate to Babylon validators who then provide
+    additional signatures on TAC EVM Layer blocks.
+
+    If a Babylon validator double-signs a TAC block, the Babylon protocol automatically slashes the
+    staked Bitcoin, providing economic security proportional to the amount of
+    Bitcoin at stake.
+
+  </Accordion>
+
+<Accordion title="Security Benefits" icon="shield-check">
+
+The Bitcoin staking layer adds massive economic security to TAC EVM Layer. An
+attacker would need to overcome both the dPoS validators and the Bitcoin
+stakers, making attacks exponentially more expensive.
+
+This dual security model provides some of the strongest economic guarantees available in the blockchain
+space, backed by Bitcoin's security budget.
+
+</Accordion>
+
+  <Accordion title="Finality Trade-offs" icon="clock">
+
+    While dPoS provides immediate finality, Bitcoin-secured finality takes
+    longer due to Bitcoin's block times and the additional validation required.
+
+    Most applications can treat dPoS finality as sufficient for operational
+    purposes while benefiting from the enhanced long-term security of Bitcoin
+    staking.
+
+  </Accordion>
+</AccordionGroup>
+
+## Gas and Fee Structure
+
+TAC EVM Layer implements familiar gas mechanics with improvements for predictability and efficiency.
+
+### EIP-1559 Implementation
+
+TAC EVM Layer uses EIP-1559 gas pricing for predictable transaction fees:
+
+```solidity
+// Gas calculations work exactly like Ethereum
+uint256 gasUsed = gasLimit - gasleft();
+uint256 effectiveGasPrice = baseFee + min(maxPriorityFee, maxFeePerGas - baseFee);
+uint256 totalCost = gasUsed * effectiveGasPrice;
+```
+
+- **Base Fee**: Automatically adjusts based on network congestion, providing predictable pricing for users.
+
+- **Priority Fee**: Allows users to pay extra for faster inclusion during high-demand periods.
+
+- **Fee Burning**: A portion of transaction fees are burned, creating deflationary pressure on TAC tokens.
+
+## Integration with TON Adapter
+
+TAC EVM Layer includes native integration points for the TON Adapter system, enabling seamless cross-chain functionality.
+
+### Cross-Chain Layer Contract
+
+A system-level contract manages all interactions with the TON Adapter:
+
+```solidity
+interface ICrossChainLayer {
+    function receiveMessage(
+        bytes32 messageHash,
+        bytes calldata merkleProof,
+        MessageData calldata message
+    ) external;
+
+    function sendMessage(
+        OutMessageV1 calldata outMessage
+    ) external;
+}
+```
+
+This contract is deployed at the genesis block and handles all cross-chain message routing, asset operations, and validation.
+
+### Asset Management
+
+TAC EVM Layer includes specialized contracts for managing bridged assets from TON:
+
+- **Token Factory**: Automatically deploys ERC-20 contracts for TON jettons when they first cross to TAC EVM Layer.
+
+- **Asset Registry**: Maintains the mapping between TON asset addresses and their TAC EVM equivalents.
+
+- **Bridge Contracts**: Handle the locking and unlocking of assets as they move between chains.
+
+## What's Next?
+
+The TAC EVM Layer provides the execution foundation for hybrid dApps. Understanding how it connects to other TAC components helps you build more effective applications.
+
+<CardGroup cols={2}>
+  <Card
+    title="TON Adapter"
+    icon="arrow-left-right"
+    href="/core-concepts/components/ton-adapter"
+  >
+    Learn how messages flow between TAC EVM Layer and TON
+  </Card>
+  <Card
+    title="Proxy Apps"
+    icon="blocks"
+    href="/core-concepts/components/proxy-apps"
+  >
+    Discover how smart contracts receive cross-chain messages
+  </Card>
+</CardGroup>

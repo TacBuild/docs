@@ -1,0 +1,328 @@
+---
+title: Message Validation
+description: "How TAC ensures security and integrity of cross-chain messages through multi-layer validation and consensus"
+---
+
+Message validation is the security foundation of TAC's cross-chain system. It ensures that every message crossing between TON and TAC EVM is authentic, authorized, and properly formatted before execution. Understanding validation helps developers build secure applications and troubleshoot validation failures.
+
+## Validation Philosophy
+
+TAC's validation system operates on the principle of "trust but verify" - while sequencers are trusted entities, every claim they make is independently verifiable through cryptographic proofs and consensus mechanisms.
+
+<Frame caption="Multi-layer validation ensuring message integrity throughout the cross-chain process">
+  <img
+    src="/images/message-validation.png"
+    alt="Message validation layers and processes"
+  />
+</Frame>
+
+## Validation Layers
+
+Message validation occurs at multiple layers, each providing different security guarantees and catching different types of potential issues.
+
+### Client-Side Pre-Validation
+
+Before messages even enter the cross-chain system, the TAC SDK performs initial validation to catch obvious errors early.
+
+<Accordion title="Parameter Validation" icon="shield-check">
+- **Type Checking**: All message parameters are validated against expected types and formats to prevent encoding errors.
+
+- **Range Validation**: Numeric values are checked against reasonable ranges to prevent overflow or underflow conditions.
+
+- **Address Validation**: TON and EVM addresses are validated for proper format and checksum correctness.
+
+- **Method Signature Validation**: EVM method signatures are validated to ensure they follow the required `(bytes,bytes)` parameter pattern.
+
+</Accordion>
+
+<Accordion title="Balance Verification" icon="wallet">
+- **Sufficient Funds**: User balances are checked against requested transfer amounts to prevent insufficient fund errors.
+
+- **Asset Existence**: Token contracts are validated to ensure they exist and are accessible for the requested operations.
+
+- **Authorization Checks**: The SDK verifies that users have proper authorization to transfer the specified assets.
+
+</Accordion>
+
+### Sequencer Validation
+
+Sequencers perform the most comprehensive validation of cross-chain messages before including them in consensus.
+
+#### Asset Transfer Verification
+
+- **Onchain Confirmation**: Sequencers verify that claimed asset transfers actually occurred by examining on-chain transaction data.
+
+  ```javascript
+  // Sequencers validate that actual transfers match message claims
+  const messageAssets = extractAssetsFromMessage(crossChainMessage);
+  const actualTransfers = getOnChainTransfers(tonTransaction);
+
+  // Amounts must match exactly
+  validateAssetAmounts(messageAssets, actualTransfers);
+  ```
+
+- **Transfer Authenticity**: Each asset transfer is verified against the actual TON blockchain state to prevent false claims.
+
+- **Sender Authorization**: Sequencers confirm that the message sender is the same entity that authorized the asset transfers.
+
+#### Message Integrity Validation
+
+<Tabs>
+  <Tab title="Parameter Consistency">
+    
+    - **Internal Consistency**: All message parameters are checked for internal consistency and logical coherence.
+    - **Target Validation**: Target contract addresses are validated to ensure they exist and are properly configured.
+    - **Method Existence**: EVM method names are validated against target contracts when possible to prevent call failures.
+
+  </Tab>
+
+<Tab title="Timestamp Validation">
+
+- **Block Timing**: Message timestamps are validated against actual TON block timestamps to prevent replay attacks.
+- **Epoch Boundaries**: Messages are validated to ensure they fall within the correct processing epoch.
+- **Sequence Validation**: Message ordering is validated to prevent out-of-order execution issues.
+
+</Tab>
+
+  <Tab title="Encoding Validation">
+
+    - **ABI Compliance**: Parameter encoding is validated against Ethereum ABI standards to ensure proper decoding.
+    - **Size Limits**: Message sizes are validated against network limits to prevent oversized messages.
+    - **Format Consistency**: All encoded data is validated for proper format and structure.
+
+  </Tab>
+</Tabs>
+
+### Consensus Validation
+
+The consensus layer provides the final validation through cryptographic proofs and multi-party agreement.
+
+#### Group Consensus Requirements
+
+- **Internal Agreement**: Within each sequencer group, 3/5 of members must agree on message validity before the group can participate in network consensus.
+
+- **Cross-Validation**: Different sequencer groups independently validate the same messages, providing redundant verification.
+
+- **Threshold Security**: The high consensus threshold (3/5) ensures that temporary disagreements or individual failures don't prevent legitimate operations.
+
+#### Cryptographic Validation
+
+<AccordionGroup>
+  <Accordion title="Merkle Proof Validation" icon="network">
+    - **Inclusion Proofs**: Every executed message includes cryptographic proof of inclusion in a consensus-approved Merkle tree.
+    
+    - **Tamper Detection**: Merkle proofs make it cryptographically impossible to modify messages after consensus without detection.
+    
+    - **Independent Verification**: Any party can verify message authenticity using publicly available Merkle proofs.
+    
+      ```solidity
+      // Merkle proof validation in CrossChainLayer contract
+      function validateMerkleProof(
+          bytes32 messageHash,
+          bytes32 merkleRoot,
+          bytes32[] calldata proof
+      ) internal pure returns (bool) {
+          return MerkleProof.verify(proof, merkleRoot, messageHash);
+      }
+      ```
+  </Accordion>
+  
+  <Accordion title="Digital Signature Validation" icon="signature">
+    - **Sequencer Signatures**: Each sequencer group provides digital signatures on their Merkle tree submissions.
+    
+    - **Multi-Signature Requirements**: Multiple independent signatures are required before message execution.
+    
+    - **Key Management**: Sequencer public keys are managed through on-chain governance to ensure authenticity.
+  </Accordion>
+</AccordionGroup>
+
+## Economic Validation
+
+Beyond technical validation, economic incentives ensure that validators have strong reasons to validate messages correctly.
+
+### Stake-Based Security
+
+- **Collateral Requirements**: Sequencers must stake significant collateral to participate in validation, creating financial incentives for honest behavior.
+
+- **Slashing Mechanisms**: Provably incorrect validation results in automatic collateral slashing, making attacks economically unattractive.
+
+- **Reward Distribution**: Correct validation is rewarded through fee sharing and protocol incentives.
+
+### Economic Game Theory
+
+<Columns cols={2}>
+  <Card title="Attack Costs" icon="shield-alert">
+    - **High Barriers**: The cost of coordinating attacks across multiple staked sequencer groups is economically prohibitive.
+    - **Detection Guarantees**: Cryptographic proofs ensure that any attempt to validate false messages is immediately detectable.
+  </Card>
+
+  <Card title="Honest Incentives" icon="chart-line">
+    - **Ongoing Rewards**: Honest sequencers receive continuous rewards for reliable validation service.
+    - **Reputation Effects**: Poor validation performance affects future participation and profitability.
+  </Card>
+</Columns>
+
+## Validation Failure Handling
+
+When messages fail validation at any stage, the system implements protective measures to prevent asset loss and provide clear feedback.
+
+### Pre-Consensus Failures
+
+- **Early Detection**: Messages that fail initial validation are rejected before entering the consensus system, saving time and resources.
+
+- **Error Reporting**: Detailed error messages help developers understand and fix validation issues quickly.
+
+- **Asset Protection**: Failed validation prevents asset transfers from occurring, protecting user funds.
+
+### Consensus-Level Failures
+
+<Warning>
+  If messages fail validation during consensus, automatic rollback procedures
+  ensure user assets are protected.
+</Warning>
+
+- **Rollback Triggers**: Consensus failures automatically trigger rollback message creation to return assets safely.
+
+- **Protected Recovery**: The rollback process uses the same validation and consensus mechanisms to ensure secure asset recovery.
+
+- **Status Reporting**: Failed validation is clearly reported through the status tracking system with specific error information.
+
+## Validation Performance
+
+The validation system is designed to balance security with reasonable performance for application use cases.
+
+### Validation Efficiency
+
+- **Parallel Processing**: Multiple sequencers validate messages in parallel, providing redundancy without significantly impacting speed.
+
+- **Optimized Algorithms**: Validation algorithms are optimized for the specific types of checks required for cross-chain messages.
+
+- **Batched Validation**: Messages are validated in batches during epoch processing for improved efficiency.
+
+### Performance Monitoring
+
+<Tabs>
+  <Tab title="Validation Timing">
+    - **Stage Tracking**: The validation time for each stage is tracked and can be monitored for performance optimization.
+    - **Bottleneck Identification**: Performance monitoring helps identify validation bottlenecks and optimization opportunities.
+    - **Network Health**: Validation performance serves as an indicator of overall network health and capacity.
+  </Tab>
+
+  <Tab title="Success Rates">
+    - **Validation Statistics**: Success and failure rates are tracked to monitor system health and identify issues.
+    - **Error Classification**: Different types of validation errors are classified to help identify systematic issues.
+    - **Trend Analysis**: Long-term trends in validation performance help guide system improvements.
+  </Tab>
+</Tabs>
+
+## Validation Error Types
+
+Understanding common validation errors helps developers build more robust applications.
+
+### Common Client-Side Errors
+
+<AccordionGroup>
+  <Accordion title="Parameter Errors" icon="triangle-alert">
+    - **Invalid Addresses**: Malformed TON or EVM addresses that don't pass checksum validation.
+    - **Type Mismatches**: Parameters that don't match expected types for the target method.
+    - **Encoding Issues**: Improperly ABI-encoded parameters that can't be decoded correctly.
+  </Accordion>
+
+  <Accordion title="Asset Errors" icon="coins">
+    - **Insufficient Balance**: Attempting to transfer more tokens than the user owns.
+    - **Invalid Tokens**: Specifying token addresses that don't exist or aren't accessible.
+    - **Authorization Issues**: Lacking proper permissions to transfer specified assets.
+  </Accordion>
+</AccordionGroup>
+
+### Sequencer Validation Errors
+
+- **Asset Mismatch**: Claimed asset transfers don't match actual on-chain transfers.
+
+- **Timestamp Issues**: Message timestamps don't align with actual TON block timestamps.
+
+- **Signature Problems**: Invalid or missing signatures on transaction authorizations.
+
+- **Target Issues**: Target contracts don't exist or don't implement required methods.
+
+### Consensus Validation Errors
+
+- **Insufficient Consensus**: Not enough sequencer groups agree on message validity.
+
+- **Proof Failures**: Merkle proofs don't validate correctly against submitted root hashes.
+
+- **Economic Violations**: Operations would violate economic security constraints.
+
+## Best Practices for Developers
+
+### Preventing Validation Errors
+
+<Tabs>
+  <Tab title="Input Validation">
+    - **Client-Side Checks**: Implement comprehensive client-side validation before submitting cross-chain messages.
+    - **User Feedback**: Provide clear error messages that help users understand and fix validation issues.
+    - **Pre-Submission Testing**: Test message parameters against validation rules before final submission.
+  </Tab>
+
+<Tab title="Error Handling">
+  - **Graceful Degradation**: Handle validation failures gracefully with
+  appropriate user feedback and recovery options. - **Retry Logic**: Implement
+  intelligent retry logic for transient validation issues. - **Logging**: Log
+  validation errors with sufficient detail for debugging and monitoring.
+</Tab>
+
+  <Tab title="Testing">
+    - **Validation Testing**: Test applications with invalid inputs to ensure proper error handling.
+    - **Edge Cases**: Test edge cases like maximum amounts, minimum values, and boundary conditions.
+    - **Network Conditions**: Test under various network conditions to ensure robust validation handling.
+  </Tab>
+</Tabs>
+
+### Monitoring Validation Health
+
+- **Error Rate Monitoring**: Track validation error rates to identify systematic issues or degrading conditions.
+
+- **Performance Tracking**: Monitor validation performance to ensure acceptable user experience.
+
+- **Success Metrics**: Track successful validation rates as a key health indicator for applications.
+
+## Validation in Different Contexts
+
+### Development vs Production
+
+<Columns cols={2}>
+  <Card title="Development Validation" icon="code">
+    - **Relaxed Constraints**: Development networks may have more relaxed validation for testing purposes.
+    - **Enhanced Debugging**: Additional validation information and logging for debugging.
+    - **Simulation Tools**: Validation simulation tools help test message formatting before submission.
+  </Card>
+
+  <Card title="Production Validation" icon="shield">
+    - **Strict Requirements**: Production validation enforces all security constraints rigorously.
+    - **Performance Optimization**: Validation is optimized for speed while maintaining security.
+    - **Economic Enforcement**: Full economic security measures are active in production.
+  </Card>
+</Columns>
+
+### Different Message Types
+
+- **Simple Transfers**: Basic asset transfers have streamlined validation focused on balance and authorization checks.
+
+- **Complex Operations**: Multi-step operations require additional validation of operation sequencing and parameter consistency.
+
+- **Return Messages**: Messages returning from EVM to TON have specialized validation for burn-and-release operations.
+
+## What's Next?
+
+Understanding message validation provides the security foundation for exploring TAC's token economic models and operational patterns.
+
+<CardGroup cols={2}>
+  <Card
+    title="Token Operations"
+    icon="coins"
+    href="/core-concepts/token-economics/token-operations"
+  >
+    Learn how different token types are validated and processed
+  </Card>
+
+</CardGroup>

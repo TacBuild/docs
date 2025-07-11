@@ -1,172 +1,220 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "palm",
+  "theme": "mint",
   "name": "TAC",
   "colors": {
     "primary": "#91029B",
     "light": "#91029B",
     "dark": "#91029B"
   },
+  "icons": {
+    "library": "lucide"
+  },
+  "fonts": {
+    "family": "Inter"
+  },
   "favicon": "./favicon.jpg",
   "navigation": {
     "tabs": [
       {
-        "tab": "Documentation",
-        "groups": [
-          {
-            "group": "Get Started",
-            "pages": [
-              "home/get-started/introduction",
-              "home/get-started/what-is-tac",
-              "home/get-started/architecture",
-              "home/get-started/faqs"
-            ]
-          },
-          {
-            "group": "Core Concepts",
-            "pages": [
-              "home/core-concepts/cross-chain-messaging",
-              "home/core-concepts/proxy-apps",
-              "home/core-concepts/sequencer-network",
-              "home/core-concepts/token-ops"
-            ]
-          },
-          {
-            "group": "Contribute",
-            "pages": [
-              "home/contribute/contribute",
-              "home/contribute/join-network"
-            ]
-          },
-          {
-            "group": "Network Information",
-            "pages": [
-              "home/network/network-details",
-              "home/network/contract-addresses",
-              "curve"
-            ]
-          }
-        ]
+        "tab": "Get Started",
+        "pages": ["index"]
       },
       {
-        "tab": "Build",
+        "tab": "Build with TAC",
         "groups": [
           {
-            "group": "Get Started",
-            "pages": [
-              "build/get-started/introduction",
-              "build/get-started/quick-start"
-            ]
+            "group": "Getting Started",
+            "icon": "rocket",
+            "pages": ["build/quickstart"]
           },
           {
             "group": "Smart Contracts",
+            "icon": "code",
             "pages": [
-              "build/smart-contracts/introduction",
-              "build/smart-contracts/deploy-to-tac",
-              "build/smart-contracts/build-a-proxy"
+              {
+                "group": "Deploy to TAC",
+                "pages": [
+                  "build/smart-contracts/tools/hardhat",
+                  "build/smart-contracts/tools/foundry"
+                ]
+              },
+              "build/smart-contracts/develop-tac-proxy"
             ]
           },
           {
             "group": "TAC SDK (Frontend)",
+            "icon": "blocks",
             "pages": [
               "build/sdk/introduction",
               "build/sdk/installation",
               {
-                "group": "Core Concepts",
+                "group": "Usage",
                 "pages": [
-                  "build/sdk/core/initialization",
-                  "build/sdk/core/wallet",
-                  "build/sdk/core/sending-transaction",
-                  "build/sdk/core/transaction-tracking",
-                  "build/sdk/core/asset-bridging"
+                  "build/sdk/usage/sdk-initialization",
+                  "build/sdk/usage/wallet-integration",
+                  "build/sdk/usage/sending-transactions",
+                  "build/sdk/usage/transaction-tracking",
+                  "build/sdk/usage/asset-bridging"
                 ]
               },
               {
                 "group": "Advanced Usage",
                 "pages": [
-                  "build/sdk/usage/cross-chain-operations",
-                  "build/sdk/usage/simulation-testing",
-                  "build/sdk/usage/token-address-mapping",
-                  "build/sdk/usage/error-handling"
+                  "build/sdk/advanced-usage/simulation-testing",
+                  "build/sdk/advanced-usage/token-address-mapping"
                 ]
-              },
-              "build/sdk/changelog"
+              }
+            ]
+          },
+
+          {
+            "group": "Tooling & Resources",
+            "icon": "inbox",
+            "pages": [
+              "build/tooling/contract-addresses",
+              "build/tooling/block-explorer",
+              "build/tooling/bridge",
+              "build/tooling/faucet"
             ]
           },
           {
-            "group": "Partner Integrations",
+            "group": "Network Information",
+            "icon": "globe",
+            "pages": ["build/network-info/index"]
+          }
+        ]
+      },
+      {
+        "tab": "Core Concepts",
+        "groups": [
+          {
+            "group": "Overview",
+            "icon": "info",
             "pages": [
-              {
-                "group": "Oracles",
-                "pages": [
-                  "build/integrations/oracles/stork",
-                  "build/integrations/oracles/redstone",
-                  "build/integrations/oracles/apro",
-                  "build/integrations/oracles/eoracle"
-                ]
-              },
-              {
-                "group": "RPC",
-                "pages": ["build/integrations/rpc/ankr"]
-              },
-              {
-                "group": "Indexers",
-                "pages": ["build/integrations/indexers/goldsky"]
-              }
+              "core-concepts/overview/what-is-tac",
+              "core-concepts/overview/architecture",
+              "core-concepts/overview/hybrid-dapps",
+              "core-concepts/overview/security"
+            ]
+          },
+          {
+            "group": " Components",
+            "icon": "blocks",
+            "pages": [
+              "core-concepts/components/tac-evm-layer",
+              "core-concepts/components/ton-adapter",
+              "core-concepts/components/proxy-apps",
+              "core-concepts/components/sequencer-network",
+              "core-concepts/components/tac-sdk"
+            ]
+          },
+          {
+            "group": "Cross-Chain Operations",
+            "icon": "arrow-left-right",
+            "pages": [
+              "core-concepts/cross-chain-operations/cross-chain-messaging",
+              "core-concepts/cross-chain-operations/asset-bridging",
+              "core-concepts/cross-chain-operations/transaction-lifecycle",
+              "core-concepts/cross-chain-operations/message-validation"
+            ]
+          },
+
+          {
+            "group": "Token Economics",
+            "icon": "coins",
+            "pages": ["core-concepts/token-economics/token-operations"]
+          }
+        ]
+      },
+      {
+        "tab": "Ecosystem",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": ["ecosystem/index"]
+          },
+          {
+            "group": "Oracles",
+            "pages": [
+              "ecosystem/oracles/redstone",
+              "ecosystem/oracles/stork",
+              "ecosystem/oracles/eoracle"
+            ]
+          },
+          {
+            "group": "Interoperability",
+            "pages": [
+              "ecosystem/interoperability/layerzero",
+              "ecosystem/interoperability/hyperlane"
+            ]
+          },
+          {
+            "group": "Data and Indexers",
+            "pages": [
+              "ecosystem/data-indexers/goldsky",
+              "ecosystem/data-indexers/dune"
+            ]
+          },
+          {
+            "group": "Development Tools",
+            "pages": [
+              "ecosystem/development-tools/thirdweb",
+              "ecosystem/development-tools/tenderly"
+            ]
+          },
+          {
+            "group": "Multi-Sig Wallets",
+            "pages": ["ecosystem/multi-sig-wallets/safe"]
+          },
+          {
+            "group": "RPCs",
+            "pages": ["ecosystem/rpcs/ankr"]
+          }
+        ]
+      },
+
+      {
+        "tab": "API Reference",
+
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": ["api-reference/get-started"]
+          },
+          {
+            "group": "TON Adapter APIs",
+            "openapi": {
+              "source": "api-reference/ton-adapter/openapi.yaml",
+              "directory": "api-reference/ton-adapter"
+            }
+          }
+        ]
+      },
+      {
+        "tab": "Release Notes",
+        "groups": [
+          {
+            "group": "Release Notes",
+            "pages": [
+              "release-notes/overview",
+              "release-notes/sdk",
+              "release-notes/ton-adapter",
+              "release-notes/evm"
             ]
           }
         ]
-      },
-      {
-        "tab": "Learn",
-        "groups": [
-          {
-            "group": "Learn",
-            "pages": ["learn/introduction"]
-          }
-        ]
-      },
-      {
-        "tab": "API Reference",
-        "openapi": "openapi.yaml"
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Telegram",
-          "href": "https://t.me/TACbuild",
-          "icon": "telegram"
-        },
-        {
-          "anchor": "Discord",
-          "href": "https://discord.gg/tacbuild",
-          "icon": "discord"
-        },
-        {
-          "anchor": "X (Twitter)",
-          "href": "https://x.com/TacBuild",
-          "icon": "twitter"
-        },
-        {
-          "anchor": "Github",
-          "href": "https://github.com/TacBuild/",
-          "icon": "github"
-        }
-      ]
-    }
+    ]
   },
   "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
+    "light": "/images/logo/light.svg",
+    "dark": "/images/logo/dark.svg"
+  },
+  "background": {
+    "decoration": "windows"
   },
   "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:info@tac.build"
-      }
-    ],
     "primary": {
       "type": "button",
       "label": "Discord",

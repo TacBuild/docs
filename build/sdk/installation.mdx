@@ -1,151 +1,483 @@
 ---
-title: Installing TAC SDK
-
+title: Installation & Setup
+description: "Install and configure the TAC SDK in your JavaScript/TypeScript application"
 ---
 
-Getting started with TAC's frontend SDK is straightforward. This guide will walk you through the installation process and initial setup.
+Get started with the TAC SDK by installing the package and configuring your development environment. The SDK works in both browser and Node.js environments with full TypeScript support.
 
 ## Installation
 
-Install the TAC SDK using npm or yarn:
-<CodeGroup filename="">
-  ```bash npm
-  npm install @tonappchain/sdk
-  ```
-  ```bash yarn 
-  yarn add @tonappchain/sdk
-  ```
-</CodeGroup>
+Install the TAC SDK using your preferred package manager:
 
-You'll also need to install peer dependencies if you haven't already:
 <CodeGroup>
-  ```bash npm
-  npm install @ton/ton @tonconnect/ui ethers
-  ```
-    ```bash yarn 
-  yarn add @ton/ton @tonconnect/ui ethers
-  ```
+
+```bash npm
+ npm install @tonappchain/sdk
+```
+
+```bash yarn
+yarn add @tonappchain/sdk
+```
+
+```bash pnpm
+pnpm add @tonappchain/sdk
+```
+
 </CodeGroup>
 
-## Basic Setup
+## Basic Import and Setup
 
-Once you've installed the SDK, you can create an instance of TAC SDK in your application:
+Import the core SDK components you'll need for your application:
 
-```tsx
-import { TacSdk, Network } from '@tonappchain/sdk';
-
-async function initializeSdk() {
-  // Create SDK instance
-  const tacSdk = await TacSdk.create({
-    network: Network.TESTNET
-    // Default configuration uses public endpoints
-  });
-  
-  return tacSdk;
-}
+```javascript
+import {
+  TacSdk,
+  SenderFactory,
+  OperationTracker,
+  Network,
+  AssetType,
+} from "@tonappchain/sdk";
 ```
 
-## Configuration Options
+## Environment Configuration
 
-The SDK can be configured with several options: 
-```tsx
-import { TacSdk, Network } from '@tonappchain/sdk';
+### Network Selection
 
-async function initializeWithOptions() {
-  const tacSdk = await TacSdk.create({
-    // Required: Specify the network
-    network: Network.TESTNET, // or Network.MAINNET for production
-    
-    // Optional: Add delay in seconds for requests (default: 0)
-    delay: 3,
-    
-    // Optional: Custom TON parameters
-    TONParams: {
-      // Custom contract opener if needed
-    },
-    
-    // Optional: Custom TAC parameters
-    TACParams: {
-      // Custom TAC parameters if needed
-    }
-  });
-  
-  return tacSdk;
-}
+The SDK supports both testnet and mainnet environments. Always start development on testnet:
+
+```javascript
+// For development and testing
+const tacSdk = await TacSdk.create({
+  network: Network.TESTNET,
+});
+
+// For production
+const tacSdk = await TacSdk.create({
+  network: Network.MAINNET,
+});
 ```
-
-### Advanced Configuration: Custom TON Provider
-
-By default, the SDK uses public TON endpoints. For production applications, you might want to use your own endpoints:
-
-```tsx 
-import { TacSdk, Network } from '@tonappchain/sdk';
-import { TonClient } from '@ton/ton';
-
-async function initializeWithCustomProvider() {
-  const tacSdk = await TacSdk.create({
-    network: Network.TESTNET,
-    delay: 1,
-    TONParams: {
-      contractOpener: new TonClient({
-        endpoint: "https://testnet.toncenter.com/api/v2/jsonRPC",
-        apiKey: "your_api_key" // Optional but recommended for production
-      })
-    }
-  });
-  
-  return tacSdk;
-}
-```
-
-### Advanced Configuration: LiteClient (Node.js Only)
-For Node.js environments, you can use lite clients for improved performance:
-```tsx
-import { TacSdk, Network, liteClientOpener } from '@tonappchain/sdk';
-
-async function initializeWithLiteClient() {
-  // Your own lite client servers configuration
-  const liteClientServers = [/* your lite client servers */];
-  
-  const tacSdk = await TacSdk.create({
-    network: Network.TESTNET,
-    TONParams: {
-      contractOpener: await liteClientOpener({ 
-        liteservers: liteClientServers 
-      }),
-    },
-  });
-  
-  // IMPORTANT: Close connections when done
-  // tacSdk.closeConnections();
-  
-  return tacSdk;
-}
-```
-
 
 <Warning>
-  When using custom Lite Clients, don't forget to call `tacSdk.closeConnections()` when you're done to prevent your application from hanging.
+  Always test your integration thoroughly on testnet before deploying to
+  mainnet. Cross-chain operations are irreversible once confirmed.
 </Warning>
 
-## Verifying the Installation
-To verify that everything is set up correctly, you can check the initialization:
+### Environment Variables
 
-```tsx
-import { TacSdk, Network } from '@tonappchain/sdk';
+For security, store sensitive configuration in environment variables:
 
-async function verifySetup() {
-  try {
-    const tacSdk = await TacSdk.create({
-      network: Network.TESTNET
-    });
-    
-    console.log("TAC SDK initialized successfully!");
-    return tacSdk;
-  } catch (error) {
-    console.error("TAC SDK initialization failed:", error);
-    throw error;
+```bash
+# .env file
+TVM_MNEMONICS=your_wallet_mnemonic_here
+TAC_NETWORK=testnet
+TON_CONNECT_MANIFEST_URL=https://yourapp.com/tonconnect-manifest.json
+```
+
+Access these in your application:
+
+```javascript
+const network =
+  process.env.TAC_NETWORK === "mainnet" ? Network.MAINNET : Network.TESTNET;
+
+const tacSdk = await TacSdk.create({ network });
+```
+
+## Framework Integration
+
+### React Integration
+
+For React applications, wrap the SDK in a context provider:
+
+```jsx
+// contexts/TacSdkContext.js
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { TacSdk, Network } from "@tonappchain/sdk";
+
+const TacSdkContext = createContext(null);
+
+export const TacSdkProvider = ({ children }) => {
+  const [tacSdk, setTacSdk] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const initializeSdk = async () => {
+      try {
+        const sdk = await TacSdk.create({
+          network: Network.TESTNET,
+          delay: 1,
+        });
+        setTacSdk(sdk);
+      } catch (error) {
+        console.error("Failed to initialize TAC SDK:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeSdk();
+
+    return () => {
+      if (tacSdk) {
+        tacSdk.closeConnections();
+      }
+    };
+  }, []);
+
+  return (
+    <TacSdkContext.Provider value={{ tacSdk, loading }}>
+      {children}
+    </TacSdkContext.Provider>
+  );
+};
+
+export const useTacSdk = () => {
+  const context = useContext(TacSdkContext);
+  if (!context) {
+    throw new Error("useTacSdk must be used within a TacSdkProvider");
+  }
+  return context;
+};
+```
+
+Use the context in your components:
+
+```jsx
+// components/CrossChainTransaction.js
+import { useTacSdk } from "../contexts/TacSdkContext";
+
+export const CrossChainTransaction = () => {
+  const { tacSdk, loading } = useTacSdk();
+
+  if (loading) return <div>Initializing TAC SDK...</div>;
+
+  const handleTransaction = async () => {
+    // Use tacSdk for cross-chain operations
+    const result = await tacSdk.sendCrossChainTransaction(/* ... */);
+  };
+
+  return (
+    <button onClick={handleTransaction}>Send Cross-Chain Transaction</button>
+  );
+};
+```
+
+### Next.js Integration
+
+For Next.js applications, handle client-side initialization:
+
+```jsx
+// hooks/useTacSdk.js
+import { useEffect, useState } from "react";
+import { TacSdk, Network } from "@tonappchain/sdk";
+
+export const useTacSdk = () => {
+  const [tacSdk, setTacSdk] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Only initialize on client side
+    if (typeof window !== "undefined") {
+      const initializeSdk = async () => {
+        try {
+          const sdk = await TacSdk.create({
+            network: Network.TESTNET,
+          });
+          setTacSdk(sdk);
+        } catch (error) {
+          console.error("SDK initialization failed:", error);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      initializeSdk();
+    }
+  }, []);
+
+  return { tacSdk, loading };
+};
+```
+
+### Vue.js Integration
+
+For Vue applications, create a composable:
+
+```javascript
+// composables/useTacSdk.js
+import { ref, onMounted, onUnmounted } from "vue";
+import { TacSdk, Network } from "@tonappchain/sdk";
+
+export function useTacSdk() {
+  const tacSdk = ref(null);
+  const loading = ref(true);
+
+  onMounted(async () => {
+    try {
+      tacSdk.value = await TacSdk.create({
+        network: Network.TESTNET,
+      });
+    } catch (error) {
+      console.error("TAC SDK initialization failed:", error);
+    } finally {
+      loading.value = false;
+    }
+  });
+
+  onUnmounted(() => {
+    if (tacSdk.value) {
+      tacSdk.value.closeConnections();
+    }
+  });
+
+  return { tacSdk, loading };
+}
+```
+
+## TON Connect Integration
+
+For browser applications, integrate with TON Connect for wallet connectivity:
+
+### Install TON Connect
+
+```bash
+npm install @tonconnect/ui
+```
+
+### Configure TON Connect
+
+```javascript
+import { TonConnectUI } from "@tonconnect/ui";
+
+// Initialize TON Connect
+const tonConnectUI = new TonConnectUI({
+  manifestUrl: "https://yourapp.com/tonconnect-manifest.json",
+  buttonRootId: "ton-connect-button",
+});
+
+// Create sender from TON Connect
+import { SenderFactory } from "@tonappchain/sdk";
+
+const sender = await SenderFactory.getSender({
+  tonConnect: tonConnectUI,
+});
+```
+
+### TON Connect Manifest
+
+Create a manifest file for your application:
+
+```json
+{
+  "url": "https://yourapp.com",
+  "name": "Your dApp Name",
+  "iconUrl": "https://yourapp.com/icon.png",
+  "termsOfUseUrl": "https://yourapp.com/terms",
+  "privacyPolicyUrl": "https://yourapp.com/privacy"
+}
+```
+
+## TypeScript Configuration
+
+If using TypeScript, ensure your `tsconfig.json` includes proper module resolution:
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
   }
 }
 ```
 
+## SDK Configuration Options
+
+The SDK accepts several configuration options during initialization:
+
+```javascript
+const tacSdk = await TacSdk.create({
+  network: Network.TESTNET, // Network selection
+  delay: 1000, // Delay between operations (milliseconds)
+  TONParams: {
+    // TON-specific configuration
+    contractOpener: tonClient, // Custom TonClient instance
+    settingsAddress: "custom-address", // Custom settings contract address
+  },
+  TACParams: {
+    // TAC-specific configuration
+    provider: customProvider, // Custom provider
+    settingsAddress: "custom-address", // Custom settings contract address
+  },
+});
+```
+
+<Accordion title="Configuration Options Reference" icon="settings">
+
+**Network Options:**
+
+- `Network.TESTNET` - For development and testing
+- `Network.MAINNET` - For production applications
+
+**Timing Options:**
+
+- `delay` - Delay between operations in milliseconds (default: 1000)
+
+**TON Parameters:**
+
+- `contractOpener` - Custom TonClient instance for TON operations
+- `settingsAddress` - Custom settings contract address
+
+**TAC Parameters:**
+
+- `provider` - Custom provider for TAC operations
+- `settingsAddress` - Custom settings contract address
+
+</Accordion>
+
+## Verification
+
+Test your installation with a simple initialization:
+
+```javascript
+import { TacSdk, Network } from "@tonappchain/sdk";
+
+async function testInstallation() {
+  try {
+    const tacSdk = await TacSdk.create({
+      network: Network.TESTNET,
+    });
+
+    console.log("✅ TAC SDK initialized successfully");
+    console.log("Network:", tacSdk.network);
+
+    // Clean up
+    tacSdk.closeConnections();
+  } catch (error) {
+    console.error("❌ Installation test failed:", error);
+  }
+}
+
+testInstallation();
+```
+
+## Common Issues and Solutions
+
+<Accordion title="Module Resolution Errors" icon="triangle-alert">
+
+If you encounter module resolution errors, ensure you're using a modern bundler that supports ES modules:
+
+**Webpack 5:**
+
+```javascript
+// webpack.config.js
+module.exports = {
+  resolve: {
+    fallback: {
+      crypto: require.resolve("crypto-browserify"),
+      stream: require.resolve("stream-browserify"),
+      buffer: require.resolve("buffer"),
+    },
+  },
+};
+```
+
+**Vite:**
+
+```javascript
+// vite.config.js
+export default {
+  define: {
+    global: "globalThis",
+  },
+  resolve: {
+    alias: {
+      crypto: "crypto-browserify",
+      stream: "stream-browserify",
+      buffer: "buffer",
+    },
+  },
+};
+```
+
+</Accordion>
+
+<Accordion title="Network Connection Issues" icon="wifi-off">
+
+If you experience network connection issues:
+
+1. **Check your network configuration:**
+
+   ```javascript
+   const tacSdk = await TacSdk.create({
+     network: Network.TESTNET,
+     tonParams: {
+       endpoint: "https://testnet.toncenter.com/api/v2/jsonRPC",
+     },
+   });
+   ```
+
+2. **Verify firewall settings** - Ensure your environment can access TON and TAC endpoints
+
+3. **Use environment-specific configuration** - Different environments may require different endpoints
+
+</Accordion>
+
+<Accordion title="TypeScript Type Errors" icon="code">
+
+For TypeScript type errors:
+
+1. **Install type definitions:**
+
+   ```bash
+   npm install --save-dev @types/node
+   ```
+
+2. **Update your tsconfig.json:**
+
+   ```json
+   {
+     "compilerOptions": {
+       "moduleResolution": "node",
+       "allowSyntheticDefaultImports": true,
+       "esModuleInterop": true
+     }
+   }
+   ```
+
+3. **Use explicit imports:**
+   ```typescript
+   import type { TacSdk, Network } from "@tonappchain/sdk";
+   ```
+
+</Accordion>
+
+## Next Steps
+
+With the SDK installed and configured, you're ready to start building hybrid dApps:
+
+<CardGroup cols={2}>
+  <Card
+    title="SDK Initialization"
+    icon="rocket"
+    href="/build/sdk/usage/sdk-initialization"
+  >
+    Learn how to properly initialize and configure the SDK
+  </Card>
+  <Card
+    title="Wallet Integration"
+    icon="wallet"
+    href="/build/sdk/usage/wallet-integration"
+  >
+    Connect TON wallets and manage user authentication
+  </Card>
+</CardGroup>
+
+<Tip>
+  Start with the [Quick Start guide](/build/quickstart) to send your first
+  cross-chain transaction and see the SDK in action.
+</Tip>

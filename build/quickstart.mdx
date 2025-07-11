@@ -1,0 +1,209 @@
+---
+title: Quickstart
+description: "Get started with TAC development in minutes, building hybrid dApps that connect TON and EVM ecosystems"
+---
+
+Get up and running with TAC development quickly by building your first hybrid dApp. This guide will take you from zero to a working application that connects TON wallets with EVM smart contracts in just a few minutes.
+
+<Frame>
+  <video
+    autoPlay
+    muted
+    loop
+    playsInline
+    controls
+    className="w-full aspect-video"
+    src="https://raw.githubusercontent.com/TacBuild/create-tac-app/refs/heads/main/cta.mp4"
+  />
+</Frame>
+
+<Steps>
+  <Step title="Install create-tac-app" icon="download">
+    The fastest way to bootstrap a TAC project is using our CLI tool:
+    
+    ```bash
+    npx create-tac-app my-tac-project
+    ```
+    
+    This creates a new directory with a fully configured TAC project including:
+    - Smart contracts with proxy implementation
+    - Frontend with TAC SDK integration
+    - TON wallet connection setup
+    - Cross-chain messaging examples
+  </Step>
+
+  <Step title="Configure your environment" icon="settings">
+    Make sure you have the required tools and accounts:
+
+    - Node.js v18.0.0 or higher
+    - Blockchain Accounts:
+      - Ethereum wallet with testnet TAC tokens for deployment
+      - TON wallet for testing (Tonkeeper or TON Space recommended)
+    - Get Testnet Tokens:
+      - TAC tokens: [TAC Testnet Faucet](https://spb.faucet.tac.build)
+
+  </Step>
+
+  <Step title="Deploy smart contracts" icon="rocket">
+    Navigate to the contracts directory and deploy to TAC testnet:
+
+    ```bash
+    cd my-tac-project/contracts
+    npm install
+    npx hardhat run scripts/deploy.js --network tacTestnet
+    ```
+
+    **Take note of the deployed addresses:**
+
+    - SimpleMessage contract address
+    - MessageProxy contract address
+
+    These will be displayed in your console after successful deployment.
+
+  </Step>
+
+  <Step title="Update frontend configuration" icon="settings">
+    Open `lib/contract_addresses.ts` and update with your deployed contract addresses:
+    
+    ```typescript
+    export const CONTRACT_ADDRESSES = {
+      simpleMessage: "0xYourSimpleMessageAddress",
+      messageProxy: "0xYourMessageProxyAddress"
+    };
+    ```
+    
+    This connects your frontend to the smart contracts you just deployed.
+  </Step>
+
+  <Step title="Start the development server" icon="play">
+    Return to the project root and start the Next.js development server:
+
+    ```bash
+    cd ..
+    npm install
+    npm run dev
+    ```
+
+    Your TAC application is now running at [http://localhost:3000](http://localhost:3000).
+
+    <Check>
+      You should see a clean interface with TON Connect integration and example
+      messaging functionality.
+    </Check>
+
+  </Step>
+
+  <Step title="Connect your TON wallet" icon="wallet">
+    Open your application in the browser and:
+    1. Click the "Connect Wallet" button
+    2. Choose your TON wallet (Tonkeeper, TON Space, etc.)
+    3. Approve the connection in your wallet
+    4. Verify your wallet address appears in the interface
+
+    The starter app includes a messaging example that demonstrates
+    cross-chain communication from TON to your EVM smart contracts.
+
+  </Step>
+
+  <Step title="Test cross-chain functionality" icon="arrow-left-right">
+    Try the example functionality:
+    1. **Send a Message**: Use the message form to send data from TON to your EVM contract
+    2. **Track Status**: Watch the transaction progress through cross-chain stages
+    3. **View Results**: See the message stored on the EVM side
+
+    This demonstrates the complete flow of hybrid dApp interaction.
+
+  </Step>
+
+  <Step title="Build your dApp" icon="code">
+    Now start customizing for your use case:
+
+    **Smart Contracts** (`contracts/` directory):
+    - Modify `SimpleMessage.sol` for your business logic
+    - Update `MessageProxy.sol` for custom cross-chain handling
+    - Add new contracts as needed
+
+    **Frontend** (`pages/` and `components/` directories):
+    - Customize the UI components
+    - Add new pages and functionality
+    - Integrate additional TAC SDK features
+
+    **Cross-Chain Features**:
+    - Asset bridging between TON and EVM
+    - Multi-step cross-chain workflows
+    - Advanced transaction tracking
+
+  </Step>
+</Steps>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Deploy Smart Contracts"
+    icon="rocket"
+    href="/build/smart-contracts"
+  >
+    Learn how to deploy and verify Solidity contracts on TAC EVM
+  </Card>
+
+<Card
+  title="Build TAC Proxy"
+  icon="settings"
+  href="/build/smart-contracts/develop-tac-proxy"
+>
+  Create custom proxy contracts for advanced cross-chain operations
+</Card>
+
+<Card title="TAC SDK Deep Dive" icon="blocks" href="/build/sdk/introduction">
+  Master the TAC SDK for powerful frontend integrations
+</Card>
+
+  <Card
+    title="Development Tools"
+    icon="inbox"
+    href="/build/smart-contracts/tools/hardhat"
+  >
+    Set up Hardhat, Foundry, and other development tools
+  </Card>
+</CardGroup>
+
+## Common Issues & Solutions
+
+<AccordionGroup>
+  <Accordion title="Contract deployment fails" icon="triangle-alert">
+    **Check your setup:**
+    - Verify you have testnet TAC tokens in your deployment wallet
+    - Ensure your private key is correctly set in `.env`
+    - Confirm you're using the correct network configuration
+
+    **Get help:**
+    - Check the Hardhat logs for specific error messages
+    - Verify contract addresses on the [TAC Explorer](https://spb.explorer.tac.build)
+
+  </Accordion>
+
+<Accordion title="TON wallet won't connect" icon="wallet">
+
+**Troubleshooting steps:**
+
+- Make sure you're using a supported TON wallet
+- Clear your browser cache and try again
+- Check that your wallet is set to TON testnet
+- Verify the TON Connect manifest is accessible
+
+</Accordion>
+
+  <Accordion title="Cross-chain transactions fail" icon="arrow-left-right">
+    **Common causes:**
+    - Insufficient TON balance for gas fees
+    - Invalid contract addresses in configuration
+    - Network connectivity issues
+
+    **Solutions:**
+    - Check balances in both TON and TAC wallets
+    - Verify contract addresses are correct
+    - Use the transaction tracking to identify where failures occur
+
+  </Accordion>
+</AccordionGroup>

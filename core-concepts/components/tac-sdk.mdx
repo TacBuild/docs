@@ -1,0 +1,238 @@
+---
+title: TAC SDK
+description: "JavaScript library that enables frontend developers to build hybrid dApps connecting TON wallets with EVM applications"
+---
+
+The TAC SDK is a JavaScript/TypeScript library that makes it simple for frontend developers to create hybrid dApps. It abstracts away the complexities of cross-chain messaging, allowing developers to focus on building great user experiences while the SDK handles wallet connections, transaction routing, and asset bridging automatically.
+
+## What the SDK Solves
+
+Building hybrid dApps traditionally requires deep understanding of multiple blockchain protocols, cross-chain messaging systems, and complex asset management.
+
+The TAC SDK eliminates this complexity by providing a simple JavaScript interface that handles all the technical details behind the scenes.
+
+<Columns cols={2}>
+  <Card title="Before TAC SDK" icon="triangle-alert">
+
+    - Custom cross-chain message formatting
+    - Manual asset locking and minting logic
+    - Complex wallet integration across chains
+    - Custom transaction status tracking
+    - Error handling for multiple failure modes
+
+  </Card>
+
+  <Card title="With TAC SDK" icon="check">
+
+    - Single method for cross-chain transactions
+    - Automatic asset bridging
+    - Built-in TON wallet support
+    - Real-time status tracking
+    - Comprehensive error handling
+
+  </Card>
+</Columns>
+
+## Core Capabilities
+
+The SDK provides four essential capabilities that make hybrid dApp development straightforward:
+
+### TON Wallet Integration
+
+The SDK handles all aspects of TON wallet connectivity through the standard TON Connect protocol. Users can connect with popular wallets like Tonkeeper and Tonhub without installing additional software or managing new seed phrases.
+
+```javascript
+// Simple wallet connection
+const tacSdk = await TacSdk.create({ network: Network.TESTNET });
+const sender = await SenderFactory.getSender({ tonConnect: tonConnectUI });
+```
+
+### Cross-Chain Transaction Routing
+
+Developers specify what they want to happen on the EVM side, and the SDK handles all the complex message formatting and routing through the TON Adapter.
+
+```javascript
+// Send tokens to an EVM DEX for swapping
+const transactionLinker = await tacSdk.sendCrossChainTransaction(
+  evmProxyMsg, // What to call on EVM
+  sender, // TON wallet
+  assets // Tokens to bridge
+);
+```
+
+### Automatic Asset Bridging
+
+Token transfers between TON and TAC EVM happen automatically. The SDK manages locking tokens on TON, minting them on EVM, and handling the reverse process seamlessly.
+
+### Real-Time Status Tracking
+
+The SDK provides comprehensive tools for monitoring cross-chain transactions, allowing applications to show users exactly what's happening and when operations complete.
+
+## How It Works
+
+<Frame caption="TAC SDK connecting frontend applications to cross-chain infrastructure">
+  <img src="/images/tac-sdk-flow.png" alt="TAC SDK workflow diagram" />
+</Frame>
+
+The SDK acts as a bridge between your frontend application and TAC's cross-chain infrastructure:
+
+<Steps>
+  <Step title="Developer Integration" icon="code">
+    Developers integrate the SDK into their frontend applications and specify
+    EVM operations using familiar JavaScript patterns.
+  </Step>
+
+<Step title="Message Preparation" icon="settings">
+  The SDK formats cross-chain messages with proper encoding, handles asset
+  preparation, and manages wallet interactions.
+</Step>
+
+<Step title="Cross-Chain Routing" icon="arrow-left-right">
+  Messages are routed through the TON Adapter's sequencer network, which
+  validates and processes them securely.
+</Step>
+
+<Step title="EVM Execution" icon="play">
+  Target EVM contracts receive properly formatted calls with bridged assets,
+  executing the requested operations.
+</Step>
+
+  <Step title="Status Updates" icon="chart-line">
+    The SDK monitors progress and provides real-time updates to the frontend,
+    handling completion or failure scenarios.
+  </Step>
+</Steps>
+
+## Key Components
+
+The SDK is organized into focused components that handle different aspects of hybrid dApp functionality:
+
+<Accordion title="TacSdk - Main Interface" icon="code">
+The primary class that developers interact with for all cross-chain operations. It handles SDK initialization, transaction sending, token address mapping, and balance queries.
+
+Key features include sending cross-chain transactions, getting token addresses across chains, checking user balances, and managing SDK lifecycle.
+
+</Accordion>
+
+<Accordion title="OperationTracker - Status Monitoring" icon="chart-line">
+Provides comprehensive tools for tracking cross-chain transaction status and progress. Applications can monitor operations in real-time and provide users with accurate updates.
+
+Supports both simplified status checking (Pending/Successful/Failed) and detailed stage-by-stage tracking for advanced use cases.
+
+</Accordion>
+
+<Accordion title="Senders - Wallet Integration" icon="wallet">
+Handles transaction signing and submission through different wallet types. Supports TON Connect for web applications and raw private keys for backend services.
+
+Provides a unified interface regardless of the underlying wallet technology, simplifying application development.
+
+</Accordion>
+
+## Development Experience
+
+The SDK is designed to feel familiar to web developers while providing powerful cross-chain capabilities:
+
+### Familiar Patterns
+
+```javascript
+// Standard async/await patterns
+const result = await tacSdk.sendCrossChainTransaction(message, sender, assets);
+
+// Promise-based error handling
+try {
+  const status = await tracker.getOperationStatus(operationId);
+} catch (error) {
+  handleTransactionError(error);
+}
+
+// Standard configuration objects
+const sdk = await TacSdk.create({
+  network: Network.TESTNET,
+  delay: 1,
+});
+```
+
+### TypeScript Support
+
+The SDK provides comprehensive TypeScript definitions, enabling better development experience with IDE autocompletion and compile-time error checking.
+
+### Testing Utilities
+
+Built-in testing and simulation capabilities help developers validate their integrations before deployment:
+
+```javascript
+// Simulate transactions before sending
+const simulation = await tacSdk.getTransactionSimulationInfo(params);
+
+// Automated status tracking for testing
+await startTracking(transactionLinker, Network.TESTNET);
+```
+
+## Message Structure
+
+The SDK uses standardized data structures that map naturally to JavaScript objects while handling the complex encoding required for cross-chain operations.
+
+### EVM Target Messages
+
+Developers specify EVM operations using a simple structure that the SDK automatically encodes for cross-chain delivery:
+
+```javascript
+const evmProxyMsg = {
+  evmTargetAddress: "0x742d35Cc6473...", // Contract to call
+  methodName: "swapTokens(bytes,bytes)", // Method signature
+  encodedParameters: encodedArgs, // ABI-encoded parameters
+};
+```
+
+### Asset Bridging
+
+Token transfers are specified using user-friendly amounts that the SDK automatically converts to the proper formats for each chain:
+
+```javascript
+const assets = [
+  {
+    address: "EQTokenAddress...", // TON token address
+    amount: 10.5, // User-friendly amount
+  },
+  {
+    // Native TON (no address needed)
+    amount: 1.0,
+  },
+];
+```
+
+## Error Handling
+
+The SDK provides comprehensive error handling that protects user assets and provides meaningful feedback:
+
+<Tabs>
+  <Tab title="Pre-Transaction Validation">
+    The SDK validates parameters, checks balances, and estimates gas costs
+    before submitting transactions, preventing common failure scenarios.
+  </Tab>
+
+<Tab title="Network Resilience">
+  Built-in retry mechanisms and fallback endpoints ensure operations continue
+  even when individual network components experience issues.
+</Tab>
+
+  <Tab title="Asset Protection">
+    Failed transactions automatically trigger rollback mechanisms that return
+    assets to users safely, preventing fund loss.
+  </Tab>
+</Tabs>
+
+## Getting Started
+
+<CardGroup cols={2}>
+  <Card title="SDK Installation" icon="download" href="/build/sdk/installation">
+    Install and configure the TAC SDK in your application
+  </Card>
+  <Card
+    title="Cross-Chain Messaging"
+    icon="arrow-left-right"
+    href="/core-concepts/cross-chain-operations/cross-chain-messaging"
+  >
+    Learn how the SDK formats messages for secure delivery
+  </Card>
+</CardGroup>

@@ -1,0 +1,486 @@
+---
+title: Sending Transactions
+description: "Execute cross-chain transactions from TON to TAC EVM using the TAC SDK"
+---
+
+The TAC SDK's core functionality revolves around `sendCrossChainTransaction()`, which enables seamless execution of EVM contract calls directly from TON wallets. This guide covers everything from basic transactions to advanced batch operations and error handling.
+
+<Warning>
+  Always test transactions on testnet first. Cross-chain transactions are
+  irreversible once confirmed, and incorrect parameters can result in loss of
+  funds.
+</Warning>
+
+## Basic Cross-Chain Transaction
+
+The fundamental pattern for sending cross-chain transactions involves three components: an EVM target message, a sender, and optional assets to bridge.
+
+```javascript
+import { TacSdk, SenderFactory, Network, AssetType } from "@tonappchain/sdk";
+
+// Initialize SDK and sender
+const tacSdk = await TacSdk.create({ network: Network.TESTNET });
+const sender = await SenderFactory.getSender({ tonConnect: tonConnectUI });
+
+// Define EVM operation
+const evmProxyMsg = {
+  evmTargetAddress: "0x742d35Cc647332...", // Target contract address
+  methodName: "transfer(address,uint256)", // Contract method signature
+  encodedParameters: "0x000000000000000000...", // ABI-encoded parameters
+};
+
+// Define assets to bridge (optional)
+const assets = [
+  {
+    type: AssetType.FT,
+    amount: 1.0,
+  }, // Bridge 1 TON
+];
+
+// Execute cross-chain transaction
+const transactionLinker = await tacSdk.sendCrossChainTransaction(
+  evmProxyMsg,
+  sender,
+  assets
+);
+
+console.log("Transaction ID:", transactionLinker.operationId);
+```
+
+## EVM Proxy Message Structure
+
+The `EvmProxyMsg` object defines what contract call to execute on the TAC EVM side:
+
+### Required Fields
+
+```javascript
+const evmProxyMsg = {
+  evmTargetAddress: "0x742d35Cc647332...", // Target contract address (required)
+  methodName: "methodName(uint256,address)", // Method signature (optional)
+  encodedParameters: "0x00000000000000...", // ABI-encoded params (optional)
+  gasLimit: 500000n, // Gas limit (optional)
+};
+```
+
+### Method Name Formatting
+
+The SDK accepts flexible method name formats:
+
+<Tabs>
+  <Tab title="Full Signature">
+    ```javascript
+    const evmProxyMsg = {
+      evmTargetAddress: "0x742d35Cc647332...",
+      methodName: "swapExactTokensForTokens(uint256,uint256,address[],address,uint256)",
+      encodedParameters: encodedSwapParams
+    };
+    ```
+  </Tab>
+  
+  <Tab title="Simple Name">
+    ```javascript
+    const evmProxyMsg = {
+      evmTargetAddress: "0x742d35Cc647332...",
+      methodName: "transfer", // SDK will format as "transfer()"
+      encodedParameters: encodedTransferParams
+    };
+    ```
+  </Tab>
+  
+  <Tab title="No Method Name">
+    ```javascript
+    const evmProxyMsg = {
+      evmTargetAddress: "0x742d35Cc647332...",
+      // No methodName - calls contract directly with encoded data
+      encodedParameters: "0x..."
+    };
+    ```
+  </Tab>
+</Tabs>
+
+### Parameter Encoding
+
+Use ethers.js or similar libraries to encode contract parameters:
+
+```javascript
+import { ethers } from "ethers";
+
+// For ERC20 transfer
+const abi = new ethers.AbiCoder();
+const transferParams = abi.encode(
+  ["address", "uint256"],
+  ["0xRecipientAddress...", ethers.parseEther("100")]
+);
+
+// For Uniswap V2 swap
+const swapParams = abi.encode(
+  ["uint256", "uint256", "address[]", "address", "uint256"],
+  [
+    ethers.parseEther("1"), // amountIn
+    ethers.parseEther("0.95"), // amountOutMin
+    [tokenA, tokenB], // path
+    recipientAddress, // to
+    Math.floor(Date.now() / 1000) + 1200, // deadline
+  ]
+);
+
+const evmProxyMsg = {
+  evmTargetAddress: uniswapRouterAddress,
+  methodName:
+    "swapExactTokensForTokens(uint256,uint256,address[],address,uint256)",
+  encodedParameters: swapParams,
+};
+```
+
+## Asset Bridging
+
+Assets are automatically bridged from TON to TAC EVM as part of the cross-chain transaction. The SDK supports multiple asset types and formats.
+
+### Asset Types
+
+<Tabs>
+  <Tab title="Native TON">
+    ```javascript
+    const assets = [
+      { 
+        type: AssetType.FT,
+        amount: 1.5 
+      } // Bridge 1.5 TON
+    ];
+    ```
+  </Tab>
+  
+  <Tab title="Jetton Tokens">
+    ```javascript
+    const assets = [
+      {
+        type: AssetType.FT,
+        address: "EQJettonMasterAddress...",
+        amount: 1000.0 // Bridge 1000 jetton tokens
+      }
+    ];
+    ```
+  </Tab>
+  
+  <Tab title="NFT Items">
+    ```javascript
+    const assets = [
+      {
+        type: AssetType.NFT,
+        address: "EQNFTItemAddress..." // Direct NFT item address
+      }
+    ];
+    ```
+  </Tab>
+  
+  <Tab title="Multiple Assets">
+    ```javascript
+    const assets = [
+      { 
+        type: AssetType.FT,
+        amount: 2.0 
+      }, // Native TON
+      { 
+        type: AssetType.FT,
+        address: "EQJettonAddress...", 
+        amount: 500.0 
+      }, // Jetton
+      {
+        type: AssetType.NFT,
+        address: "EQNFTItemAddress..."
+      } // NFT
+    ];
+    ```
+  </Tab>
+</Tabs>
+
+### Raw Asset Format
+
+For precise control, use raw asset format:
+
+```javascript
+const rawAssets = [
+  {
+    type: AssetType.FT, // Fungible Token
+    address: "EQJettonMasterAddress...",
+    rawAmount: 1000000000n, // Raw amount (with decimals)
+  },
+  {
+    type: AssetType.NFT,
+    address: "EQNFTItemAddress...", // Direct NFT item address
+  },
+];
+```
+
+## Transaction Options
+
+Customize transaction behavior with advanced options:
+
+```javascript
+const options = {
+  forceSend: false, // Force send even if simulation fails
+  isRoundTrip: false, // Whether to return assets to TON
+  protocolFee: 10000000n, // Custom protocol fee (nanotons)
+  evmValidExecutors: [
+    // Trusted EVM executors
+    "0xExecutor1Address...",
+    "0xExecutor2Address...",
+  ],
+  evmExecutorFee: 50000000n, // EVM executor fee (wei)
+  tvmValidExecutors: [
+    // Trusted TON executors
+    "EQExecutor1Address...",
+    "EQExecutor2Address...",
+  ],
+  tvmExecutorFee: 100000000n, // TON executor fee (nanotons)
+};
+
+const transactionLinker = await tacSdk.sendCrossChainTransaction(
+  evmProxyMsg,
+  sender,
+  assets,
+  options
+);
+```
+
+<Note>
+  Custom executor fees and validator lists are advanced features. Use default
+  values unless you have specific requirements for execution control.
+</Note>
+
+## Batch Transactions
+
+Send multiple cross-chain transactions simultaneously:
+
+```javascript
+const batchTransactions = async () => {
+  // Define multiple transactions
+  const transactions = [
+    {
+      evmProxyMsg: {
+        evmTargetAddress: "0xContract1...",
+        methodName: "method1(uint256)",
+        encodedParameters: "0x...",
+      },
+      assets: [{ amount: 1.0 }],
+    },
+    {
+      evmProxyMsg: {
+        evmTargetAddress: "0xContract2...",
+        methodName: "method2(address)",
+        encodedParameters: "0x...",
+      },
+      assets: [{ address: "EQJetton...", amount: 100 }],
+    },
+  ];
+
+  // Convert to batch format
+  const crosschainTxs = transactions.map((tx) => ({
+    evmProxyMsg: tx.evmProxyMsg,
+    assets: tx.assets || [],
+  }));
+
+  // Send batch
+  const transactionLinkers = await tacSdk.sendCrossChainTransactions(
+    sender,
+    crosschainTxs
+  );
+
+  return transactionLinkers.map((linker) => linker.operationId);
+};
+```
+
+## Transaction Simulation
+
+Simulate transactions before execution to estimate fees and validate parameters:
+
+```javascript
+const simulateTransaction = async () => {
+  try {
+    const simulation = await tacSdk.getTransactionSimulationInfo(
+      evmProxyMsg,
+      sender,
+      assets
+    );
+
+    console.log("Simulation Results:");
+    console.log("Success:", simulation.success);
+    console.log("Estimated Gas:", simulation.estimatedGas);
+    console.log("Protocol Fee:", simulation.protocolFee);
+    console.log("EVM Executor Fee:", simulation.evmExecutorFee);
+    console.log("TON Executor Fee:", simulation.tvmExecutorFee);
+
+    if (simulation.success) {
+      // Proceed with actual transaction
+      const result = await tacSdk.sendCrossChainTransaction(
+        evmProxyMsg,
+        sender,
+        assets
+      );
+      return result;
+    } else {
+      console.error("Simulation failed:", simulation.error);
+      return null;
+    }
+  } catch (error) {
+    console.error("Simulation error:", error);
+    return null;
+  }
+};
+```
+
+## Error Handling
+
+Implement comprehensive error handling for transaction failures:
+
+```javascript
+const sendTransactionWithErrorHandling = async (
+  evmProxyMsg,
+  sender,
+  assets
+) => {
+  try {
+    // Pre-flight validation
+    if (!evmProxyMsg.evmTargetAddress) {
+      throw new Error("EVM target address is required");
+    }
+
+    if (!assets || assets.length === 0) {
+      console.warn("No assets specified for bridging");
+    }
+
+    // Simulate first (optional but recommended)
+    const simulation = await tacSdk.getTransactionSimulationInfo(
+      evmProxyMsg,
+      sender,
+      assets
+    );
+
+    if (!simulation.success) {
+      throw new Error(`Transaction simulation failed: ${simulation.error}`);
+    }
+
+    // Execute transaction
+    const result = await tacSdk.sendCrossChainTransaction(
+      evmProxyMsg,
+      sender,
+      assets
+    );
+
+    return {
+      success: true,
+      operationId: result.operationId,
+      transactionLinker: result,
+    };
+  } catch (error) {
+    console.error("Transaction failed:", error);
+
+    // Handle specific error types
+    if (error.message.includes("insufficient balance")) {
+      return {
+        success: false,
+        error: "Insufficient balance for transaction and fees",
+      };
+    }
+
+    if (error.message.includes("invalid address")) {
+      return {
+        success: false,
+        error: "Invalid contract address specified",
+      };
+    }
+
+    if (error.message.includes("simulation failed")) {
+      return {
+        success: false,
+        error: "Transaction would fail on execution",
+      };
+    }
+
+    return {
+      success: false,
+      error: "Transaction failed: " + error.message,
+    };
+  }
+};
+
+// Usage
+const result = await sendTransactionWithErrorHandling(
+  evmProxyMsg,
+  sender,
+  assets
+);
+
+if (result.success) {
+  console.log("Transaction sent:", result.operationId);
+} else {
+  console.error("Transaction failed:", result.error);
+}
+```
+
+## Transaction Lifecycle
+
+Understanding the transaction lifecycle helps with proper error handling and user experience:
+
+<Steps>
+  <Step title="Parameter Validation" icon="circle-check">
+    The SDK validates all parameters including addresses, amounts, and method
+    signatures before proceeding.
+  </Step>
+
+<Step title="Simulation (Optional)" icon="cpu">
+  If requested, the SDK simulates the transaction to estimate gas costs and
+  validate execution.
+</Step>
+
+<Step title="Asset Preparation" icon="coins">
+  Assets are prepared for bridging, including balance checks and approval
+  transactions if needed.
+</Step>
+
+<Step title="Message Construction" icon="settings">
+  The cross-chain message is constructed with proper encoding and sequencer
+  routing information.
+</Step>
+
+<Step title="TON Transaction" icon="send">
+  Transaction is signed and submitted to the TON network via the connected
+  wallet.
+</Step>
+
+<Step title="Cross-Chain Routing" icon="arrow-left-right">
+  The sequencer network processes the message and routes it to the TAC EVM
+  layer.
+</Step>
+
+<Step title="EVM Execution" icon="play">
+  The target contract method is executed on TAC EVM with bridged assets
+  available.
+</Step>
+
+  <Step title="Completion" icon="check">
+    Transaction completes successfully, or rollback mechanisms are triggered on
+    failure.
+  </Step>
+</Steps>
+
+## What's Next?
+
+With transactions executing successfully, learn to monitor their progress:
+
+<CardGroup cols={2}>
+  <Card
+    title="Transaction Tracking"
+    icon="chart-line"
+    href="/build/sdk/usage/transaction-tracking"
+  >
+    Monitor cross-chain transaction status and progress
+  </Card>
+  <Card
+    title="Asset Bridging"
+    icon="arrow-left-right"
+    href="/build/sdk/usage/asset-bridging"
+  >
+    Deep dive into asset bridging mechanics and strategies
+  </Card>
+</CardGroup>

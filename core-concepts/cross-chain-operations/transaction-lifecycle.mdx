@@ -1,0 +1,417 @@
+---
+title: Transaction Lifecycle
+description: "Complete journey of cross-chain transactions from user initiation to final execution and confirmation"
+---
+
+The transaction lifecycle in TAC represents the complete journey of a cross-chain operation from initial user action to final confirmation. Understanding this lifecycle helps developers build better applications, implement proper status tracking, and troubleshoot issues effectively.
+
+## Lifecycle Overview
+
+Every cross-chain transaction follows a predictable path through multiple validation and execution stages across different blockchain networks and consensus systems.
+
+<Frame caption="Complete transaction lifecycle showing all stages from initiation to completion">
+  <img
+    src="/images/transaction-lifecycle.png"
+    alt="Transaction lifecycle diagram with all stages"
+  />
+</Frame>
+
+The lifecycle involves three main phases: **Initiation** (user action), **Processing** (validation and consensus), and **Execution** (target chain operations). Each phase includes multiple stages that ensure security and reliability.
+
+## Stage Progression
+
+Cross-chain transactions progress through specific stages that can be monitored and tracked for status updates.
+
+### TON-Side Stages
+
+<Steps>
+  <Step title="User Initiation" icon="mouse-pointer-2">
+    User connects their TON wallet and approves a transaction in a hybrid dApp.
+    The TAC SDK formats the request and prepares assets for cross-chain
+    transfer.
+  </Step>
+
+<Step title="Asset Locking" icon="lock">
+  User's tokens are locked in the TON Adapter contracts, creating the foundation
+  for cross-chain asset representation on the target chain.
+</Step>
+
+<Step title="Message Creation" icon="message-circle">
+  A structured cross-chain message is created containing all operation details,
+  target information, and asset specifications.
+</Step>
+
+  <Step title="Event Emission" icon="network">
+    The TON transaction completes and emits events that sequencers monitor for
+    cross-chain processing.
+  </Step>
+</Steps>
+
+### Sequencer Processing Stages
+
+The sequencer network handles message validation and consensus formation:
+
+<Accordion title="COLLECTED_IN_TAC" icon="database">
+  - **Message Detection**: Sequencers detect the cross-chain event and store transaction details in their local databases for validation.
+
+- **Initial Validation**: Each sequencer independently validates the transaction parameters, asset transfers, and user authorization.
+
+- **Database Storage**: Validated transactions are stored and prepared for inclusion in the next Merkle tree formation cycle.
+
+</Accordion>
+
+<Accordion title="INCLUDED_IN_TAC_CONSENSUS" icon="network">
+  - **Merkle Tree Formation**: Sequencers compile validated transactions into Merkle trees at the end of each epoch period.
+
+- **Group Consensus**: Sequencer groups work to achieve 3/5 internal agreement on their Merkle tree root hashes.
+
+- **Network Submission**: Successfully agreed-upon trees are submitted to the network for cross-group validation and consensus.
+
+</Accordion>
+
+### EVM Execution Stages
+
+<Accordion title="EXECUTED_IN_TAC" icon="play">
+  - **Consensus Verification**: The CrossChainLayer contract verifies that sufficient sequencer groups have submitted matching Merkle trees.
+
+- **Asset Operations**: Required token minting or unlocking operations are performed before contract execution.
+
+- **Contract Invocation**: The target EVM proxy contract is called with properly formatted parameters and bridged assets.
+
+- **Result Recording**: Execution results are recorded on-chain, including any return messages or asset operations.
+
+</Accordion>
+
+### Return Path Stages (If Applicable)
+
+For operations that send results back to TON:
+
+<Accordion title="COLLECTED_IN_TON" icon="arrow-left">
+  - **Return Message Creation**: EVM proxy contracts create return messages containing results or assets to send back to TON.
+
+- **Sequencer Detection**: The same sequencer network detects return messages and begins validation for the reverse journey.
+
+- **Asset Preparation**: Any assets being returned are prepared for the burn-and-release process back to TON.
+
+</Accordion>
+
+<Accordion title="INCLUDED_IN_TON_CONSENSUS" icon="handshake">
+- **Return Consensus**: Return messages go through the same consensus process as forward messages, ensuring security.
+
+- **Cross-Group Validation**: Multiple sequencer groups must agree on return message validity before execution.
+
+</Accordion>
+
+<Accordion title="EXECUTED_IN_TON" icon="circle-check">
+- **Final Execution**: Return messages are executed on TON, delivering results or assets back to the original user.
+
+- **Transaction Completion**: The cross-chain operation is fully complete, with all stages successfully executed.
+
+</Accordion>
+
+## Operation Types
+
+Different transaction patterns result in different lifecycle flows, each with distinct characteristics and completion criteria.
+
+<Tabs>
+  <Tab title="TON_TAC">
+
+    - **One-Way Operations**: Transactions that move assets or data from TON to TAC EVM without requiring a return path.
+    - **Examples**: Simple token deposits, contract calls that store results on EVM, or operations where users only need confirmation.
+    - **Completion**: These operations complete at the EXECUTED_IN_TAC stage, making them faster than round-trip operations.
+    - **Use Cases**: Token bridging for holding, deposits into EVM protocols, or data submissions that don't require responses.
+
+  </Tab>
+
+<Tab title="TON_TAC_TON">
+
+- **Round-Trip Operations**: Complete cycles where operations execute on EVM and send results back to the original TON user.
+- **Examples**: Token swaps, liquidity operations that return LP tokens, or any interaction where users expect different assets back.
+- **Completion**: These operations complete at the EXECUTED_IN_TON stage after the full round trip.
+- **Use Cases**: DEX swaps, yield farming, lending operations, or any complex DeFi interaction.
+
+</Tab>
+
+  <Tab title="ROLLBACK">
+
+    - **Automatic Failure Detection**: System automatically detects EVM execution failures, invalid parameters, insufficient gas, or timeout conditions.
+    - **Rollback Merkle Tree Creation**: Failed messages are grouped into special rollback Merkle trees with same consensus properties as regular transactions.
+    - **Consensus-Secured Recovery**: Rollback trees submitted through identical sequencer consensus process for transparent and secure approval.
+    - **Automatic Asset Return**: Upon rollback consensus finalization, locked assets automatically returned to original users without manual intervention.
+    - **No Manual Recovery Required**: Users always receive either successful execution or secure asset return - no funds lost to failed operations.
+
+  </Tab>
+</Tabs>
+
+## Timing and Performance
+
+Understanding transaction timing helps developers set appropriate user expectations and design responsive interfaces.
+
+### Typical Timeframes
+
+<Columns cols={2}>
+  <Card title="Fast Operations" icon="gauge">
+    **TON_TAC Operations**: 3-5 minutes Simple one-way operations complete
+    relatively quickly since they don't require a return path through the
+    consensus system.
+  </Card>
+
+  <Card title="Complete Operations" icon="clock">
+    **TON_TAC_TON Operations**: 6-12 minutes Round-trip operations take longer
+    due to the additional consensus and execution cycles required for the return
+    path.
+  </Card>
+</Columns>
+
+### Factors Affecting Speed
+
+- **Epoch Duration**: The length of sequencer processing windows directly affects how quickly transactions progress through consensus stages.
+
+- **Network Participation**: Higher sequencer participation generally leads to faster consensus formation and execution.
+
+- **Target Chain Congestion**: Busy periods on either TON or TAC EVM can slow execution stages.
+
+- **Operation Complexity**: Simple operations process faster than complex multi-token or multi-contract interactions.
+
+## Status Tracking
+
+Applications can monitor transaction progress through various tracking mechanisms that provide different levels of detail.
+
+### Simplified Status Tracking
+
+For user-facing interfaces, simplified status provides clear, understandable progress information:
+
+```javascript
+const tracker = new OperationTracker(Network.TESTNET);
+const status = await tracker.getSimplifiedOperationStatus(transactionLinker);
+
+switch (status) {
+  case "PENDING":
+    // Transaction is progressing through stages
+    break;
+  case "SUCCESSFUL":
+    // Operation completed successfully
+    break;
+  case "FAILED":
+    // Operation failed and assets were rolled back
+    break;
+  case "OPERATION_ID_NOT_FOUND":
+    // Transaction not yet detected by sequencers
+    break;
+}
+```
+
+### Detailed Stage Tracking
+
+For debugging or advanced interfaces, detailed tracking shows exact stage progression:
+
+```javascript
+const operationId = await tracker.getOperationId(transactionLinker);
+const detailedStatus = await tracker.getOperationStatus(operationId);
+
+console.log(`Current stage: ${detailedStatus.stage}`);
+console.log(`Success status: ${detailedStatus.success}`);
+console.log(`Stage timestamp: ${new Date(detailedStatus.timestamp * 1000)}`);
+```
+
+### Performance Profiling
+
+Advanced tracking provides timing information for each stage:
+
+```javascript
+const stageProfile = await tracker.getStageProfiling(operationId);
+
+// Shows timing for each completed stage
+Object.keys(stageProfile).forEach((stageName) => {
+  if (stageName === "operationType") return;
+
+  const stage = stageProfile[stageName];
+  if (stage.exists) {
+    console.log(`${stageName}: ${stage.stageData.timestamp}`);
+  }
+});
+```
+
+## Error Handling Throughout the Lifecycle
+
+The transaction lifecycle includes comprehensive error handling at every stage to protect user assets and provide clear feedback.
+
+### Pre-Execution Validation
+
+<AccordionGroup>
+  <Accordion title="Client-Side Validation" icon="shield-check">
+    - **Parameter Checking**: The TAC SDK validates transaction parameters before submission to prevent obvious errors.
+    - **Balance Verification**: User balances are checked against requested operations to ensure sufficient assets.
+    - **Gas Estimation**: Automatic gas estimation helps prevent failures due to insufficient gas limits.
+  </Accordion>
+
+  <Accordion title="Sequencer Validation" icon="search">
+    - **Asset Verification**: Sequencers verify that claimed asset transfers actually occurred on-chain.
+    - **Message Integrity**: Transaction parameters are validated against on-chain data to prevent manipulation.
+    - **Authorization Checks**: Only authorized users can initiate operations for their assets.
+  </Accordion>
+</AccordionGroup>
+
+### Execution-Time Errors
+
+- **EVM Execution Failures**: If target contract calls fail on TAC EVM, the system automatically initiates rollback procedures.
+
+- **Timeout Handling**: Operations that don't complete within expected timeframes trigger timeout procedures.
+
+- **Network Issues**: Temporary network problems are handled through retry mechanisms and status preservation.
+
+### Comprehensive Rollback System
+
+<Warning>
+  When transactions fail after assets have been transferred, TAC automatically
+  protects user funds through secure rollback mechanisms with the same security
+  guarantees as successful transactions.
+</Warning>
+
+#### Rollback Merkle Tree Creation
+
+When execution failures occur on TAC EVM Layer, the system immediately implements a sophisticated recovery process:
+
+<AccordionGroup>
+  <Accordion title="Failure Detection & Recording" icon="triangle-alert">
+    **Immediate failure identification:** - Failed messages identified and
+    tagged during execution monitoring - Failure reasons recorded (gas failure,
+    contract revert, invalid parameters) - Asset state tracked to determine
+    required recovery operations - Automatic categorization of reversible vs
+    non-reversible failures
+  </Accordion>
+
+  <Accordion title="Rollback Tree Formation" icon="network">
+    **Deterministic rollback processing:** - Failed messages grouped into
+    special rollback Merkle trees - Same deterministic properties as regular
+    transaction trees - Clear identification of affected users and asset amounts
+    - Network-wide agreement simplified through structured rollback data
+  </Accordion>
+
+  <Accordion title="Consensus on Rollbacks" icon="handshake">
+    **Secure rollback approval:** - Rollback trees submitted through identical
+    sequencer consensus process - 3/5 sequencer agreement required for rollback
+    execution - Same cryptographic security as successful transactions -
+    Transparent and immutable rollback decisions
+  </Accordion>
+</AccordionGroup>
+
+#### Automatic Asset Recovery
+
+Upon finalization of rollback consensus, the recovery process provides comprehensive user protection:
+
+**Safe Return Mechanisms:**
+
+- Locked assets on TON blockchain automatically released to original owners
+- No manual intervention required from users or developers
+- Asset amounts precisely match original transaction parameters
+- Recovery transactions include original transaction references for auditability
+
+**Rollback as Core UX Guarantee:**
+
+- Users always have clear outcome: successful execution OR safe asset return
+- Eliminates fund loss risk from transaction failures
+- Maintains user confidence in cross-chain interactions
+- Transparent failure communication with detailed error reporting
+
+## Monitoring and Debugging
+
+### Real-Time Monitoring
+
+Applications can implement real-time monitoring to provide users with live updates:
+
+```javascript
+async function monitorTransaction(transactionLinker) {
+  const tracker = new OperationTracker(Network.TESTNET);
+
+  // Poll for operation ID
+  let operationId = null;
+  while (!operationId) {
+    operationId = await tracker.getOperationId(transactionLinker);
+    if (!operationId) {
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+    }
+  }
+
+  // Monitor until completion
+  let completed = false;
+  while (!completed) {
+    const status = await tracker.getOperationStatus(operationId);
+
+    // Update UI with current status
+    updateUserInterface(status);
+
+    // Check for completion
+    if (status.stage === "EXECUTED_IN_TON" || !status.success) {
+      completed = true;
+    } else {
+      await new Promise((resolve) => setTimeout(resolve, 10000));
+    }
+  }
+}
+```
+
+### Debugging Failed Transactions
+
+- **Status Analysis**: Detailed status information helps identify where transactions failed and why.
+
+- **Stage Timing**: Performance profiling can reveal if transactions are stuck at particular stages.
+
+- **Error Messages**: When available, error messages provide specific information about failure causes.
+
+- **Asset Tracking**: Applications can verify that rollback procedures properly returned user assets.
+
+## Best Practices for Developers
+
+### User Experience Design
+
+<Tabs>
+  <Tab title="Progress Communication">
+    - **Clear Expectations**: Inform users that cross-chain operations take several minutes to complete.
+    - **Progress Indicators**: Show users which stage their transaction is currently in using progress bars or step indicators.
+    - **Time Estimates**: Provide realistic time estimates based on current network conditions and operation type.
+  </Tab>
+
+<Tab title="Error Handling">
+  - **Graceful Failures**: Handle failed transactions gracefully with clear
+  explanations of what happened. - **Recovery Guidance**: Provide users with
+  information about asset recovery and next steps after failures. - **Support
+  Information**: Include transaction IDs and status information that support
+  teams can use for assistance.
+</Tab>
+
+  <Tab title="Performance Optimization">
+    - **Optimistic UI**: Update interfaces optimistically while monitoring actual transaction progress.
+    - **Efficient Polling**: Use reasonable polling intervals that balance responsiveness with resource usage.
+    - **Caching**: Cache status information appropriately to reduce unnecessary API calls.
+  </Tab>
+</Tabs>
+
+### Integration Patterns
+
+- **Status Webhooks**: For applications that need server-side monitoring, implement webhook endpoints for status updates.
+
+- **Background Processing**: Handle long-running transaction monitoring in background processes rather than blocking user interfaces.
+
+- **Retry Logic**: Implement appropriate retry logic for temporary network issues while avoiding excessive API usage.
+
+## What's Next?
+
+Understanding the complete transaction lifecycle prepares you to explore the specific validation mechanisms that ensure security throughout the process.
+
+<CardGroup cols={2}>
+  <Card
+    title="Message Validation"
+    icon="shield-check"
+    href="/core-concepts/cross-chain-operations/message-validation"
+  >
+    Learn how transactions are validated at each stage
+  </Card>
+  <Card
+    title="Token Operations"
+    icon="coins"
+    href="/core-concepts/token-economics/token-operations"
+  >
+    Explore how different token types are handled throughout the lifecycle
+  </Card>
+</CardGroup>

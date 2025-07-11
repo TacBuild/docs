@@ -1,0 +1,306 @@
+---
+title: Transaction Tracking
+description: "Monitor cross-chain transaction progress and handle completion with comprehensive tracking tools"
+---
+
+The TAC SDK provides sophisticated tracking capabilities to monitor cross-chain transactions from initiation to completion. Whether you need simple status updates or detailed execution profiling, the tracking system offers multiple approaches to fit your application's needs.
+
+<Note>
+  Transaction tracking is essential for providing good user experience in
+  cross-chain applications. Always implement appropriate error handling and
+  retry logic to handle network issues gracefully.
+</Note>
+
+## Overview of Transaction Tracking
+
+Cross-chain transactions go through multiple stages across different blockchain networks. The TAC SDK's tracking system provides real-time visibility into this complex process through several interfaces:
+
+- **TransactionLinker**: Initial tracking handle returned from transaction submission
+- **OperationTracker**: Comprehensive tracking with detailed status information
+- **Simplified Tracking**: Helper functions for common tracking scenarios
+- **Stage Profiling**: Detailed execution timeline for advanced monitoring
+
+## Basic Tracking with TransactionLinker
+
+Every cross-chain transaction returns a `TransactionLinker` object that serves as the primary tracking handle:
+
+```javascript
+// Send transaction and get tracking handle
+const transactionLinker = await tacSdk.sendCrossChainTransaction(
+  evmProxyMsg,
+  sender,
+  assets
+);
+
+// Operation ID may not be immediately available
+// Use OperationTracker to retrieve it
+console.log("Shard Key:", transactionLinker.shardsKey);
+console.log("Timestamp:", transactionLinker.timestamp);
+console.log("Caller:", transactionLinker.caller);
+```
+
+### TransactionLinker Properties
+
+```javascript
+interface TransactionLinker {
+  caller: string; // Sender's wallet address
+  shardCount: number; // Number of shards involved
+  shardsKey: string; // Unique shard identifier
+  timestamp: number; // Transaction timestamp
+  operationId?: string; // Operation ID (available after processing)
+  sendTransactionResult?: any; // Raw transaction result
+}
+```
+
+## OperationTracker Class
+
+The `OperationTracker` provides comprehensive tracking capabilities with multiple monitoring methods:
+
+```javascript
+import { OperationTracker, Network } from "@tonappchain/sdk";
+
+// Initialize tracker
+const tracker = new OperationTracker(Network.TESTNET);
+
+// Get operation status
+const status = await tracker.getOperationStatus(operationId);
+console.log("Transaction status:", status);
+```
+
+### Simplified Status Tracking
+
+For applications that need basic status information:
+
+```javascript
+const getSimpleStatus = async (transactionLinker) => {
+  const tracker = new OperationTracker(Network.TESTNET);
+
+  const status = await tracker.getSimplifiedOperationStatus(transactionLinker);
+
+  switch (status) {
+    case "PENDING":
+      console.log("Transaction is being processed");
+      break;
+    case "SUCCESSFUL":
+      console.log("Transaction completed successfully");
+      break;
+    case "FAILED":
+      console.log("Transaction failed");
+      break;
+    case "OPERATION_ID_NOT_FOUND":
+      console.log("Operation not found - may still be propagating");
+      break;
+  }
+
+  return status;
+};
+```
+
+### Detailed Status Information
+
+For applications requiring comprehensive status data:
+
+```javascript
+const getDetailedStatus = async (operationId) => {
+  const tracker = new OperationTracker(Network.TESTNET);
+
+  const statusInfo = await tracker.getOperationStatus(operationId);
+
+  console.log("Status Information:");
+  console.log("- Stage:", statusInfo.stage);
+  console.log("- Success:", statusInfo.success);
+  console.log("- Success:", statusInfo.success);
+  console.log("- Timestamp:", statusInfo.timestamp);
+  console.log("- Transactions:", statusInfo.transactions);
+
+  return statusInfo;
+};
+```
+
+## Automated Tracking Functions
+
+The SDK provides utility functions for automated tracking with built-in polling and table display:
+
+### Single Transaction Tracking
+
+```javascript
+import { startTracking } from "@tonappchain/sdk";
+
+// Track with console output (default)
+await startTracking(transactionLinker, Network.TESTNET);
+
+// Track and return results
+const executionStages = await startTracking(
+  transactionLinker,
+  Network.TESTNET,
+  {
+    returnValue: true,
+    tableView: false,
+    delay: 5000, // Poll every 5 seconds
+    maxIterationCount: 60, // Maximum 60 iterations (5 minutes)
+  }
+);
+
+console.log("Final execution stages:", executionStages);
+```
+
+### Multiple Transaction Tracking
+
+```javascript
+import { startTrackingMultiple } from "@tonappchain/sdk";
+
+// Track multiple transactions simultaneously
+const transactionLinkers = [linker1, linker2, linker3];
+
+await startTrackingMultiple(transactionLinkers, Network.TESTNET, {
+  tableView: true,
+  delay: 10000, // Poll every 10 seconds
+  maxIterationCount: 30, // Maximum 30 iterations
+});
+```
+
+## Stage Profiling
+
+For detailed execution analysis, use stage profiling to understand exactly where time is spent:
+
+```javascript
+const getExecutionProfiling = async (operationId) => {
+  const tracker = new OperationTracker(Network.TESTNET);
+
+  const stages = await tracker.getStageProfiling(operationId);
+
+  console.log("Execution Timeline:");
+  console.log("- TON Transaction Sent:", stages.tonTransactionSent);
+  console.log("- Message Validated:", stages.messageValidated);
+  console.log("- Assets Locked:", stages.assetsLocked);
+  console.log("- Cross-Chain Routed:", stages.crossChainRouted);
+  console.log("- EVM Execution Started:", stages.evmExecutionStarted);
+  console.log("- EVM Execution Completed:", stages.evmExecutionCompleted);
+  console.log("- Final Confirmation:", stages.finalConfirmation);
+
+  // Calculate durations
+  const totalTime = stages.finalConfirmation - stages.tonTransactionSent;
+  const evmExecutionTime =
+    stages.evmExecutionCompleted - stages.evmExecutionStarted;
+
+  console.log(`Total execution time: ${totalTime / 1000} seconds`);
+  console.log(`EVM execution time: ${evmExecutionTime / 1000} seconds`);
+
+  return stages;
+};
+```
+
+## Batch Tracking
+
+Track multiple transactions efficiently:
+
+```javascript
+const trackMultipleTransactions = async (operationIds) => {
+  const tracker = new OperationTracker(Network.TESTNET);
+
+  // Get statuses in batch (more efficient than individual calls)
+  const statuses = await tracker.getOperationStatuses(operationIds);
+
+  const results = {};
+  for (const [operationId, statusInfo] of Object.entries(statuses)) {
+    results[operationId] = {
+      status: statusInfo.operationType,
+      success: statusInfo.success,
+      error: statusInfo.error,
+    };
+  }
+
+  return results;
+};
+
+// Usage
+const operationIds = ["op1", "op2", "op3"];
+const batchResults = await trackMultipleTransactions(operationIds);
+
+Object.entries(batchResults).forEach(([id, result]) => {
+  console.log(`Operation ${id}: ${result.status}`);
+});
+```
+
+## Error Handling in Tracking
+
+Handle tracking errors gracefully:
+
+```javascript
+const robustTracking = async (transactionLinker, maxRetries = 3) => {
+  const tracker = new OperationTracker(Network.TESTNET);
+  let retries = 0;
+
+  while (retries < maxRetries) {
+    try {
+      const status = await tracker.getSimplifiedOperationStatus(
+        transactionLinker
+      );
+
+      if (status === "OPERATION_ID_NOT_FOUND" && retries < maxRetries - 1) {
+        console.log(`Operation not found, retry ${retries + 1}/${maxRetries}`);
+        await new Promise((resolve) => setTimeout(resolve, 15000));
+        retries++;
+        continue;
+      }
+
+      return status;
+    } catch (error) {
+      console.error(`Tracking attempt ${retries + 1} failed:`, error);
+      retries++;
+
+      if (retries >= maxRetries) {
+        throw new Error(
+          `Tracking failed after ${maxRetries} attempts: ${error.message}`
+        );
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 10000));
+    }
+  }
+};
+```
+
+## Transaction States and Types
+
+Understanding transaction states helps with proper status handling:
+
+<Tabs>
+  <Tab title="Operation Types">
+    ```javascript
+    enum OperationType {
+      PENDING = 'PENDING',           // Transaction being processed
+      TON_TAC_TON = 'TON-TAC-TON',  // Round-trip transaction
+      ROLLBACK = 'ROLLBACK',         // Transaction rolled back
+      TON_TAC = 'TON-TAC',          // One-way to TAC
+      TAC_TON = 'TAC-TON',          // Return to TON
+      UNKNOWN = 'UNKNOWN'            // Unknown state
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Simplified States">
+    ```javascript
+    enum SimplifiedStatuses {
+      PENDING = 'PENDING',                      // In progress
+      FAILED = 'FAILED',                        // Failed execution
+      SUCCESSFUL = 'SUCCESSFUL',                // Completed successfully
+      OPERATION_ID_NOT_FOUND = 'OPERATION_ID_NOT_FOUND' // Not found yet
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Execution Stages">
+    ```javascript
+    interface ExecutionStages {
+      tonTransactionSent?: number;      // TON tx submitted
+      messageValidated?: number;        // Message validated
+      assetsLocked?: number;           // Assets locked on TON
+      crossChainRouted?: number;       // Routed to TAC
+      evmExecutionStarted?: number;    // EVM execution begins
+      evmExecutionCompleted?: number;  // EVM execution ends
+      finalConfirmation?: number;      // Final confirmation
+    }
+    ```
+  </Tab>
+</Tabs>

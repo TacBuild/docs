@@ -1,0 +1,968 @@
+---
+title: Develop TAC Proxy
+description: "Learn how to develop a TAC Proxy - the connectors between TON and EVM applications"
+---
+
+A **TAC Proxy** is a Solidity contract that receives cross-chain messages and tokens bridged from the TON blockchain. When a user on TON initiates a message (and potentially sends tokens), the TAC infrastructure delivers the tokens and data to your EVM-based contract's function.
+
+The proxy contract then processes that data—often by calling another Dapp contract or by performing some bridging logic—and optionally sends tokens back to TON using the same TAC infrastructure.
+
+The guide below shows how to:
+
+- Install the necessary dependencies.
+- Write a simple proxy contract (both non-upgradeable and upgradeable).
+- Implement your custom logic in a proxy function that adheres to TAC's required function signature.
+- Encode your arguments properly on the frontend.
+- Test your proxy contract locally using Hardhat and the `@tonappchain/evm-ccl` testing utilities.
+
+<Tip>
+  This process might be a little complicated, so please reach out to us on
+  [Discord](https://discord.com/invite/tacbuild) if you have any questions.
+</Tip>
+
+## Installation
+
+Install the [`@tonappchain/evm-ccl`](https://www.npmjs.com/package/@tonappchain/evm-ccl) package in your Solidity contract repository. This package includes core functionalities for cross-chain messaging and local test SDKs:
+
+```bash
+npm install --save @tonappchain/evm-ccl@latest
+```
+
+In most cases, you will be using Hardhat for development. Make sure you have a typical Hardhat setup and the recommended testing libraries. For instance, your `package.json` may include:
+
+```json
+{
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.5",
+    "ethers": "^6.13.2",
+    "chai": "^4.3.7",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.3",
+    "@tonappchain/evm-ccl": "^latest"
+  }
+}
+```
+
+If you cannot deploy your Dapp contracts directly for local testing, consider [forking another network](https://hardhat.org/hardhat-network/docs/guides/forking-other-networks) where the necessary contracts are already deployed. This can simplify local development and testing.
+
+## Creating the Proxy Contract
+
+In your `contracts` folder, create a new `.sol` file (e.g. `MyProxy.sol`). Below are two variations:
+
+### Non-upgradeable Contract
+
+For a **simple**, non-upgradeable contract, you can extend `TacProxyV1`:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.28;
+
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+import { TacProxyV1 } from "@tonappchain/evm-ccl/contracts/proxies/TacProxyV1.sol";
+import { IDappContract } from "./IDappContract.sol"; // your Dapp interface (if needed)
+import { TokenAmount, NFTAmount, OutMessageV1, TacHeaderV1 } from "@tonappchain/evm-ccl/contracts/core/Structs.sol";
+
+contract MyProxy is TacProxyV1 {
+    IDappContract public dappContract;
+
+    constructor(address _dappContract, address _crossChainLayer)
+        TacProxyV1(_crossChainLayer)
+    {
+        dappContract = IDappContract(_dappContract);
+    }
+
+    // Add your proxy functions here
+    function myProxyFunction(bytes calldata tacHeader, bytes calldata arguments)
+        external
+        _onlyCrossChainLayer
+    {
+        // Implementation here
+    }
+}
+```
+
+**Key Points:**
+
+- We pass `_crossChainLayer` (the CrossChainLayer contract address) to `TacProxyV1`'s constructor.
+- `_onlyCrossChainLayer` is a security modifier inherited from `TacProxyV1`. It ensures that **only** the recognized cross-chain layer can call this function.
+- `IDappContract` is just an example interface for some external logic contract you may want to call.
+
+### Upgradeable Contract
+
+If you need to **upgrade** your contract over time, use OpenZeppelin's upgradeable libraries and the `TacProxyV1Upgradeable` contract:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.28;
+
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+
+import { TacProxyV1Upgradeable } from "@tonappchain/evm-ccl/contracts/proxies/TacProxyV1Upgradeable.sol";
+import { TokenAmount, NFTAmount, OutMessageV1, TacHeaderV1 } from "@tonappchain/evm-ccl/contracts/core/Structs.sol";
+
+contract MyProxyUpgradeable is
+    Initializable,
+    OwnableUpgradeable,
+    UUPSUpgradeable,
+    TacProxyV1Upgradeable
+{
+    function initialize(address owner, address crossChainLayer) public initializer {
+        __UUPSUpgradeable_init();
+        __Ownable_init(owner);
+        __TacProxyV1Upgradeable_init(crossChainLayer);
+    }
+
+    function _authorizeUpgrade(address) internal override onlyOwner {}
+
+    // Add your proxy functions here
+    function myProxyFunction(bytes calldata tacHeader, bytes calldata arguments)
+        external
+        _onlyCrossChainLayer
+    {
+        // Implementation here
+    }
+}
+```
+
+**Key Points:**
+
+- Inherits from `Initializable`, `OwnableUpgradeable`, `UUPSUpgradeable`, and `TacProxyV1Upgradeable`.
+- Has an `initialize` function in place of a constructor.
+- `_authorizeUpgrade` ensures only the owner can perform contract upgrades.
+
+## Defining and Implementing Proxy Functions
+
+Every proxy function that TAC calls **must** have the signature:
+
+```solidity
+function <function_name>(bytes calldata, bytes calldata) external;
+```
+
+You can name the function as you wish (e.g. `myProxyFunction`, `invokeWithCallback`, etc.), but it must accept two `bytes` arguments:
+
+1. The first is always the **encoded TAC header**.
+2. The second is always the **encoded arguments** that you define.
+
+### OutMessageV1 - RoundTrip
+
+Since TAC extends the TON ecosystem, the concept of a **RoundTrip** message was introduced at the smart contract level in the Cross-Chain Layer (CCL).
+
+The main interaction scenario with a DApp on TAC is as follows:
+
+1. A user sends assets from TON to TAC, along with their intended action.
+2. After interacting with the DApp on TAC, it is possible — within the same transaction — to send the resulting assets back to the user on TON by calling the `_sendMessageV1` method.
+3. The `_sendMessageV1` method can also be used for regular asset bridging from TAC back to TON, without necessarily involving DApp interactions.
+
+A **RoundTrip** message specifically refers to the first type of interaction:
+
+- The message originates from TON, triggers an action on TAC, and then — after the interaction — the resulting assets are sent back to TON within the same flow.
+
+### OutMessageV1 Structure
+
+`OutMessageV1` is the main structure used for sending messages from EVM to TVM.
+
+```solidity
+struct OutMessageV1 {
+    uint64 shardsKey;
+    string tvmTarget;
+    string tvmPayload;
+    uint256 tvmProtocolFee;
+    uint256 tvmExecutorFee;
+    string[] tvmValidExecutors;
+    TokenAmount[] toBridge;
+    NFTAmount[] toBridgeNFT;
+}
+```
+
+Each field:
+
+- `shardsKey`: Developer ID. It is recommended to set it from the tacHeader.
+- `tvmTarget`: The recipient address on the TON network.
+- `tvmPayload`: A custom payload to be executed on the TON side. Currently not supported — must be empty.
+- `tvmProtocolFee`: The protocol fee you must pay. For roundTrip messages, this fee is already covered on the TON side, so set this field to 0.
+- `tvmExecutorFee`: The fee you offer to the executor on the TON side (in TAC tokens). For roundTrip messages, the fee is already locked on TON, so set this field to 0.
+- `tvmValidExecutors`: A list of executors you trust to execute the message on the TON side. For roundTrip messages, this must be an empty array; the trusted executors are already defined in the initial TON message.
+- `toBridge`: List of ERC20 tokens you want to bridge to the TON network and transfer to `tvmTarget`.
+- `toBridgeNFT`: List of NFTs you want to bridge to the TON network and transfer to `tvmTarget`.
+
+### Example Implementation
+
+Below is an extended example of how you might implement `myProxyFunction` in a non-upgradeable contract. The logic is the same for an upgradeable contract.
+
+```solidity
+function myProxyFunction(bytes calldata tacHeader, bytes calldata arguments)
+    external
+    _onlyCrossChainLayer
+{
+    // 1. Decode the custom arguments
+    MyProxyFunctionArguments memory args = abi.decode(arguments, (MyProxyFunctionArguments));
+
+    // 2. Approve tokens to your Dapp contract for some action
+    IERC20(args.tokenFrom).approve(address(dappContract), args.amount);
+
+    // 3. Call the Dapp contract
+    uint256 tokenToAmount = dappContract.doSomething(
+        args.tokenFrom,
+        args.tokenTo,
+        args.amount
+    );
+
+    // 4. Prepare tokens to send back to TON, if desired
+    TokenAmount[] memory tokensToBridge = new TokenAmount[](1);
+    tokensToBridge[0] = TokenAmount(args.tokenTo, tokenToAmount);
+
+    // 5. Approve the CrossChainLayer to pull them
+    IERC20(tokensToBridge[0].evmAddress).approve(
+        _getCrossChainLayerAddress(),
+        tokensToBridge[0].amount
+    );
+
+    // 6. Decode the TAC header
+    TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
+
+    // 7. Form an OutMessage
+    //    This is how you instruct TAC to deliver tokens or data back to TON
+    OutMessageV1 memory outMsg = OutMessageV1({
+        shardsKey: header.shardsKey,
+        tvmTarget: header.tvmCaller,
+        tvmPayload: "",
+        tvmProtocolFee: 0,
+        tvmExecutorFee: 0,
+        tvmValidExecutors: new string[](0),
+        toBridge: tokensToBridge,
+        toBridgeNFT: new NFTAmount[](0)
+    });
+
+    // 8. Send message back through CrossChainLayer with zero native
+    _sendMessageV1(outMsg, 0);
+}
+```
+
+**Important Notes:**
+
+- `function myProxyFunction(bytes calldata, bytes calldata) external _onlyCrossChainLayer` ensures only the TAC infrastructure can call this function.
+- `_decodeTacHeader(...)` is inherited from `TacProxyV1` (or `TacProxyV1Upgradeable`); it transforms the raw `bytes` into `TacHeaderV1` data.
+- You typically decode the second argument (`arguments`) using `abi.decode(...)` with a struct you define.
+
+## How the Cross-Chain Call Works
+
+When a user on TON sends a message via your Dapp (e.g., using the `tac-sdk` on the frontend), the **CrossChainLayer** contract on EVM receives bridged tokens and data from the TON side. Then:
+
+1. **Tokens** (if any) are automatically transferred from the CrossChainLayer contract to your proxy contract before the function call.
+2. The CrossChainLayer calls `myProxyFunction(tacHeader, arguments)` on your proxy contract.
+   - `tacHeader` is the encoded `TacHeaderV1` struct containing data like `shardsKey`, `operationId`, the user's `tvmCaller` address on TON, etc.
+   - `arguments` is a `bytes` array containing data you defined in the Dapp's frontend (encoded via `tac-sdk` or manually using `ethers.AbiCoder`).
+3. Your proxy function processes the tokens, calls external contracts if necessary, and optionally prepares an `OutMessageV1` with tokens to be sent back to TON.
+4. The `_sendMessageV1(outMsg, value)` function sends everything back to the CrossChainLayer so that tokens (including native TAC token) (and an optional message) can be bridged to TON.
+
+## Fees
+
+When sending a message, handling the fees depends on the type of the message.
+
+### RoundTrip Messages
+
+- No need to specify `tvmProtocolFee` or `tvmExecutorFee` manually.
+- These values should be set to 0 because the fees have already been paid and locked on the TON side.
+
+### Direct TAC -> TON Messages
+
+When sending a direct message from TAC to TON, you must manually specify the fees:
+
+**Set `tvmProtocolFee`:**
+
+- Call the `getProtocolFee` method on the proxy contract to get the current protocol fee.
+- Set the `tvmProtocolFee` field in your `OutMessageV1` accordingly.
+
+**Set `tvmExecutorFee`:**
+
+- Estimate the appropriate executor fee you want to pay.
+- If you provide an insufficient amount of TAC for the executor fee, your message will not be executed.
+- Currently, there is no official library to calculate the exact executor fee, so it is recommended to:
+  - Overestimate slightly, or
+  - Use `tacSDK` for better fee estimation.
+
+**Specify Valid Executors:**
+
+- List the executors you trust to process your message.
+- You can retrieve the list of default trusted executors by calling `settings.getTrustedTVMExecutors()` on the Settings contract.
+
+Example snippet:
+
+```solidity
+function bridgeTokensToTON(OutMessageV1 calldata outMessage) payable external {
+    // Approve tokens for bridging
+    for (uint i = 0; i < outMessage.toBridge.length; i++) {
+        IERC20(outMessage.toBridge[i].evmAddress).transferFrom(msg.sender, address(this), outMessage.toBridge[i].amount);
+        IERC20(outMessage.toBridge[i].evmAddress).approve(_getCrossChainLayerAddress(), outMessage.toBridge[i].amount);
+    }
+
+    uint256 protocolFee = getProtocolFee();
+    if (outMessage.tvmProtocolFee < protocolFee) {
+        revert NotEnoughProtocolFee(outMessage.tvmProtocolFee, protocolFee);
+    }
+
+    if (outMessage.tvmProtocolFee + outMessage.tvmExecutorFee > msg.value) {
+        revert NotEnoughValue(msg.value, outMessage.tvmProtocolFee + outMessage.tvmExecutorFee);
+    }
+
+    // Send the message to TON
+    _sendMessageV1(outMessage, msg.value);
+}
+```
+
+<Note>
+  The `msg.value` you send must be greater than or equal to `tvmProtocolFee +
+  tvmExecutorFee`. Any surplus TAC tokens will be bridged to `tvmTarget`.
+</Note>
+
+## Encoding Arguments on the Frontend
+
+You typically define a struct that represents the arguments your proxy function expects. For example:
+
+```solidity
+struct MyProxyFunctionArguments {
+    address tokenFrom;
+    address tokenTo;
+    uint256 amount;
+}
+```
+
+You then encode these fields in your frontend code using `ethers.js` (or another library).
+
+### Basic Example
+
+```javascript
+import { ethers } from "ethers";
+const abiCoder = ethers.AbiCoder.defaultAbiCoder();
+
+const myProxyFunctionArguments = abiCoder.encode(
+  ["address", "address", "uint256"],
+  [tokenFromAddress, tokenToAddress, tokenFromAmount]
+);
+```
+
+### Complex Example with Nested Structures
+
+```solidity
+struct AnyExtraInfo {
+    address feeCollector;
+    uint256 feeRate;
+}
+
+struct MyProxyFunctionArguments {
+    AnyExtraInfo extraInfo;
+    address tokenFrom;
+    address tokenTo;
+    uint256 amount;
+}
+```
+
+Encoding:
+
+```javascript
+const extraInfo = [feeCollectorAddress, feeRate];
+const myProxyFunctionArguments = abiCoder.encode(
+  ["tuple(address,uint256)", "address", "address", "uint256"],
+  [extraInfo, tokenFromAddress, tokenToAddress, tokenToken]
+);
+```
+
+### Complex Example with Dynamic Arrays
+
+```solidity
+struct MyProxyFunctionArguments {
+    address[] path;
+    uint256 amount;
+}
+```
+
+Encoding:
+
+```javascript
+const path = [tokenFromAddress, tokenToAddress];
+const myProxyFunctionArguments = abiCoder.encode(
+  ["tuple(address[],uint256)"],
+  [[path, tokenFromAmount]]
+);
+```
+
+## Specifying the Function Name in tac-sdk
+
+When using the `tac-sdk` to create messages for bridging, you must provide:
+
+- `target`: the address of your Proxy contract.
+- `method_name`: the **complete function signature**, e.g. `"myProxyFunction(bytes,bytes)"`.
+- `arguments`: the ABI-encoded arguments (second parameter in your proxy function).
+- `gasLimit` (optional): the parameter that will be passed to the TAC side. The executor must allocate at least `gasLimit` gas for executing the transaction on the TAC side. If this parameter is not specified, it will be calculated using the `simulateEVMMessage` method (preferred).
+
+Example:
+
+```javascript
+const myProxyFunctionName = "myProxyFunction(bytes,bytes)";
+
+const userMessage = {
+  target: MyProxyContractAddress,
+  method_name: myProxyFunctionName,
+  arguments: myProxyFunctionArguments, // from the previous encoding step
+  gasLimit: gasLimitValue, // optional
+};
+```
+
+## Testing the Proxy Contract
+
+### Example Minimal Proxy for Testing
+
+In many cases, you want a stripped-down contract to test basic cross-chain behavior. Below is a minimal `TestProxy` that:
+
+- Inherits `TacProxyV1`.
+- Has a single function `invokeWithCallback(...)`.
+- Emits an event for logging.
+- Demonstrates bridging tokens back to TON.
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.28;
+
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { OutMessageV1, TacHeaderV1, TokenAmount, NFTAmount } from "@tonappchain/evm-ccl/contracts/core/Structs.sol";
+import { TacProxyV1 } from "@tonappchain/evm-ccl/contracts/proxies/TacProxyV1.sol";
+
+contract TestProxy is TacProxyV1 {
+    event InvokeWithCallback(
+        uint64 shardsKey,
+        uint256 timestamp,
+        bytes32 operationId,
+        string tvmCaller,
+        bytes extraData,
+        TokenAmount[] receivedTokens
+    );
+
+    constructor(address _crossChainLayer) TacProxyV1(_crossChainLayer) {}
+
+    function invokeWithCallback(bytes calldata tacHeader, bytes calldata arguments)
+        external
+        _onlyCrossChainLayer
+    {
+        // 1. Decode the header
+        TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
+
+        // 2. Decode the array of TokenAmount structs
+        TokenAmount[] memory receivedTokens = abi.decode(arguments, (TokenAmount[]));
+
+        // Optional: Here you could call an external Dapp contract with these tokens
+
+        // 3. Log an event for testing
+        emit InvokeWithCallback(
+            header.shardsKey,
+            header.timestamp,
+            header.operationId,
+            header.tvmCaller,
+            header.extraData,
+            receivedTokens
+        );
+
+        // 4. Approve and forward the tokens back via the cross-chain layer
+        for (uint i = 0; i < receivedTokens.length; i++) {
+            IERC20(receivedTokens[i].evmAddress).approve(
+                _getCrossChainLayerAddress(),
+                receivedTokens[i].amount
+            );
+        }
+
+        // 5. Create and send an OutMessage
+        _sendMessageV1(
+            OutMessageV1({
+                shardsKey: header.shardsKey,
+                tvmTarget: header.tvmCaller,
+                tvmPayload: "",
+                tvmProtocolFee: 0,
+                tvmExecutorFee: 0,
+                tvmValidExecutors: new string[](0),
+                toBridge: receivedTokens,
+                toBridgeNFT: new NFTAmount[](0)
+            }),
+            0
+        );
+    }
+}
+```
+
+Also define the **TestToken** contract:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.28;
+
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+contract TestToken is ERC20 {
+    constructor(string memory _name, string memory _symbol) ERC20(_name, _symbol) {}
+
+    function mint(address _to, uint256 _amount) external {
+        _mint(_to, _amount);
+    }
+}
+```
+
+### Test Setup Example (Hardhat + @tonappchain/evm-ccl)
+
+Create a test file such as `TestProxy.spec.ts` under your `test` directory. Below is a basic example test:
+
+```typescript
+import hre, { ethers } from "hardhat";
+import { Signer } from "ethers";
+import { expect } from "chai";
+
+// The following items come from '@tonappchain/evm-ccl' to help test cross-chain logic locally.
+import {
+  deploy,
+  TacLocalTestSdk,
+  JettonInfo,
+  TokenMintInfo,
+  TokenUnlockInfo,
+} from "@tonappchain/evm-ccl";
+
+// Types for your compiled contracts
+import { TestProxy, TestToken } from "../typechain-types";
+import { InvokeWithCallbackEvent } from "../typechain-types/contracts/TestProxy";
+
+describe("TestProxy with @tonappchain/evm-ccl", () => {
+  let admin: Signer;
+  let testSdk: TacLocalTestSdk;
+  let proxyContract: TestProxy;
+  let existedToken: TestToken;
+
+  before(async () => {
+    [admin] = await ethers.getSigners();
+
+    // 1. Initialize local test SDK
+    testSdk = new TacLocalTestSdk();
+    const crossChainLayerAddress = testSdk.create(ethers.provider);
+
+    // 2. Deploy a sample ERC20 token
+    existedToken = await deploy<TestToken>(
+      admin,
+      hre.artifacts.readArtifactSync("TestToken"),
+      ["TestToken", "TTK"],
+      undefined,
+      false
+    );
+
+    // 3. Deploy the proxy contract
+    proxyContract = await deploy<TestProxy>(
+      admin,
+      hre.artifacts.readArtifactSync("TestProxy"),
+      [crossChainLayerAddress],
+      undefined,
+      false
+    );
+  });
+
+  it("Should correctly handle invokeWithCallback", async () => {
+    // Prepare call parameters
+    const shardsKey = 1n;
+    const operationId = ethers.encodeBytes32String("operationId");
+    const extraData = "0x"; // untrusted data from the executor
+    const timestamp = BigInt(Math.floor(Date.now() / 1000));
+    const tvmWalletCaller = "TVMCallerAddress";
+
+    // Example bridging: create a Jetton and specify how many tokens to mint
+    const jettonInfo: JettonInfo = {
+      tvmAddress: "JettonMinterAddress",
+      name: "TestJetton",
+      symbol: "TJT",
+      decimals: 9n,
+    };
+
+    const tokenMintInfo: TokenMintInfo = {
+      info: jettonInfo,
+      amount: 10n ** 9n,
+    };
+
+    // Also handle an existing EVM token to simulate bridging
+    const tokenUnlockInfo: TokenUnlockInfo = {
+      evmAddress: await existedToken.getAddress(),
+      amount: 10n ** 18n,
+    };
+
+    // Lock existedToken in the cross-chain layer to emulate bridging from EVM
+    await existedToken.mint(
+      testSdk.getCrossChainLayerAddress(),
+      tokenUnlockInfo.amount
+    );
+
+    // You can define a native TAC amount to bridge to your proxy,
+    // but you must first lock this amount on the CrossChainLayer contract
+    // use the testSdk.lockNativeTacOnCrossChainLayer(nativeTacAmount) function
+    const tacAmountToBridge = 0n;
+
+    // Determine the EVM address of the bridged Jetton (for minted jettons)
+    const bridgedJettonAddress = testSdk.getEVMJettonAddress(
+      jettonInfo.tvmAddress
+    );
+
+    // Prepare the method call
+    const target = await proxyContract.getAddress();
+    const methodName = "invokeWithCallback(bytes,bytes)";
+
+    // Our 'arguments' is an array of TokenAmount: (address, uint256)[]
+    const receivedTokens = [
+      [bridgedJettonAddress, tokenMintInfo.amount],
+      [tokenUnlockInfo.evmAddress, tokenUnlockInfo.amount],
+    ];
+
+    const encodedArguments = ethers.AbiCoder.defaultAbiCoder().encode(
+      ["tuple(address,uint256)[]"],
+      [receivedTokens]
+    );
+
+    // 4. Use testSdk to simulate a cross-chain message
+    const { receipt, deployedTokens, outMessages } = await testSdk.sendMessage(
+      shardsKey,
+      target,
+      methodName,
+      encodedArguments,
+      tvmWalletCaller,
+      [tokenMintInfo], // which jettons to mint
+      [tokenUnlockInfo], // which EVM tokens to unlock
+      tacAmountToBridge,
+      extraData,
+      operationId,
+      timestamp,
+      0, // gasLimit - if 0 - simulate and fill inside sendMessage
+      false // force send (if simulation failed)
+    );
+
+    // 5. Assertions
+    expect(receipt.status).to.equal(1);
+
+    // - Check if the Jetton was deployed
+    expect(deployedTokens.length).to.equal(1);
+    expect(deployedTokens[0].evmAddress).to.equal(bridgedJettonAddress);
+
+    // - Check the outMessages array
+    expect(outMessages.length).to.equal(1);
+    const outMessage = outMessages[0];
+    expect(outMessage.shardsKey).to.equal(shardsKey);
+    expect(outMessage.operationId).to.equal(operationId);
+    expect(outMessage.callerAddress).to.equal(await proxyContract.getAddress());
+    expect(outMessage.targetAddress).to.equal(tvmWalletCaller);
+
+    // - The returned tokens should be burned or locked as bridging back to TON
+    expect(outMessage.tokensBurned.length).to.equal(1);
+    expect(outMessage.tokensBurned[0].evmAddress).to.equal(
+      bridgedJettonAddress
+    );
+    expect(outMessage.tokensBurned[0].amount).to.equal(tokenMintInfo.amount);
+
+    expect(outMessage.tokensLocked.length).to.equal(1);
+    expect(outMessage.tokensLocked[0].evmAddress).to.equal(
+      tokenUnlockInfo.evmAddress
+    );
+    expect(outMessage.tokensLocked[0].amount).to.equal(tokenUnlockInfo.amount);
+
+    // - Confirm the event was emitted
+    let eventFound = false;
+    receipt.logs.forEach((log) => {
+      const parsed = proxyContract.interface.parseLog(log);
+      if (parsed && parsed.name === "InvokeWithCallback") {
+        eventFound = true;
+        const typedEvent =
+          parsed as unknown as InvokeWithCallbackEvent.LogDescription;
+        expect(typedEvent.args.shardsKey).to.equal(shardsKey);
+        expect(typedEvent.args.timestamp).to.equal(timestamp);
+        expect(typedEvent.args.operationId).to.equal(operationId);
+        expect(typedEvent.args.tvmCaller).to.equal(tvmWalletCaller);
+        expect(typedEvent.args.extraData).to.equal(extraData);
+        expect(typedEvent.args.receivedTokens.length).to.equal(2);
+        expect(typedEvent.args.receivedTokens[0].evmAddress).to.equal(
+          bridgedJettonAddress
+        );
+        expect(typedEvent.args.receivedTokens[1].evmAddress).to.equal(
+          tokenUnlockInfo.evmAddress
+        );
+      }
+    });
+    expect(eventFound).to.be.true;
+  });
+});
+```
+
+**Test Flow:**
+
+1. **Initialization**
+
+   - Create a local cross-chain environment (`TacLocalTestSdk`).
+   - Deploy a test token (`TestToken`).
+   - Deploy your `TestProxy`.
+
+2. **Bridging Simulation**
+
+   - Mint or lock tokens on the cross-chain layer.
+   - Create the parameters (`shardsKey`, `operationId`, etc.).
+
+3. **Invoke Proxy**
+
+   - Use the `testSdk.sendMessage(...)` to simulate a cross-chain call to your proxy's function.
+
+4. **Verification**
+   - Confirm the transaction succeeded.
+   - Inspect the `deployedTokens` (if you minted new tokens).
+   - Inspect the `outMessages` for tokens returning to TON.
+   - Check emitted events for correct data.
+
+## NFT Proxy Contract Example
+
+The NFT proxy contract must inherit from `IERC721Receiver` and implement the required `onERC721Received` function to correctly receive ERC‑721 tokens.
+
+### NFT Proxy Implementation
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.28;
+
+import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import { TacProxyV1 } from "@tonappchain/evm-ccl/contracts/proxies/TacProxyV1.sol";
+import { TacHeaderV1, TokenAmount, NFTAmount } from "@tonappchain/evm-ccl/contracts/core/Structs.sol";
+
+contract TestNFTProxy is TacProxyV1, IERC721Receiver {
+
+    constructor(address crossChainLayer) TacProxyV1(crossChainLayer) {}
+
+    /**
+     * @dev Handles the receipt of an ERC-721 token.
+     *
+     * Returns its Solidity selector to confirm the token transfer.
+     */
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) external pure override(IERC721Receiver) returns (bytes4) {
+        return this.onERC721Received.selector;
+    }
+
+    /**
+     * @dev Receives NFTs bridged from TON.
+     */
+    function receiveNFT(bytes calldata tacHeader, bytes calldata arguments) external {
+        // this arguments just for example, you can define your own
+        NFTAmount[] memory nfts = abi.decode(arguments, (NFTAmount[]));
+
+        for (uint i = 0; i < nfts.length; i++) {
+            IERC721(nfts[i].evmAddress).approve(_getCrossChainLayerAddress(), nfts[i].tokenId);
+        }
+
+        TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
+        // Bridge NFT back by creating an OutMessageV1
+        OutMessageV1 memory outMessage = OutMessageV1(
+            header.shardsKey,
+            header.tvmCaller,
+            "",
+            0, // roundTripMessages don't require tvmProtocolFee as it's already paid on TON
+            0, // roundTripMessages don't require tvmExecutorFee as it's already paid on TON
+            new string[](0), // no need to specify validExecutors as it's already specified in initial tx on TON
+            new TokenAmount[](0), // No ERC20 tokens bridged
+            nfts            // NFTs to bridge (the 'amount' field is ignored for ERC721)
+        );
+        _sendMessageV1(outMessage, 0);
+    }
+}
+```
+
+### Test ERC‑721 Token Contract
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.28;
+
+import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+
+contract TestERC721Token is ERC721 {
+
+    string private __baseURI;
+
+    constructor(string memory _name, string memory _symbol, string memory baseURI) ERC721(_name, _symbol) {
+        __baseURI = baseURI;
+    }
+
+    function mint(address _to, uint256 _tokenId) external {
+        _mint(_to, _tokenId);
+    }
+
+    function _baseURI() internal view override returns (string memory) {
+        return __baseURI;
+    }
+}
+```
+
+### Test Setup Example for NFT Proxy
+
+Below is an example Hardhat test for NFT bridging using the local test SDK:
+
+```typescript
+import hre, { ethers } from "hardhat";
+import {
+  deploy,
+  TacLocalTestSdk,
+  NFTInfo,
+  NFTMintInfo,
+  NFTUnlockInfo,
+} from "@tonappchain/evm-ccl";
+import { Signer } from "ethers";
+import { TestERC721Token, TestNFTProxy } from "../typechain-types";
+import { expect } from "chai";
+
+describe("TacLocalTestSDK NFT", () => {
+  let admin: Signer;
+  let testSdk: TacLocalTestSdk;
+  let testNFTProxy: TestNFTProxy;
+  let existedERC721: TestERC721Token;
+
+  before(async () => {
+    [admin] = await ethers.getSigners();
+    testSdk = new TacLocalTestSdk();
+    const crossChainLayerAddress = testSdk.create(ethers.provider);
+
+    existedERC721 = await deploy<TestERC721Token>(
+      admin,
+      hre.artifacts.readArtifactSync("TestERC721Token"),
+      ["ExistedNFT", "NFTE", "https://test-nft.com/"],
+      undefined,
+      false
+    );
+    testNFTProxy = await deploy<TestNFTProxy>(
+      admin,
+      hre.artifacts.readArtifactSync("TestNFTProxy"),
+      [crossChainLayerAddress],
+      undefined,
+      false
+    );
+  });
+
+  it("Test send message with NFT", async () => {
+    const shardsKey = 1n;
+    const operationId = ethers.encodeBytes32String("operationId");
+    const extraData = "0x";
+    const timestamp = BigInt(Math.floor(Date.now() / 1000));
+    const tvmWalletCaller = "TVMCallerAddress";
+
+    const nftCollectionInfo: NFTInfo = {
+      tvmAddress: "NftCollectionAddress",
+      name: "NftCollection1",
+      symbol: "NFT1",
+      baseURI: "https://nft1.com/",
+    };
+
+    const nftMintInfo: NFTMintInfo = {
+      info: nftCollectionInfo,
+      tokenId: 1n,
+    };
+
+    // Lock an NFT on the cross-chain layer to simulate bridging from EVM
+    const lockedTokenId = 1n;
+    await (
+      await existedERC721.mint(
+        testSdk.getCrossChainLayerAddress(),
+        lockedTokenId
+      )
+    ).wait();
+
+    const nftUnlockInfo: NFTUnlockInfo = {
+      evmAddress: await existedERC721.getAddress(),
+      tokenId: lockedTokenId,
+      amount: 0n, // 'amount' is ignored for ERC721
+    };
+
+    // Calculate the deployed NFT collection address
+    const calculatedNFTAddress = testSdk.getEVMNFTCollectionAddress(
+      nftCollectionInfo.tvmAddress
+    );
+    const target = await testNFTProxy.getAddress();
+    const methodName = "receiveNFT(bytes,bytes)";
+
+    // Encode two NFTs:
+    // - One minted (nftMintInfo) with amount 0 (ignored)
+    // - One unlocked (nftUnlockInfo) with amount 0
+    const receivedToken1 = [calculatedNFTAddress, nftMintInfo.tokenId, 0n];
+    const receivedToken2 = [
+      nftUnlockInfo.evmAddress,
+      nftUnlockInfo.tokenId,
+      nftUnlockInfo.amount,
+    ];
+
+    const encodedArguments = ethers.AbiCoder.defaultAbiCoder().encode(
+      ["tuple(address,uint256,uint256)[]"],
+      [[receivedToken1, receivedToken2]]
+    );
+
+    const { receipt, deployedTokens, outMessages } =
+      await testSdk.sendMessageWithNFT(
+        shardsKey,
+        target,
+        methodName,
+        encodedArguments,
+        tvmWalletCaller,
+        [],
+        [],
+        [nftMintInfo],
+        [nftUnlockInfo],
+        0n,
+        extraData,
+        operationId,
+        timestamp
+      );
+
+    expect(receipt.status).to.be.eq(1);
+    expect(deployedTokens.length).to.be.eq(1);
+    expect(deployedTokens[0].evmAddress).to.be.eq(calculatedNFTAddress);
+    expect(deployedTokens[0].tvmAddress).to.be.eq(nftCollectionInfo.tvmAddress);
+    expect(outMessages.length).to.be.eq(1);
+    const outMessage = outMessages[0];
+    expect(outMessage.shardsKey).to.be.eq(shardsKey);
+    expect(outMessage.operationId).to.be.eq(operationId);
+    expect(outMessage.callerAddress).to.be.eq(await testNFTProxy.getAddress());
+    expect(outMessage.targetAddress).to.be.eq(tvmWalletCaller);
+    expect(outMessage.payload).to.be.eq("");
+    expect(outMessage.tokensBurned.length).to.be.eq(0);
+    expect(outMessage.tokensLocked.length).to.be.eq(0);
+    expect(outMessage.nftsBurned.length).to.be.eq(1);
+    expect(outMessage.nftsBurned[0].evmAddress).to.be.eq(calculatedNFTAddress);
+    expect(outMessage.nftsBurned[0].tokenId).to.be.eq(nftMintInfo.tokenId);
+    expect(outMessage.nftsLocked.length).to.be.eq(1);
+    expect(outMessage.nftsLocked[0].evmAddress).to.be.eq(
+      nftUnlockInfo.evmAddress
+    );
+    expect(outMessage.nftsLocked[0].tokenId).to.be.eq(nftUnlockInfo.tokenId);
+  });
+});
+```
+
+## Running the Tests
+
+Inside your project directory, simply run:
+
+```bash
+npx hardhat test
+```
+
+Hardhat will compile all contracts and run the test suite. The `@tonappchain/evm-ccl` local test SDK helps emulate bridging logic, ensuring your proxy behaves as expected in a cross-chain scenario.
+
+## Conclusion
+
+By following these steps, you can develop, deploy, and test a TAC Proxy contract that handles cross-chain messages and tokens from TON. Key points include:
+
+- **Inheritance** from `TacProxyV1` or `TacProxyV1Upgradeable` to gain built-in cross-chain functionality and security modifiers.
+- **Function Signatures** must match `functionName(bytes, bytes) external`.
+- **Decoding** the TAC header and your custom arguments to implement your Dapp's logic.
+- **Use `_sendMessageV1(...)`** to return tokens and a message back to TON.
+- **Using `_sendMessageV1(...)`** to bridge both NFTs and ERC‑20 tokens back to TON.
+- **Local Testing** with `@tonappchain/evm-ccl` provides an easy way to validate your cross-chain logic without deploying a full cross-chain setup.
+
+You can customize the logic in your proxy functions for more advanced scenarios such as multi-token bridging, fee collection, or complex operations on the EVM side before returning data to TON. By carefully using the inherited methods from the TAC library and thoroughly testing your contract, you can confidently build cross-chain applications that interact between EVM and TON networks.

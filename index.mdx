@@ -1,0 +1,107 @@
+---
+title: "Introduction"
+description: "Meet the next generation of documentation. AI-native, beautiful out-of-the-box, and built for developers."
+mode: "custom"
+---
+
+export const HeroCard = ({
+  filename,
+  title,
+  description,
+  href,
+  lightModeImage,
+  darkModeImage,
+}) => {
+  return (
+    <a className="group cursor-pointer pb-8" href={href}>
+      <img
+        src={lightModeImage}
+        className="block dark:hidden pointer-events-none group-hover:scale-105 transition-all duration-100"
+      />
+      <img
+        src={darkModeImage}
+        className="block dark:block hidden pointer-events-none group-hover:scale-105 transition-all duration-100"
+      />
+      <h3 className="mt-5 text-gray-900 dark:text-zinc-50 font-medium">
+        {title}
+      </h3>
+      <span className="mt-1.5">{description}</span>
+    </a>
+  );
+};
+
+<div className="relative">
+  <div className="absolute  left-0 right-0">
+    <img
+      src="/images/introduction/bg.png"
+      className="mt-[-10em] block dark:hidden pointer-events-none w-full cover-image"
+    />
+      <img
+      src="/images/introduction/bg-dark.png"
+      className="mt-[-10em] block dark:block hidden pointer-events-none w-full cover-image"
+    />
+
+  </div>
+
+  <div className="relative z-10 px-4 py-16 lg:py-40 lg:pb-24 max-w-5xl mx-auto">
+    <h1 className="text-5xl font-semibold text-center text-gray-900 dark:text-zinc-50 tracking-tight">
+      TAC Documentation
+    </h1>
+
+    <p className="max-w-3xl mx-auto px-4 mt-4 text-md text-center text-gray-500 dark:text-zinc-500">
+      Build hybrid dApps that connect EVM smart contracts to TON's 1 billion users. Deploy your Solidity code and let TON wallet users interact directly - no bridges, no complexity.
+    </p>
+
+    <div className="px-6 lg:px-0 mt-12 lg:mt-24 grid sm:grid-cols-3 gap-x-6 gap-y-4">
+      <HeroCard
+        filename="quick"
+        lightModeImage="https://i.ibb.co/gM5hWq6P/quick.png.png"
+        darkModeImage="https://i.ibb.co/whv2D8qF/quick-dark.png"
+        title="Quickstart"
+        description="Deploy your first working hybrid dApp in under 5 minutes"
+        href="/build/quickstart"
+      />
+      <HeroCard
+        filename="frontend"
+        lightModeImage="https://i.ibb.co/YTbFGpgv/frontend.png"
+        darkModeImage="https://i.ibb.co/ns0Jd1j6/frontend-dark.png"
+        title="Frontend SDK"
+        description="Connect TON wallets to your EVM smart contracts seamlessly"
+        href="/build/sdk/introduction"
+      />
+      <HeroCard
+        filename="contract"
+        lightModeImage="https://i.ibb.co/4RmSqwnp/contract.png"
+        darkModeImage="https://i.ibb.co/270yT4Sj/contract-dark.png"
+        title="Smart Contracts"
+        description="Deploy Solidity contracts and build cross-chain proxy app connections"
+        href="/build/smart-contracts/tools/hardhat"
+      />
+      <HeroCard
+        filename="example"
+        lightModeImage="https://i.ibb.co/DgHBQ5rY/example.png"
+        darkModeImage="https://i.ibb.co/DD9rV6Zy/example-dark.png"
+        title="Examples"
+        description="Clone and customize working hybrid dApps for your project"
+        href="https://github.com/tacbuild/example-dapps"
+      />
+      <HeroCard
+        filename="api"
+        lightModeImage="https://i.ibb.co/C3HLqrtg/api.png"
+        darkModeImage="https://i.ibb.co/4wYw2QWV/api-dark.png"
+        title="API Reference"
+        description="Complete technical documentation and SDK references for TAC developers"
+        href="/api-reference/"
+      />
+      <HeroCard
+        filename="quick"
+         lightModeImage="https://i.ibb.co/gM5hWq6P/quick.png.png"
+        darkModeImage="https://i.ibb.co/whv2D8qF/quick-dark.png"
+        title="Network Info"
+        description="Testnet details, contract addresses, and essential TAC developer tools"
+        href="/build/network-info"
+      />
+    </div>
+
+  </div>
+</div>

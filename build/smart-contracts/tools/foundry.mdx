@@ -1,0 +1,460 @@
+---
+title: Foundry
+description: "Build, test, and deploy Solidity contracts on TAC using Foundry - the fast, portable toolkit"
+---
+
+TAC EVM Layer provides full compatibility with Foundry, the blazing fast development toolkit for Ethereum. Deploy your contracts with lightning speed, run comprehensive Solidity tests, and leverage advanced debugging features.
+
+## Installation & Setup
+
+Foundry works seamlessly with TAC - no special configuration required beyond standard network setup.
+
+<Steps>
+  <Step title="Install Foundry" icon="download">
+    Install Foundry using the official installer:
+    
+    ```bash
+    # Install foundryup
+    curl -L https://foundry.paradigm.xyz | bash
+    
+    # Install the latest version
+    foundryup
+    ```
+    
+    Verify installation:
+    ```bash
+    forge --version
+    cast --version
+    anvil --version
+    ```
+  </Step>
+
+  <Step title="Initialize Project" icon="folder-plus">
+    Create a new Foundry project or initialize in existing directory:
+    
+    ```bash
+    # Create new project
+    forge init my-tac-project
+    cd my-tac-project
+    
+    # Or initialize in existing directory
+    forge init --force
+    ```
+    
+    This creates the standard Foundry structure:
+    ```
+    ├── foundry.toml
+    ├── src/
+    ├── test/
+    ├── script/
+    └── lib/
+    ```
+  </Step>
+
+  <Step title="Configure Networks" icon="settings">
+    Update `foundry.toml` to include TAC networks:
+    
+    ```toml
+    [profile.default]
+    src = "src"
+    out = "out"
+    libs = ["lib"]
+    solc_version = "0.8.19"
+    optimizer = true
+    optimizer_runs = 200
+    via_ir = true
+    
+    # TAC Saint Petersburg Testnet
+    [rpc_endpoints]
+    tac_testnet = "https://spb.rpc.tac.build"
+    tac_mainnet = "https://rpc.tac.build"
+    
+    
+    ```
+  </Step>
+
+  <Step title="Environment Setup" icon="key">
+    Create a `.env` file for your private key:
+    
+    ```bash
+    # .env
+    PRIVATE_KEY=your_private_key_here
+    
+    # Optional: RPC URLs as environment variables
+    TAC_TESTNET_RPC=https://spb.rpc.tac.build
+    TAC_MAINNET_RPC=https://rpc.tac.build
+    ```
+    
+    <Warning>
+      Never commit your private key to version control. Add `.env` to your `.gitignore` file.
+    </Warning>
+  </Step>
+</Steps>
+
+## Contract Development
+
+Foundry excels at rapid iteration and testing. Develop contracts using familiar Solidity patterns with enhanced testing capabilities.
+
+### Basic Contract Example
+
+```solidity
+// src/SimpleStorage.sol
+pragma solidity ^0.8.19;
+
+contract SimpleStorage {
+    uint256 private storedData;
+    
+    event DataStored(uint256 indexed value, address indexed sender);
+    
+    constructor(uint256 _initialValue) {
+        storedData = _initialValue;
+    }
+    
+    function set(uint256 _value) external {
+        storedData = _value;
+        emit DataStored(_value, msg.sender);
+    }
+    
+    function get() external view returns (uint256) {
+        return storedData;
+    }
+}
+```
+
+
+### Install Dependencies
+
+```bash
+# Install OpenZeppelin contracts
+forge install OpenZeppelin/openzeppelin-contracts
+
+
+# Update dependencies
+forge update
+```
+
+## Testing
+
+Foundry's Solidity-based testing provides unmatched speed and power for smart contract testing.
+
+### Comprehensive Test Suite
+
+```solidity
+// test/SimpleStorage.t.sol
+pragma solidity ^0.8.19;
+
+import "forge-std/Test.sol";
+import "../src/SimpleStorage.sol";
+
+contract SimpleStorageTest is Test {
+    SimpleStorage public simpleStorage;
+    
+    event DataStored(uint256 indexed value, address indexed sender);
+    
+    function setUp() public {
+        simpleStorage = new SimpleStorage(42);
+    }
+    
+    function testInitialValue() public {
+        assertEq(simpleStorage.get(), 42);
+    }
+    
+    function testSetValue() public {
+        simpleStorage.set(100);
+        assertEq(simpleStorage.get(), 100);
+    }
+    
+    function testSetValueEmitsEvent() public {
+        vm.expectEmit(true, true, false, true);
+        emit DataStored(200, address(this));
+        
+        simpleStorage.set(200);
+    }
+    
+    function testFuzzSetValue(uint256 _value) public {
+        simpleStorage.set(_value);
+        assertEq(simpleStorage.get(), _value);
+    }
+    
+    function testMultipleUsers() public {
+        address user1 = makeAddr("user1");
+        address user2 = makeAddr("user2");
+        
+        vm.prank(user1);
+        simpleStorage.set(100);
+        
+        vm.prank(user2);
+        simpleStorage.set(200);
+        
+        assertEq(simpleStorage.get(), 200);
+    }
+}
+```
+
+
+### Run Tests
+
+<Tabs>
+  <Tab title="Local Testing">
+    ```bash
+    # Run all tests
+    forge test
+    
+    # Run tests with verbosity
+    forge test -vvv
+    
+    # Run specific test
+    forge test --match-test testSetValue
+    
+    # Run tests for specific contract
+    forge test --match-contract SimpleStorageTest
+    
+    # Run with gas reporting
+    forge test --gas-report
+    ```
+  </Tab>
+  
+  <Tab title="Fork Testing">
+    ```bash
+    # Test against TAC testnet fork
+    forge test --fork-url https://spb.rpc.tac.build
+    
+    # Test at specific block
+    forge test --fork-url https://spb.rpc.tac.build --fork-block-number 1000000
+    
+    # Test with environment variable
+    forge test --fork-url $TAC_TESTNET_RPC
+    ```
+  </Tab>
+</Tabs>
+
+<Tip>
+  Foundry's fuzzing capabilities are excellent for testing edge cases in cross-chain scenarios.
+</Tip>
+
+## Deployment
+
+Deploy contracts efficiently using Foundry's built-in deployment scripts and tools.
+
+### Deployment Script
+
+```solidity
+// script/Deploy.s.sol
+pragma solidity ^0.8.19;
+
+import "forge-std/Script.sol";
+import "../src/SimpleStorage.sol";
+import "../src/TacEnabledContract.sol";
+
+contract DeployScript is Script {
+    function run() external {
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        
+        vm.startBroadcast(deployerPrivateKey);
+        
+        // Deploy SimpleStorage
+        SimpleStorage simpleStorage = new SimpleStorage(42);
+        console.log("SimpleStorage deployed to:", address(simpleStorage));
+        
+        // Deploy TAC-enabled contract
+        address crossChainLayer = 0x742d35Cc6473f70c2Be7d64E5f5D09A6FCd067;
+        TacEnabledContract tacContract = new TacEnabledContract(crossChainLayer);
+        console.log("TacEnabledContract deployed to:", address(tacContract));
+        
+        vm.stopBroadcast();
+        
+        // Log deployment info
+        console.log("Deployment completed on network:", block.chainid);
+        console.log("Deployer address:", vm.addr(deployerPrivateKey));
+        console.log("Block number:", block.number);
+    }
+}
+```
+
+### Deploy Commands
+
+<Tabs>
+  <Tab title="Testnet Deployment">
+    ```bash
+    # Deploy to TAC Saint Petersburg testnet
+    forge script script/Deploy.s.sol:DeployScript \
+      --rpc-url tac_testnet \
+      --broadcast \
+      --verify
+    ```
+    
+    Expected output:
+    ```
+    SimpleStorage deployed to: 0x5FbDB2315678afecb367f032d93F642f64180aa3
+    TacEnabledContract deployed to: 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512
+    Deployment completed on network: 2391
+    ```
+  </Tab>
+  
+  <Tab title="Mainnet Deployment">
+    ```bash
+    # Deploy to TAC mainnet
+    forge script script/Deploy.s.sol:DeployScript \
+      --rpc-url tac_mainnet \
+      --broadcast \
+      --verify
+    ```
+    
+    <Warning>
+      Ensure you have sufficient TAC tokens for gas fees before deploying to mainnet.
+    </Warning>
+  </Tab>
+</Tabs>
+
+### Dry Run Deployment
+
+```bash
+# Simulate deployment without broadcasting
+forge script script/Deploy.s.sol:DeployScript --rpc-url tac_testnet
+
+# Check gas costs
+forge script script/Deploy.s.sol:DeployScript --rpc-url tac_testnet --gas-estimate
+```
+
+
+## Advanced Features
+
+### Build and Compilation
+
+```bash
+# Build contracts
+forge build
+
+# Build with specific Solidity version
+forge build --use 0.8.19
+
+# Build with size optimization
+forge build --sizes
+
+# Generate ABI files
+forge build --extra-output abi
+```
+
+### Testing and Debugging
+
+<Tabs>
+  <Tab title="Coverage">
+    ```bash
+    # Generate coverage report
+    forge coverage
+    
+    # Coverage with specific format
+    forge coverage --report lcov
+    
+    # Coverage for specific test
+    forge coverage --match-test testSetValue
+    ```
+  </Tab>
+  
+  <Tab title="Gas Profiling">
+    ```bash
+    # Gas report for all tests
+    forge test --gas-report
+    
+    # Gas snapshot (track gas changes)
+    forge snapshot
+    
+    # Compare gas usage
+    forge snapshot --diff
+    ```
+  </Tab>
+  
+  <Tab title="Debugging">
+    ```bash
+    # Debug specific test
+    forge test --debug testSetValue
+    
+    # Debug with maximum verbosity
+    forge test -vvvv --match-test testSetValue
+    
+    # Trace contract calls
+    forge test --trace --match-test testSetValue
+    ```
+  </Tab>
+</Tabs>
+
+### Cast Commands for TAC
+
+```bash
+# Get block information
+cast block-number --rpc-url https://spb.rpc.tac.build
+
+# Get account balance
+cast balance 0x742d35Cc6473... --rpc-url https://spb.rpc.tac.build
+
+# Call contract function
+cast call CONTRACT_ADDRESS "get()" --rpc-url https://spb.rpc.tac.build
+
+# Send transaction
+cast send CONTRACT_ADDRESS "set(uint256)" 100 \
+  --private-key $PRIVATE_KEY \
+  --rpc-url https://spb.rpc.tac.build
+
+# Estimate gas
+cast estimate CONTRACT_ADDRESS "set(uint256)" 100 \
+  --rpc-url https://spb.rpc.tac.build
+```
+
+## Configuration Optimization
+
+## Common Issues & Solutions
+
+<AccordionGroup>
+  <Accordion title="Build Failures" icon="hammer">
+    **Problem**: Compilation errors or dependency issues
+    
+    **Solutions**:
+    - Update Foundry: `foundryup`
+    - Clean build artifacts: `forge clean`
+    - Reinstall dependencies: `forge install --no-commit`
+    - Check Solidity version compatibility
+    
+    ```bash
+    # Reset and rebuild
+    forge clean
+    forge build --force
+    ```
+  </Accordion>
+  
+  <Accordion title="RPC Connection Issues" icon="wifi-off">
+    **Problem**: Network timeouts or connection failures
+    
+    **Solutions**:
+    - Verify RPC URLs in foundry.toml
+    - Use environment variables for RPC endpoints
+    - Increase timeout settings
+    
+    ```toml
+    [rpc_endpoints]
+    tac_testnet = "${TAC_TESTNET_RPC}"
+    ```
+  </Accordion>
+  
+
+</AccordionGroup>
+
+## Next Steps
+
+With Foundry configured for TAC, you have access to one of the most powerful smart contract development environments available.
+
+<CardGroup cols={2}>
+  <Card
+    title="TAC Proxy Development"
+    icon="arrow-left-right"
+    href="/build/smart-contracts/develop-tac-proxy"
+  >
+    Build contracts that receive cross-chain messages from TON
+  </Card>
+  <Card
+    title="Contract Deployment"
+    icon="rocket"
+    href="/build/smart-contracts/deploy-to-tac"
+  >
+    Complete guide to deploying contracts on TAC networks
+  </Card>
+</CardGroup>

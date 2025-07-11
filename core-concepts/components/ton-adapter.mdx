@@ -1,0 +1,285 @@
+---
+title: TON Adapter
+description: "The distributed messaging system that securely connects TON and TAC EVM through sequencer consensus"
+---
+
+The TON Adapter is the cross-chain messaging backbone of TAC, enabling secure communication between TON and TAC EVM Layer. Unlike traditional bridges that simply move assets, the TON Adapter is designed specifically for application-level interactions, allowing TON users to execute complex operations on EVM smart contracts seamlessly.
+
+<Info>
+  **Current Network Status**: The sequencer network is currently distributed but
+  not decentralized. Full decentralization is on the roadmap as the network
+  matures.
+</Info>
+
+## Core Purpose
+
+The TON Adapter solves a fundamental challenge in cross-chain interaction: how to securely execute smart contract calls across different blockchain architectures while maintaining user experience that feels native to both sides.
+
+<Frame caption="TON Adapter routing messages between TON and TAC EVM">
+  <img
+    src="/images/ton-adapter-flow.png"
+    alt="TON Adapter message flow diagram"
+  />
+</Frame>
+
+## Message Structure
+
+Every cross-chain operation begins with a structured message that contains all necessary information for secure execution:
+
+```javascript
+{
+  timestamp: 1640995200,           // TON blockchain timestamp
+  target: "0x742d35Cc6473...",     // Target smart contract address
+  methodName: "swapTokens(bytes,bytes)", // Method signature
+  arguments: "0x1234...",          // Encoded method parameters
+  caller: "EQAbc123...",          // Original TON caller address
+  mintTokens: [...],              // Tokens to mint on TAC EVM
+  unlockTokens: [...]             // Tokens to unlock from previous locks
+}
+```
+
+This message structure ensures that sequencers have all the information needed to validate the operation and execute it correctly on the target chain.
+
+## Sequencer Network
+
+The security and reliability of the TON Adapter depends on a distributed network of sequencers that validate and process cross-chain messages.
+
+### Individual Sequencer Operations
+
+Each sequencer in the network operates independently while following the same validation protocols:
+
+- **Event Monitoring**: Sequencers continuously monitor both TON and TAC EVM for relevant events. When a user initiates a cross-chain transaction, multiple sequencers detect the event simultaneously.
+
+- **Local Validation**: Before participating in consensus, each sequencer validates the transaction locally. This includes verifying asset transfers match message parameters and ensuring the requesting user has sufficient balances.
+
+- **Database Storage**: Validated events are stored in each sequencer's local database, creating a distributed record of all cross-chain activity.
+
+- **Merkle Tree Formation**: At regular intervals determined by network parameters, sequencers compile their validated transactions into Merkle trees, creating cryptographic proofs of transaction inclusion.
+
+### Sequencer Groups
+
+The network organizes sequencers into groups to enhance security through redundancy and consensus requirements.
+
+<AccordionGroup>
+  <Accordion title="Group Formation" icon="users">
+
+    Sequencer groups are formed through governance processes rather than
+    permissionless joining. Each group represents a trusted entity that can run
+    multiple sequencer nodes for redundancy.
+
+    Groups might represent established protocols, infrastructure providers, or other stakeholders with strong
+    incentives to maintain network security and reliability.
+
+  </Accordion>
+
+<Accordion title="Internal Consensus" icon="handshake">
+
+Within each group, sequencers must reach 3/5 agreement before submitting their
+Merkle tree to the network. This internal consensus requirement prevents
+individual sequencer failures or attacks from affecting the group's
+participation.
+
+Groups submit their root hashes to the SequencerGroup smart contract, where the system verifies the submitting wallet's authorization and
+tracks the signature count.
+
+</Accordion>
+
+  <Accordion title="Economic Requirements" icon="coins">
+
+    Each group must maintain collateral above a minimum threshold set by DAO
+    governance. While collateral size doesn't influence voting power, it affects
+    profitability and provides economic security.
+
+    Higher collateral demonstrates commitment to network security and increases potential rewards, creating
+    natural incentives for groups to stake substantial amounts.
+
+  </Accordion>
+</AccordionGroup>
+
+### Network-Wide Consensus
+
+Cross-chain messages only execute after achieving consensus across multiple sequencer groups:
+
+- **Cross-Group Validation**: Different groups must submit identical Merkle trees for the same set of transactions. This requirement prevents any single group from manipulating the message flow.
+
+- **Consensus Threshold**: The network requires agreement from enough groups to ensure security. The exact threshold is configurable through governance to balance security with efficiency.
+
+- **Execution Triggers**: Once sufficient groups agree on a Merkle tree, the transactions within that tree become eligible for execution on the target chain.
+
+## Asset Management
+
+The TON Adapter handles two primary types of asset operations as tokens move between chains.
+
+### Lock and Mint Operations
+
+When assets move from TON to TAC EVM, the TON Adapter employs a lock-and-mint mechanism:
+
+- **Asset Locking**: TON native tokens are locked in the TON Adapter contracts on the TON side. This prevents double-spending while maintaining the original asset's existence.
+
+- **Metadata Capture**: The system captures essential token information including name, symbol, decimals, and the original TON contract address.
+
+- **EVM Token Deployment**: If this is the first time a particular TON token crosses to TAC EVM, the system automatically deploys a corresponding ERC-20 contract.
+
+- **Token Minting**: The equivalent amount of tokens is minted on the TAC EVM side, maintaining supply consistency across both chains.
+
+### Burn and Release Operations
+
+The reverse process handles assets moving from TAC EVM back to TON:
+
+- **Asset Burning**: ERC-20 tokens on TAC EVM are burned, removing them from circulation on that side.
+
+- **Validation**: Sequencers verify the burn operation and confirm the requesting user's authorization.
+
+- **Asset Release**: The corresponding locked tokens are released back to the user's TON wallet.
+
+## Epoch-Based Processing
+
+The TON Adapter organizes transaction processing into time-based epochs to ensure orderly and secure message handling.
+
+### Epoch Calculation
+
+Each epoch is calculated using a deterministic formula:
+
+```javascript
+EpochId = Math.floor((currentTime - protocolDeployTime) / epochDuration);
+```
+
+This creates predictable time windows during which transactions are collected and processed together.
+
+### Processing Windows
+
+Transactions are processed within specific timeframes:
+
+```javascript
+const epochStart = protocolDeployTime + EpochId * epochDuration;
+const epochEnd = protocolDeployTime + (EpochId + 1) * epochDuration;
+// Messages processed between epochStart and epochEnd
+```
+
+This time-bounded approach prevents timing attacks and ensures all sequencers are working with the same set of transactions.
+
+## Security Mechanisms
+
+The TON Adapter implements multiple layers of security to protect user funds and prevent malicious activity.
+
+### Message Validation
+
+- **Asset Verification**: Sequencers must verify that actual token transfers match the amounts specified in cross-chain messages. This prevents attempts to claim false transfer amounts.
+
+- **Cryptographic Proofs**: All transactions include Merkle proofs that allow independent verification of inclusion in the agreed-upon transaction set.
+
+- **Consensus Requirements**: Multiple independent groups must agree on transaction validity before execution proceeds.
+
+### Economic Security
+
+- **Collateral Requirements**: Sequencer groups must stake significant collateral, creating financial incentives for honest behavior.
+
+- **Slashing Mechanisms**: Groups that submit incorrect proofs or behave maliciously face penalties including partial collateral forfeiture.
+
+- **Reward Distribution**: Performance-based rewards encourage reliable operation and continued participation in network security.
+
+### Failure Protection
+
+<Warning>
+  When cross-chain transactions fail, the TON Adapter automatically protects
+  user assets through rollback mechanisms.
+</Warning>
+
+- **Automatic Rollbacks**: If a transaction fails on the target chain, assets are automatically returned to the sender rather than being lost.
+
+- **Failed Transaction Collection**: Failed transactions are collected into special Merkle trees and processed through the same consensus mechanism to ensure proper resolution.
+
+- **Timeout Protection**: Transactions that don't complete within specified time windows are automatically rolled back to prevent funds from being permanently locked.
+
+## Smart Contract Integration
+
+The TON Adapter interfaces with smart contracts on both chains through standardized protocols.
+
+### CrossChainLayer Contract
+
+On TAC EVM, the CrossChainLayer contract serves as the main interface:
+
+```solidity
+interface ICrossChainLayer {
+    function receiveMessage(
+        bytes32 messageHash,
+        bytes calldata merkleProof,
+        MessageData calldata message
+    ) external;
+
+    function sendMessage(
+        OutMessageV1 calldata outMessage
+    ) external;
+}
+```
+
+This contract validates Merkle proofs, manages asset operations, and routes messages to target applications.
+
+### Message Execution Process
+
+When executing cross-chain messages:
+
+- **Proof Validation**: The CrossChainLayer contract verifies that the message is included in a consensus-approved Merkle tree.
+
+- **Asset Operations**: Any required token minting or unlocking operations are performed before calling the target contract.
+
+- **Contract Invocation**: The target smart contract method is called with the decoded parameters from the cross-chain message.
+
+- **Result Handling**: Any return values or additional cross-chain messages are processed through the same secure routing system.
+
+## Performance Characteristics
+
+The TON Adapter is designed to balance security with reasonable performance for application-level interactions.
+
+<Tabs>
+  <Tab title="Latency">
+    Cross-chain transactions typically complete within minutes rather than
+    hours. The exact timing depends on epoch duration settings and the number of
+    sequencer groups participating in consensus. 
+    
+    This latency is acceptable for most application use cases.
+  </Tab>
+
+<Tab title="Throughput">
+
+The system can handle hundreds of cross-chain messages per epoch, with
+throughput scaling based on epoch duration and the complexity of individual
+transactions.
+
+Most hybrid dApp use cases generate relatively low transactionvolumes compared to high-frequency trading, making current
+throughput sufficient for expected demand.
+
+</Tab>
+
+  <Tab title="Cost">
+
+    Cross-chain operations require gas fees on both chains plus sequencer fees
+    for the messaging service. However, the cost remains reasonable for
+    meaningful transactions like token swaps or DeFi operations.
+
+    The distributed nature of sequencer operations helps keep fees competitive while maintaining
+    security guarantees.
+
+  </Tab>
+</Tabs>
+
+## What's Next?
+
+Understanding the TON Adapter's role in message routing helps you build more effective hybrid dApps and proxy contracts.
+
+<CardGroup cols={2}>
+  <Card
+    title="Proxy Apps"
+    icon="code"
+    href="/core-concepts/components/proxy-apps"
+  >
+    Learn how smart contracts interface with the TON Adapter
+  </Card>
+  <Card
+    title="Cross-Chain Messaging"
+    icon="arrow-left-right"
+    href="/core-concepts/cross-chain-operations/cross-chain-messaging"
+  >
+    Dive deeper into message structure and validation
+  </Card>
+</CardGroup>

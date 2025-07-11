@@ -1,0 +1,180 @@
+---
+title: What is TAC
+description: "TAC bridges TON's 1 billion users with EVM's application ecosystem"
+---
+
+TAC is an **EVM for Telegram**: a Layer 1 with a TON-specific CrossChain Layer that connects Ethereum dApps and developers with Telegram's users without exposing users to bridges, extra wallets, or wrapped assets. TAC eliminates the gap between TON's billion-user reach and EVM's programmability through **Hybrid dApps** - EVM dApps natively accessible by any TON wallet holder.
+
+<Frame caption="TAC creates a bridge between TON users and EVM applications">
+  <img
+    src="/images/architecture-1.png"
+    alt="TAC Architecture showing connection between TON and EVM"
+  />
+</Frame>
+
+## The Problem TAC Solves
+
+<Columns cols={2}>
+  <Card title="For EVM Developers" icon="code">
+  <br/>
+    **Challenge**: Reaching TON's billion users requires rebuilding entire
+    applications in FunC, TON's native language. <br /><br />
+    
+    **TAC Solution**: Deploy
+    existing Solidity contracts as-is and make them accessible to TON users
+  </Card>
+
+  <Card title="For TON Users" icon="users">
+  <br/>
+    **Challenge**: Limited access to DeFi, gaming, and other EVM applications
+    that dominate the blockchain space. <br /><br />
+    **TAC Solution**: Use any EVM application directly from TON wallets without bridges or multiple wallets
+  </Card>
+</Columns>
+
+## How TAC Works
+
+TAC operates through three core innovations that work together seamlessly:
+
+<Accordion title="Layer 1 EVM Blockchain" >
+TAC EVM Layer is a CosmosSDK-based blockchain that runs unmodified Solidity contracts and achieves **≈2-second finality** through dPoS. This means:
+
+- Deploy existing Solidity contracts without modifications
+- Use familiar tools like Hardhat, Remix, and MetaMask  
+- Built on proven Cosmos SDK with Tendermint consensus
+- Secured by delegated Proof of Stake with economic incentives
+- **Future Enhancement**: Babylon Bitcoin restaking for additional economic security
+
+The EVM layer handles all application logic and state, while the TON Adapter manages cross-chain communication.
+
+</Accordion>
+
+<Accordion title="TON Adapter" >
+A distributed network of **sequencers** that securely routes messages between TON and TAC EVM:
+
+- **Validation**: Sequencers verify all transactions and asset transfers
+- **Consensus**: 3/5 sequencer consensus with BFT guarantees
+- **Security**: Multiple validation layers prevent double-spending and fraud
+- **Epochs**: Time-based processing ensures orderly message handling
+
+<Info>
+  **Current Network Status**: The sequencer network is currently distributed but not decentralized. Full decentralization is on the roadmap as the network matures.
+</Info>
+
+This isn't a traditional bridge — it's a purpose-built messaging system designed for hybrid applications.
+
+</Accordion>
+
+<Accordion title="Proxy Smart Contracts">
+Specialized contracts that make cross-chain interaction feel native:
+
+**On TON**: SDK handles proxy logic automatically  
+**On EVM**: Solidity contracts receive and process cross-chain messages
+
+When a TON user interacts with an EVM app, proxy contracts handle all the complex routing, asset management, and message formatting behind the scenes.
+
+</Accordion>
+
+## Key Benefits
+
+<Tabs>
+  <Tab title="For Developers">
+    ### Deploy Once, Reach Billions
+    
+    - **No code rewrites**: Deploy existing Solidity contracts directly
+    - **Familiar tooling**: Use Hardhat, Truffle, Remix, and other EVM tools 
+    - **Hybrid dApp conversion**: Every deployment becomes a Hybrid dApp accessible from TON
+    - **Cross-chain SDK**: Simple JavaScript library handles TON integration
+    - **Telegram MiniApps**: Bring EVM-powered logic directly inside Telegram
+    
+    <Tip>The world's largest developer community meets the largest user base</Tip>
+  </Tab>
+
+<Tab title="For Users">
+  ### Native TON Experience
+  - **One wallet**: Use your TON wallet for everything
+  - **No bridges**: Assets move automatically behind the scenes
+  - **Familiar UX**: Apps feel native to TON environment
+  - **Telegram integration**: Access apps directly through Telegram Mini Apps
+
+  <Check>
+    TON users get access to DeFi, gaming, NFTs, and more without learning new workflows
+  </Check>
+</Tab>
+
+  <Tab title="For Ecosystem">
+    ### Unified Liquidity - **Cross-chain composability**: 
+    
+    TON and EVM applications can interact 
+    - **Shared liquidity**: Tokens flow freely between ecosystems 
+    - **Network effects**: More users attract more developers and vice versa 
+    - **Innovation acceleration**: Best of both worlds drives faster development
+  </Tab>
+</Tabs>
+
+## Transaction Flow Example
+
+Here's what happens when a TON user swaps tokens on an EVM DEX through TAC's hybrid dApp system:
+
+<Steps>
+  <Step title="User Action" icon="user">
+    User opens a DEX interface and connects their TON wallet. They select tokens
+    to swap and approve the transaction.
+  </Step>
+
+<Step title="Proxy Processing" icon="network">
+  The TON proxy locks user assets and creates a formatted message containing
+  swap parameters and destination details.
+</Step>
+
+<Step title="Sequencer Validation" icon="shield-check">
+  Sequencer network validates the transaction, forms Merkle trees, and reaches
+  consensus across multiple groups.
+</Step>
+
+<Step title="Executor Selection & EVM Execution" icon="play">
+  A designated executor submits Merkle proofs to TAC EVM Layer, triggers asset
+  minting/unlocking, and executes the swap on the target DEX contract via proxy.
+</Step>
+
+  <Step title="Result Delivery" icon="check">
+    Swap completes and new tokens are sent back to the user's TON wallet through
+    the same secure process.
+  </Step>
+</Steps>
+
+## What Makes TAC Different
+
+<Warning>
+  TAC is not a cross-chain workaround—it is a native execution path between
+  two ecosystems that were never meant to connect. By removing barriers instead
+  of building over them, TAC aligns UX, liquidity, and developer incentives.
+</Warning>
+
+Unlike traditional bridges that move assets between existing chains, TAC creates **hybrid applications** that natively serve both ecosystems. Users don't "bridge to another chain"—they use applications that happen to run on EVM but feel completely native to TON.
+
+This fundamental difference enables:
+
+- **Seamless UX**: No wallet switching or manual bridging
+- **Unified liquidity**: Assets flow where they're needed most
+- **Developer efficiency**: Build once, serve both ecosystems
+- **Network effects**: Growth in one ecosystem benefits the other
+
+## Ready to Explore?
+
+<CardGroup cols={2}>
+  <Card
+    title="Architecture Deep Dive"
+    icon="chart-gantt"
+    href="/core-concepts/overview/architecture"
+  >
+    Understand how TAC's components work together
+  </Card>
+  <Card
+    title="Hybrid dApps"
+    icon="blocks"
+    href="/core-concepts/overview/hybrid-dapps"
+  >
+    Learn what makes applications "hybrid" and why it matters
+  </Card>
+</CardGroup>

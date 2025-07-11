@@ -1,0 +1,390 @@
+---
+title: Hybrid dApps
+description: "Applications that combine EVM smart contract logic with native TON user experience through TAC"
+---
+
+Hybrid dApps are applications that run their core logic on TAC's EVM Layer while providing a completely native experience for TON users. Unlike traditional cross-chain applications that require users to switch networks or manage multiple wallets, hybrid dApps feel like native TON applications while leveraging the full power of EVM's mature ecosystem.
+
+## What Makes an App "Hybrid"
+
+Traditional dApps exist entirely within one ecosystem. Hybrid dApps span two ecosystems seamlessly:
+
+<Columns cols={2}>
+  <Card title="Backend (EVM Side)" icon="blocks">
+    - Solidity contracts on TAC EVM Layer
+    - Complex DeFi primitives and composability
+    - Mature tooling and battle-tested code
+    - Rich ecosystem of integrations
+
+  </Card>
+
+  <Card title="Frontend (TON Side)" icon="laptop">
+    - TON wallet integration
+    - Telegram Mini App interface
+    - Native asset handling
+    - Familiar TON user flows
+
+  </Card>
+</Columns>
+
+<Note>
+  Users interact with hybrid dApps exactly like they would with native TON apps,
+  they never know there's EVM logic running behind the scenes.
+</Note>
+
+## The Hybrid dApp Advantage
+
+Hybrid dApps unlock a new paradigm where users and developers enjoy the strengths of both TON and EVM ecosystems—without compromise.
+
+### For Users: Native Experience, Expanded Capabilities
+
+<Tabs>
+  <Tab title="Seamless Interaction">
+    **No learning curve or new tools:** 
+    
+    - Use existing TON wallet (Tonkeeper, Tonhub, etc.) 
+    - Access through familiar Telegram Mini Apps 
+    - Transact with TON tokens directly 
+    - No network switching or bridge operations
+    <Check>
+      Users get access to sophisticated DeFi without leaving their comfort zone
+    </Check>
+  </Tab>
+
+<Tab title="Enhanced Capabilities">
+  **Access to EVM's rich ecosystem:** 
+  
+  - Advanced DeFi protocols (AMMs, lending, derivatives) 
+  - Complex smart contract interactions 
+  - Composable protocols and yield strategies 
+  - Battle-tested security models
+
+  <Tip>
+    TON users can now access applications that would be impossible to build
+    natively in FunC
+  </Tip>
+</Tab>
+
+  <Tab title="Unified Assets">
+    **Your tokens work everywhere:** 
+    
+    - TON tokens automatically work in EVM applications 
+    - No manual bridging or wrapped token management 
+    - Unified liquidity across both ecosystems 
+    - Seamless asset flow based on user intent
+    
+  </Tab>
+</Tabs>
+
+### For Developers: Best of Both Worlds
+
+<AccordionGroup>
+  <Accordion title="Leverage Existing Code" icon="recycle">
+
+    **Deploy proven smart contracts without rewrites:**
+
+    - Use existing Solidity contracts as-is
+    - Import battle-tested DeFi primitives
+     - Leverage OpenZeppelin libraries and standards
+     - Maintain existing security audits and testing
+
+     No need to rebuild complex logic in FunC or learn new development paradigms.
+
+  </Accordion>
+
+<Accordion title="Reach Massive Audience" icon="users">
+
+**Access TON's 1 billion+ user base:**
+
+- Deploy once, serve both EVM and TON users
+- Leverage Telegram's distribution network
+- Tap into TON's growing DeFi ecosystem
+- Benefit from TON's fast transaction speeds
+
+Expand your user base without building separate applications.
+
+</Accordion>
+
+  <Accordion title="Simplified Development" icon="code">
+    **Focus on application logic, not infrastructure:** 
+    
+    - TAC SDK handles all cross-chain complexity 
+    - Automatic proxy contract generation for common patterns 
+    - Standard Ethereum tooling continues to work 
+    - Rich documentation and developer resources 
+    
+    Build sophisticated applications without becoming a cross-chain expert.
+
+  </Accordion>
+</AccordionGroup>
+
+## Hybrid dApp Architecture
+
+Here's how the different components work together to create a seamless hybrid experience:
+
+<Steps>
+  <Step title="User Interface" icon="laptop">
+
+    **Native TON experience:**
+
+    - Telegram Mini App or web interface
+    - TON wallet connection (TON Connect protocol)
+    - Familiar TON UX patterns and flows
+    - Real-time transaction status updates
+
+  </Step>
+
+<Step title="Frontend Logic" icon="code">
+
+**TAC SDK integration:**
+
+- JavaScript/TypeScript SDK handles cross-chain messaging
+- Automatic transaction routing and status tracking
+- Asset bridging management
+- Error handling and recovery
+
+</Step>
+
+<Step title="Cross-Chain Layer" icon="arrow-left-right">
+
+**TAC infrastructure:**
+
+- TON Adapter handles secure message routing
+- Automatic asset locking/unlocking operations
+- Sequencer network validates all transactions
+- Proxy contracts translate between ecosystems
+
+</Step>
+
+  <Step title="Application Logic" icon="brain">
+
+    **EVM smart contracts:**
+
+    - Core business logic runs on TAC EVM Layer
+    - Complex DeFi operations and state management
+    - Integration with other EVM protocols
+    - Standard Solidity development patterns
+
+  </Step>
+</Steps>
+
+## Development Patterns
+
+Hybrid dApps on TAC are designed to feel native to both TON and EVM users, blending familiar interfaces with powerful cross-chain capabilities.
+
+By leveraging TAC's architecture, developers can build applications that seamlessly connect users, assets, and protocols across ecosystems—without compromising on user experience or security. Below are the key patterns and best practices for building truly hybrid applications.
+
+### Frontend Architecture
+
+Most hybrid dApps follow a common frontend pattern:
+
+```javascript
+// 1. Initialize TAC SDK
+import { TacSdk, Network } from "@tonappchain/sdk";
+const tacSdk = await TacSdk.create({ network: Network.TESTNET });
+
+// 2. Connect TON wallet
+import { TonConnectUI } from "@tonconnect/ui";
+const tonConnect = new TonConnectUI({
+  manifestUrl: "https://yourapp.com/tonconnect-manifest.json",
+});
+
+// 3. Create cross-chain transactions
+const transactionLinker = await tacSdk.sendCrossChainTransaction(
+  {
+    evmTargetAddress: "0xYourContract",
+    methodName: "yourMethod(bytes,bytes)",
+    encodedParameters: encodedParams,
+  },
+  sender,
+  assets
+);
+
+// 4. Track transaction status
+const tracker = new OperationTracker(Network.TESTNET);
+const status = await tracker.getOperationStatus(operationId);
+```
+
+### Smart Contract Architecture
+
+EVM-side contracts follow standard patterns with TAC-specific proxy integration:
+
+```solidity
+pragma solidity ^0.8.0;
+
+import "@tac/proxy-contracts/TacProxyV1.sol";
+
+contract HybridDeFiProtocol is TacProxyV1 {
+    constructor(address _crossChainLayer) TacProxyV1(_crossChainLayer) {}
+
+    // This function receives cross-chain calls from TON
+    function executeSwap(bytes calldata tacHeader, bytes calldata args)
+        external
+        _onlyCrossChainLayer
+    {
+        // Decode TAC header to get user info
+        TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
+
+        // Decode your application-specific arguments
+        SwapParams memory params = abi.decode(args, (SwapParams));
+
+        // Execute your application logic
+        performSwap(params);
+
+        // Optionally send results back to TON
+        _sendMessageV1(createReturnMessage(header, results));
+    }
+}
+```
+
+## User Journey Example
+
+Let's follow a TON user interacting with a hybrid DEX:
+
+<Steps>
+  <Step title="Discovery" icon="search">
+    User discovers the DEX through a Telegram Mini App or web interface. The app
+    looks and feels like a native TON application.
+  </Step>
+
+<Step title="Connection" icon="plug">
+  User connects their TON wallet (Tonkeeper) using standard TON Connect. No new
+  wallets or seed phrases required.
+</Step>
+
+<Step title="Asset Selection" icon="coins">
+  User selects TON tokens to swap. The interface shows familiar token names and
+  balances from their TON wallet.
+</Step>
+
+<Step title="Transaction" icon="arrow-right-left">
+  User approves the swap in their TON wallet. Behind the scenes, TAC locks their
+  tokens and sends a message to the EVM DEX contract.
+</Step>
+
+<Step title="Execution" icon="settings">
+  The DEX executes the swap using sophisticated AMM logic on the EVM side. The
+  user sees real-time status updates in the interface.
+</Step>
+
+  <Step title="Completion" icon="check">
+    New tokens appear in the user's TON wallet automatically. The entire process
+    feels like a native TON transaction.
+  </Step>
+</Steps>
+
+<Check>
+  The user never knew they were interacting with an EVM application - it felt
+  completely native to TON.
+</Check>
+
+## Best Practices for Hybrid dApps
+
+<AccordionGroup>
+  <Accordion title="User Experience Design" icon="paintbrush">
+
+    **Make it feel native to TON:**
+
+    - Use TON-style UI patterns and terminology
+    - Implement proper loading states for cross-chain operations
+    - Provide clear transaction status updates
+    - Handle errors gracefully with user-friendly messages
+    - Optimize for Telegram Mini App constraints
+
+  </Accordion>
+
+<Accordion title="Performance Optimization" icon="rocket">
+
+**Minimize cross-chain latency:**
+
+- Batch operations when possible to reduce round trips
+- Use optimistic UI updates where safe
+- Implement proper caching for frequently accessed data
+- Pre-validate transactions on the frontend
+- Provide immediate feedback for user actions
+
+</Accordion>
+
+<Accordion title="Security Considerations" icon="shield-check">
+
+**Protect users across both chains:**
+
+- Validate all inputs on both frontend and smart contract
+- Implement proper slippage protection for DeFi operations
+- Use secure proxy contract patterns
+- Handle failed transactions gracefully
+- Audit both frontend and smart contract code
+
+</Accordion>
+
+  <Accordion title="Asset Management" icon="wallet">
+    **Seamless token handling:** 
+    
+    - Map TON tokens to EVM equivalents clearly 
+    - Handle decimal differences between chains (9 vs 18) 
+    - Provide clear asset conversion information 
+    - Implement proper error handling for insufficient balances 
+    - Show unified balance views when possible
+    
+  </Accordion>
+</AccordionGroup>
+
+## Common Challenges & Solutions
+
+<Warning>
+  Building hybrid dApps comes with unique challenges, but TAC provides solutions
+  for each one.
+</Warning>
+
+<Columns cols={2}>
+  <Card title="Cross-Chain Latency" icon="clock">
+    **Challenge**: Cross-chain operations take longer than single-chain
+    transactions
+    **Solution**: Use optimistic UI updates and clear progress
+    indicators to maintain responsive UX
+  </Card>
+
+  <Card title="Asset Complexity" icon="coins">
+    **Challenge**: Managing token mappings and decimal differences between
+    chains 
+    **Solution**: TAC SDK handles token mapping automatically, with
+    helpers for decimal conversion
+  </Card>
+</Columns>
+
+<Columns cols={2}>
+  <Card title="Error Handling" icon="triangle-alert">
+    **Challenge**: Failures can occur on either chain with different error types
+    
+    **Solution**: Comprehensive error handling in TAC SDK with automatic
+    rollback protection
+  </Card>
+
+  <Card title="Testing Complexity" icon="test-tube-diagonal">
+    **Challenge**: Testing requires simulating both TON and EVM environments
+    
+    **Solution**: TAC provides testing utilities and local development
+    environments
+  </Card>
+</Columns>
+
+## Ready to Build?
+
+Hybrid dApps represent the future of cross-chain applications - combining the best of both ecosystems while hiding complexity from users.
+
+<CardGroup cols={2}>
+  <Card
+    title="TAC SDK Guide"
+    icon="code"
+    href="/core-concepts/components/tac-sdk"
+  >
+    Learn how the TAC SDK enables hybrid dApp development
+  </Card>
+  <Card
+    title="Proxy Contracts"
+    icon="arrow-left-right"
+    href="/core-concepts/components/proxy-apps"
+  >
+    Understand how proxy contracts bridge TON and EVM
+  </Card>
+</CardGroup>

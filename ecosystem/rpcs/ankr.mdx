@@ -1,0 +1,73 @@
+Ankr is a leading provider of blockchain infrastructure, offering a range of services including RPC nodes, indexing, and analytics.
+
+## TAC Network RPC Infrastructure
+
+TAC offers full EVM compatibility through its Layer 1 blockchain. For reliable development and production environments, we've partnered with Ankr to provide enterprise-grade RPC infrastructure.
+
+## Official Ankr RPC Endpoints
+
+As our main RPC provider, Ankr delivers high-availability infrastructure specifically optimized for TAC Network:
+
+- TAC Turin Testnet REST: https://www.ankr.com/rpc/tac/tac-turin-rest/
+- JSON-RPC Endpoint: https://turin.rpc.tac.build
+
+## Integration Steps
+
+<Steps>
+<Step title="Choose Your Integration Method">
+
+The TAC Network supports multiple access methods:
+
+- EVM JSON-RPC: For standard Ethereum-compatible development
+- Tendermint: Direct access to the consensus layer
+- Cosmos REST/gRPC: For Cosmos SDK-based interactions
+
+</Step>
+
+<Step title="Configure Your Application">
+
+For EVM application integration using Ankr's RPC services:
+
+```
+// Example configuration with ethers.js
+import { ethers } from 'ethers';
+
+// Connect via Ankr's RPC endpoint
+const provider = new ethers.providers.JsonRpcProvider('https://turin.rpc.tac.build');
+
+// Test connection
+async function checkConnection() {
+  const blockNumber = await provider.getBlockNumber();
+  console.log(`Connected to TAC network at block: ${blockNumber}`);
+}
+```
+
+Or for deployment on TAC L1 using Foundry
+
+```
+forge create --rpc-url https://turin.rpc.tac.build --private-key YOUR_PRIVATE_KEY_HERE YOUR_CONTRACT --legacy --broadcast
+```
+
+</Step>
+</Steps>
+
+## Network Parameters
+
+TAC Network uses the following parameters:
+
+- Chain ID: 2390 (Turin Testnet)
+- RPC URL: https://turin.rpc.tac.build
+- FeeSchema: EIP-1559
+- Explorer URL: https://turin.explorer.tac.build
+- Currency Symbol: TAC
+- Blocktime: 3 seconds
+
+## Testing Your Integration
+
+Before production deployment:
+
+- Get testnet tokens from the [TAC Faucet](https://turin.faucet.tac.build)
+- Test transactions through Ankr's RPC endpoints
+- Monitor performance via the Explorer
+
+For enterprise-level support or custom RPC requirements, contact the TAC team directly.

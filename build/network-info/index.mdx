@@ -1,0 +1,133 @@
+---
+title: Network Details
+description: "TAC network information including RPC endpoints, explorers, and chain parameters"
+---
+
+This page is updated regularly as the network information is updated.
+
+TAC EVM is a standard EVM chain based on Cosmos with native EVM integration. These are the chain parameters for TAC networks:
+
+<Warning>
+  TAC Turin is going to be deprecated soon. Please use Saint Petersburg Testnet
+  for your nodes and applications.
+</Warning>
+
+## Network Configuration
+
+<Tabs>
+  <Tab title="Mainnet">
+    **TAC Mainnet** - Production network for live applications
+    
+    | Parameter | Value |
+    |-----------|--------|
+    | **Network Name** | TAC Mainnet |
+    | **RPC Endpoint** | `https://rpc.tac.build` |
+    | **Chain ID** | `239` |
+    | **Currency Symbol** | TAC |
+    | **Block Explorer** | [https://explorer.tac.build](https://explorer.tac.build) |
+    | **Fee Schema** | EIP-1559 |
+    
+    ### Quick Add to Wallet
+    
+    ```json
+    {
+      "chainId": "0xEF",
+      "chainName": "TAC Mainnet",
+      "rpcUrls": ["https://rpc.tac.build"],
+      "nativeCurrency": {
+        "name": "TAC",
+        "symbol": "TAC",
+        "decimals": 18
+      },
+      "blockExplorerUrls": ["https://explorer.tac.build"]
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Saint Petersburg Testnet">
+    **Saint Petersburg Testnet** - Current recommended testnet for development
+    
+    | Parameter | Value |
+    |-----------|--------|
+    | **Network Name** | TAC Saint Petersburg Testnet |
+    | **RPC Endpoint** | `https://spb.rpc.tac.build` |
+    | **Chain ID** | `2391` |
+    | **Currency Symbol** | TAC |
+    | **Block Explorer** | [https://spb.explorer.tac.build](https://spb.explorer.tac.build) |
+    | **Faucet** | [https://spb.faucet.tac.build](https://spb.faucet.tac.build) |
+    | **Fee Schema** | EIP-1559 |
+    | **Block Time** | 2 seconds |
+    
+    ### Quick Add to Wallet
+    
+    ```json
+    {
+      "chainId": "0x957",
+      "chainName": "TAC Saint Petersburg Testnet",
+      "rpcUrls": ["https://spb.rpc.tac.build"],
+      "nativeCurrency": {
+        "name": "TAC",
+        "symbol": "TAC",
+        "decimals": 18
+      },
+      "blockExplorerUrls": ["https://spb.explorer.tac.build"]
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Getting Testnet Tokens
+
+<Steps>
+  <Step title="Visit the Faucet" icon="globe">
+    Go to [https://spb.faucet.tac.build](https://spb.faucet.tac.build) to access
+    the Saint Petersburg testnet faucet.
+  </Step>
+
+<Step title="Connect Your Wallet" icon="wallet">
+  Connect your Ethereum wallet (MetaMask, etc.) and ensure you're on the Saint
+  Petersburg testnet.
+</Step>
+
+<Step title="Request Tokens" icon="coins">
+  Request testnet TAC tokens for gas fees and testing your applications.
+</Step>
+
+  <Step title="Start Building" icon="rocket">
+    Use the tokens to deploy contracts and test your hybrid dApps on the
+    testnet.
+  </Step>
+</Steps>
+
+## Common Integration Issues
+
+<Tabs>
+  <Tab title="MetaMask Setup">
+    **Adding TAC Networks:**
+    
+    1. Open MetaMask settings
+    2. Go to "Networks" → "Add Network"
+    3. Use the network parameters above
+    4. Save and switch to the new network
+    
+    **Common Issues:**
+    - Ensure Chain ID is entered as a number (239, 2391)
+    - Verify RPC URLs are correct
+    - Check that you're using the latest MetaMask version
+  </Tab>
+  
+  <Tab title="Contract Verification">
+    **Verification Steps:**
+    
+    1. Deploy your contract to the network
+    2. Wait for a few block confirmations
+    3. Use Hardhat's verify plugin or manual verification
+    4. Check the block explorer for verification status
+    
+    **Troubleshooting:**
+    - Ensure exact constructor arguments
+    - Verify Solidity version matches
+    - Check that libraries are linked correctly
+  </Tab>
+
+</Tabs>

@@ -1,0 +1,339 @@
+---
+title: Proxy Apps
+description: "Smart contracts that translate between TON and EVM, making cross-chain applications feel native to both ecosystems"
+---
+
+Proxy Apps are the interface layer that makes hybrid dApps possible. They consist of smart contracts on both TON and TAC EVM that handle the complexities of cross-chain communication, asset management, and protocol translation. From a user's perspective, proxy apps make EVM applications feel completely native to TON.
+
+## How Proxy Apps Work
+
+Proxy apps operate on both sides of the cross-chain bridge, each handling different aspects of the user experience and technical integration.
+
+<Frame caption="Proxy apps handling cross-chain interaction between TON users and EVM contracts">
+  <img
+    src="/images/proxy-apps-flow.png"
+    alt="Proxy apps architectural diagram"
+  />
+</Frame>
+
+### TON Side: SDK-Managed Proxies
+
+On the TON side, proxy functionality is handled automatically by the TAC SDK rather than requiring developers to write custom smart contracts.
+
+- **User Transaction Handling**: When a TON user initiates a transaction with a hybrid dApp, the SDK formats the request appropriately for cross-chain delivery. This includes encoding method parameters and preparing asset transfer instructions.
+
+- **Asset Locking**: The SDK manages the locking of user assets in the TON Adapter contracts. Users simply approve transactions in their familiar TON wallets, while the SDK handles the technical details of cross-chain asset preparation.
+
+- **Status Monitoring**: The SDK continuously monitors transaction status and provides real-time updates to the user interface. This allows hybrid dApps to show progress indicators and handle errors gracefully.
+
+- **Message Formatting**: All the complex message structuring required by the TON Adapter is handled automatically, including proper encoding of target addresses, method signatures, and parameters.
+
+<Check>
+  Developers don't need to write TON-side proxy contracts - the TAC SDK provides
+  all necessary functionality through JavaScript/TypeScript libraries.
+</Check>
+
+### EVM Side: Custom Solidity Contracts
+
+On the TAC EVM side, developers create custom proxy contracts that receive and process cross-chain messages from the TON Adapter.
+
+- **Message Reception**: EVM proxy contracts implement specific function signatures that the TON Adapter calls when delivering cross-chain messages. These functions must accept exactly two `bytes` parameters: the TAC header and the application arguments.
+
+- **Header Decoding**: The first parameter contains encoded metadata about the cross-chain operation, including the original TON user's address, timestamp information, and unique operation identifiers.
+
+- **Parameter Processing**: The second parameter contains application-specific data encoded by the frontend. Proxy contracts decode these parameters to understand what operation the user wants to perform.
+
+- **Target Application Interaction**: After processing the cross-chain message, proxy contracts interact with the actual target applications - DEXes, lending protocols, NFT contracts, or any other EVM smart contracts.
+
+## EVM Proxy Contract Architecture
+
+### Required Function Signature
+
+All EVM proxy contracts must implement functions with this exact signature to receive cross-chain calls:
+
+```solidity
+function myProxyFunction(bytes calldata tacHeader, bytes calldata arguments)
+    external
+    _onlyCrossChainLayer
+{
+    // Implementation here
+}
+```
+
+The function name can be customized, but the parameter structure is fixed by the TON Adapter protocol.
+
+### Security Modifiers
+
+<AccordionGroup>
+  <Accordion title="_onlyCrossChainLayer Modifier" icon="shield-check">
+
+    This critical security modifier ensures that only the TON Adapter's
+    CrossChainLayer contract can call proxy functions. Without this protection,
+    malicious actors could potentially call proxy functions directly and bypass
+    cross-chain validation.
+
+    The modifier is inherited from base proxy contract classes and validates that `msg.sender` matches the authorized
+    CrossChainLayer address.
+
+  </Accordion>
+
+  <Accordion title="Asset Validation" icon="coins">
+
+    Before proxy functions are called, the TON Adapter automatically transfers
+    any bridged assets to the proxy contract. Proxy contracts can trust that
+    these assets are available and properly validated.
+
+    However, proxy contracts should still implement proper checks for expected asset amounts and types to
+    ensure they match the intended operation.
+
+  </Accordion>
+</AccordionGroup>
+
+### TAC Header Structure
+
+The TAC header contains essential metadata about every cross-chain operation:
+
+```solidity
+struct TacHeaderV1 {
+    uint64 shardsKey;      // Unique identifier for linked transactions
+    uint256 timestamp;     // Block timestamp from TON
+    bytes32 operationId;   // Unique operation identifier
+    string tvmCaller;      // Original TON user's wallet address
+    bytes extraData;       // Additional data from sequencers
+}
+```
+
+Proxy contracts decode this header to access information about the original user and operation context.
+
+## Development Patterns
+
+### Basic Proxy Contract Template
+
+```solidity
+pragma solidity ^0.8.28;
+
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { TacProxyV1 } from "tac-l2-ccl/contracts/proxies/TacProxyV1.sol";
+import { TokenAmount, OutMessageV1, TacHeaderV1 } from "tac-l2-ccl/contracts/core/Structs.sol";
+
+contract MyDeFiProxy is TacProxyV1 {
+    IDeFiContract public targetContract;
+
+    constructor(address _targetContract, address _crossChainLayer)
+        TacProxyV1(_crossChainLayer)
+    {
+        targetContract = IDeFiContract(_targetContract);
+    }
+
+    function executeSwap(bytes calldata tacHeader, bytes calldata arguments)
+        external
+        _onlyCrossChainLayer
+    {
+        // Decode the TAC header
+        TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
+
+        // Decode application-specific arguments
+        SwapParams memory params = abi.decode(arguments, (SwapParams));
+
+        // Approve tokens for the target contract
+        IERC20(params.tokenIn).approve(address(targetContract), params.amountIn);
+
+        // Execute the swap
+        uint256 amountOut = targetContract.swap(
+            params.tokenIn,
+            params.tokenOut,
+            params.amountIn,
+            params.minAmountOut
+        );
+
+        // Prepare return message with result tokens
+        TokenAmount[] memory returnTokens = new TokenAmount[](1);
+        returnTokens[0] = TokenAmount(params.tokenOut, amountOut);
+
+        // Approve CrossChainLayer to handle return assets
+        IERC20(params.tokenOut).approve(_getCrossChainLayerAddress(), amountOut);
+
+        // Send result back to TON
+        _sendMessageV1(OutMessageV1({
+            shardsKey: header.shardsKey,
+            tvmTarget: header.tvmCaller,
+            tvmPayload: "",
+            toBridge: returnTokens
+        }));
+    }
+}
+```
+
+### Upgradeable Proxy Contracts
+
+For applications that need upgrade capabilities, TAC provides upgradeable proxy contract templates:
+
+```solidity
+pragma solidity ^0.8.28;
+
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { TacProxyV1Upgradeable } from "tac-l2-ccl/contracts/proxies/TacProxyV1Upgradeable.sol";
+
+contract MyUpgradeableProxy is
+    Initializable,
+    OwnableUpgradeable,
+    UUPSUpgradeable,
+    TacProxyV1Upgradeable
+{
+    function initialize(address owner, address crossChainLayer) public initializer {
+        __UUPSUpgradeable_init();
+        __Ownable_init(owner);
+        __TacProxyV1Upgradeable_init(crossChainLayer);
+    }
+
+    function _authorizeUpgrade(address) internal override onlyOwner {}
+
+    // Proxy functions implement the same patterns as non-upgradeable contracts
+}
+```
+
+## Asset Handling
+
+Proxy contracts must carefully manage assets as they flow between chains and interact with target applications.
+
+### Automatic Asset Transfer
+
+- **Pre-Function Execution**: Before calling proxy functions, the TON Adapter automatically transfers bridged assets to the proxy contract. This includes both newly minted tokens (from TON) and unlocked tokens (from previous EVM operations).
+
+- **Asset Availability**: Proxy contracts can immediately use these assets without additional transfer operations. The amounts are guaranteed to match what was specified in the original cross-chain message.
+
+- **Asset Validation**: While the TON Adapter validates assets during message processing, proxy contracts should implement additional checks to ensure received assets match expected parameters.
+
+### Target Contract Integration
+
+```solidity
+function processLiquidityAddition(bytes calldata tacHeader, bytes calldata arguments)
+    external
+    _onlyCrossChainLayer
+{
+    TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
+    LiquidityParams memory params = abi.decode(arguments, (LiquidityParams));
+
+    // Approve both tokens for the liquidity pool
+    IERC20(params.tokenA).approve(address(liquidityPool), params.amountA);
+    IERC20(params.tokenB).approve(address(liquidityPool), params.amountB);
+
+    // Add liquidity and receive LP tokens
+    uint256 lpTokens = liquidityPool.addLiquidity(
+        params.tokenA,
+        params.tokenB,
+        params.amountA,
+        params.amountB,
+        params.minAmountA,
+        params.minAmountB
+    );
+
+    // Return LP tokens to user on TON
+    TokenAmount[] memory returnAssets = new TokenAmount[](1);
+    returnAssets[0] = TokenAmount(address(liquidityPool), lpTokens);
+
+    IERC20(address(liquidityPool)).approve(_getCrossChainLayerAddress(), lpTokens);
+
+    _sendMessageV1(OutMessageV1({
+        shardsKey: header.shardsKey,
+        tvmTarget: header.tvmCaller,
+        tvmPayload: "",
+        toBridge: returnAssets
+    }));
+}
+```
+
+### Return Message Creation
+
+When operations complete successfully, proxy contracts can send assets and data back to TON users through return messages.
+
+- **Asset Preparation**: Any tokens being returned must be approved for the CrossChainLayer contract to handle the bridging process.
+
+- **Message Structure**: Return messages use the same `OutMessageV1` structure, specifying the target TON address, assets to bridge, and optional payload data.
+
+- **Automatic Processing**: The TON Adapter handles return messages through the same consensus mechanism, ensuring secure delivery back to TON users.
+
+## Proxy Generation and Deployment
+
+For complex applications with unique requirements, developers create custom proxy contracts that implement specific business logic.
+
+- **Complex State Management**: Applications with sophisticated state transitions or multi-step operations require custom proxy logic to handle the complexity properly.
+
+- **Integration Requirements**: When integrating with multiple protocols or handling complex asset flows, custom proxies provide the flexibility needed for proper implementation.
+
+- **Business Logic**: Unique application requirements like custom validation rules, special fee structures, or complex user permissions need custom proxy development.
+
+## Testing and Development
+
+### Local Testing Environment
+
+TAC provides comprehensive testing utilities for proxy contract development:
+
+```typescript
+import { TacLocalTestSdk, JettonInfo, TokenMintInfo } from "tac-l2-ccl";
+
+describe("Proxy Contract Tests", () => {
+  let testSdk: TacLocalTestSdk;
+  let proxyContract: MyProxy;
+
+  before(async () => {
+    testSdk = new TacLocalTestSdk();
+    const crossChainLayerAddress = testSdk.create(ethers.provider);
+
+    proxyContract = await deployProxy(crossChainLayerAddress);
+  });
+
+  it("should handle cross-chain token swap", async () => {
+    const jettonInfo: JettonInfo = {
+      tvmAddress: "JettonMinterAddress",
+      name: "TestToken",
+      symbol: "TEST",
+      decimals: 9n,
+    };
+
+    const result = await testSdk.sendMessage(
+      shardsKey,
+      proxyAddress,
+      "executeSwap(bytes,bytes)",
+      encodedArguments,
+      tvmCaller,
+      [tokenMintInfo],
+      [tokenUnlockInfo],
+      tacAmount,
+      extraData,
+      operationId,
+      timestamp
+    );
+
+    expect(result.receipt.status).to.equal(1);
+    expect(result.outMessages.length).to.equal(1);
+  });
+});
+```
+
+### Integration Testing
+
+- **Cross-Chain Simulation**: The testing SDK simulates the complete cross-chain flow, including sequencer validation and asset bridging operations.
+
+- **Asset Management Testing**: Tests verify that assets are properly locked, minted, burned, and unlocked throughout the cross-chain process.
+
+- **Error Scenario Handling**: Testing includes failure cases to ensure proxy contracts handle errors gracefully and protect user assets.
+
+## What's Next?
+
+Understanding proxy apps helps you build the interface layer that makes hybrid dApps possible. Explore related concepts to build more sophisticated applications.
+
+<CardGroup cols={2}>
+  <Card title="TAC SDK" icon="code" href="/core-concepts/components/tac-sdk">
+    Learn how the SDK handles TON-side proxy functionality
+  </Card>
+  <Card
+    title="Cross-Chain Messaging"
+    icon="arrow-left-right"
+    href="/core-concepts/cross-chain-operations/cross-chain-messaging"
+  >
+    Dive deeper into message structure and validation
+  </Card>
+</CardGroup>

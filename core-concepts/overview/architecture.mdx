@@ -1,0 +1,255 @@
+---
+title: Architecture
+description: "How TAC's three-layer architecture enables seamless interaction between TON and EVM ecosystems"
+---
+
+TAC's architecture is designed to support secure and deterministic cross-chain communication while preserving native user experience on the TON side. The protocol relies on off-chain batching, standardized message structures, and on-chain consensus to execute contract-level operations across both networks.
+
+<Info>
+  Some part of TAC's architecture is still under development and in roadmap.
+</Info>
+
+<Frame caption="TAC's three-layer architecture connecting TON users with EVM applications">
+  <img
+    src="/images/architecture-2.png"
+    alt="TAC Architecture showing EVM Layer, TON Adapter, and Proxy Apps"
+  />
+</Frame>
+
+## Architecture Overview
+
+<Columns cols={3}>
+  <Card title="TAC EVM Layer" icon="blocks"> Full EVM compatibility with Cosmos SDK. Handles all application logic and state. </Card>
+
+<Card title="TON Adapter" icon="arrow-left-right">
+  Distributed sequencer network that securely routes messages between TON and
+  EVM.
+</Card>
+
+  <Card title="Proxy Contracts" icon="code">
+    Smart contracts that translate between TON and EVM, making apps feel native to both sides.
+  </Card>
+</Columns>
+
+## TAC EVM Layer
+
+The foundation of TAC is a complete Layer 1 blockchain that provides full EVM compatibility without compromises.
+
+## TON Adapter Network
+
+The TON Adapter is a purpose-built messaging system that securely connects TON and TAC EVM. Unlike traditional bridges, it's designed specifically for application-level interactions.
+
+<Info>
+  **Current Network Status**: The sequencer network is currently distributed but
+  not decentralized. Full decentralization is on the roadmap as the network
+  matures.
+</Info>
+
+### Core Functions
+
+The TON Adapter handles five critical operations:
+
+<Columns cols={2}>
+  <Card title="Message Operations" icon="message-circle">
+    - Transaction execution coordination 
+    - Cross-chain calls 
+    - Return value routing 
+  </Card>
+
+  <Card title="Consensus Operations" icon="handshake">
+   - Merkle tree formation 
+   - Multi-group validation 
+   - Economic security enforcement 
+  </Card>
+</Columns>
+
+### Sequencer Network Architecture
+
+<Steps>
+  <Step title="Individual Sequencers" icon="server">
+    Each sequencer monitors both TON and TAC EVM for relevant events,
+    maintaining local databases of transactions and forming initial Merkle
+    trees.
+  </Step>
+
+<Step title="Sequencer Groups" icon="users">
+  Sequencers organize into groups that must reach 3/5 internal consensus. Each
+  group validates transactions independently and stakes collateral as security.
+</Step>
+
+<Step title="Network Consensus" icon="handshake">
+  Multiple groups must submit identical Merkle trees to achieve network-wide
+  consensus. This creates multiple validation layers for maximum security.
+</Step>
+
+  <Step title="Execution" icon="play">
+    Once consensus is reached, transactions execute on the target chain with
+    cryptographic proof of validity.
+  </Step>
+</Steps>
+
+### Economic Security
+
+<Accordion title="Stake Requirements" icon="coins">
+**Every sequencer group must stake collateral:**
+
+- Minimum stake set by DAO governance
+- Higher stakes earn proportionally higher rewards
+- Stake must remain above threshold during participation
+- Partial stake locking during proof submission
+
+</Accordion>
+
+<Accordion title="Reward Distribution" icon="chart-line">
+**Performance-based incentives:**
+
+- Rewards distributed proportionally to stake size
+- Executor selection based on collateral weight
+- Commission sharing within groups
+- Penalty mechanisms for incorrect operations
+
+</Accordion>
+
+<Accordion title="Governance & Elections" icon="vote">
+**Democratic group selection:**
+
+- New groups approved through DAO voting
+- Regular election cycles (DAO configurable)
+- Performance monitoring and rating systems
+- Penalty applications and network-wide voting
+
+</Accordion>
+
+## Proxy Contract System
+
+Proxy contracts are the interface layer that makes cross-chain interaction feel seamless. They handle all the complexity of message formatting, asset management, and protocol translation.
+
+### How Proxies Work
+
+<Tabs>
+  <Tab title="TON Side">
+    **Handled automatically by TAC SDK:** When a user initiates a transaction using their TON wallet, the TAC SDK takes care of formatting the request for cross-chain delivery. The user's assets are securely locked within the TON Adapter, and throughout the process, the SDK continuously monitors and reports the transaction status. This seamless integration ensures that users and developers do not need to manage the complexities of cross-chain communication themselves.
+    <Note>
+      Developers don't need to write TON-side proxy contracts - the TAC SDK
+      handles everything
+    </Note>
+  </Tab>
+
+  <Tab title="EVM Side">
+    **Custom Solidity contracts:** On the EVM side, developers write custom Solidity contracts that are designed to interact with the TON Adapter. These contracts receive validated cross-chain messages from the TON Adapter, decode the transaction parameters and user intent, and then handle the necessary asset minting or unlocking operations. After processing the transaction, the contract executes the required methods on the target contract. If needed, the contract can also send results or responses back to TON. A typical entry point for these operations is a function such as `processMessage(bytes calldata tacHeader, bytes calldata args) external onlyTONAdapter`, which ensures that only the TON Adapter can invoke cross-chain actions.
+   
+  
+  </Tab>
+</Tabs>
+
+### Proxy Generation
+
+<AccordionGroup>
+  <Accordion title="Automatic Proxy Creation" icon="wand-sparkles">
+    TAC can automatically generate proxy contracts for many common use cases: 
+    
+    - Token transfers and swaps 
+    - Liquidity provision and removal 
+    - Standard DeFi interactions
+    
+    This reduces development time for standard operations.
+  </Accordion>
+
+  <Accordion title="Custom Proxy Development" icon="code">
+    For complex applications, developers can create custom proxies: 
+    
+    - Handle application-specific logic 
+    - Implement custom validation rules 
+    - Manage complex state transitions 
+    - Integrate with multiple contracts 
+    
+    Custom proxies provide maximum flexibility for unique use cases.
+  </Accordion>
+</AccordionGroup>
+
+## Complete Transaction Lifecycle
+
+Here's how all three layers work together for a complete cross-chain transaction:
+
+<Steps>
+  <Step title="Initiation (TON)" icon="play">
+    **User action triggers the process:** 
+    
+    - User connects TON wallet to hybrid dApp 
+    - Selects action (swap, stake, etc.) and confirms transaction 
+    - TON-side proxy locks assets and creates formatted message
+  </Step>
+
+<Step title="Detection (TON Adapter)" icon="radar">
+
+**Sequencers monitor and collect:**
+
+- Sequencers detect new events on TON
+- Transaction details stored in local databases
+- Asset transfers validated against message parameters
+
+</Step>
+
+<Step title="Consensus (TON Adapter)" icon="handshake">
+
+**Multi-layer validation process:**
+
+- Individual sequencers form Merkle trees
+- Groups reach 3/5 internal consensus (BFT threshold)
+- Cross-group validation ensures network agreement
+- Cryptographic proofs generated for execution
+
+</Step>
+
+<Step title="Execution (TAC EVM)" icon="settings">
+
+**Target chain processes transaction:**
+
+- EVM proxy receives validated message
+- Assets are minted or unlocked as needed
+- Target contract methods executed with parameters
+- Results and state changes recorded on-chain
+
+</Step>
+
+  <Step title="Completion (Full Circle)" icon="check">
+    **Results flow back to user:** 
+    
+    - Successful transactions update application state 
+    - Return assets/messages sent back through TON Adapter 
+    - User receives confirmation and results in TON wallet 
+    - Failed transactions trigger automatic rollback process
+  </Step>
+</Steps>
+
+## Security Guarantees
+
+TAC's architecture provides multiple layers of security across all components:
+
+<Card title="Message Security" icon="shield-check">
+
+- Merkle proofs validate transaction inclusion
+- Multiple signature requirements prevent fraud
+- Asset validation ensures accurate transfers
+- Rollback protection for failed transactions
+
+</Card>
+
+## What's Next?
+
+<CardGroup cols={2}>
+  <Card
+    title="Hybrid dApps"
+    icon="blocks"
+    href="/core-concepts/overview/hybrid-dapps"
+  >
+    Learn how this architecture enables truly hybrid applications
+  </Card>
+  <Card
+    title="TON Adapter Deep Dive"
+    icon="arrow-left-right"
+    href="/core-concepts/components/ton-adapter"
+  >
+    Explore the cross-chain messaging system in detail
+  </Card>
+</CardGroup>

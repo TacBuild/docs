@@ -1,0 +1,536 @@
+---
+title: Wallet Integration
+description: "Connect TON wallets to your application using TonConnect or private key authentication"
+---
+
+The TAC SDK provides flexible wallet integration options to support different application types and user preferences. Whether you're building a web application with TonConnect or a backend service with private keys, the SDK abstracts wallet complexity through a unified sender interface.
+
+<Tip>
+  Start with TonConnect integration for web applications to provide the best
+  user experience. Use private key integration only for backend services or
+  development environments where you control the private keys securely.
+</Tip>
+
+## SenderFactory Overview
+
+The `SenderFactory` class creates appropriate sender instances based on your wallet configuration. All senders implement the same `SenderAbstraction` interface, providing consistent transaction handling regardless of the underlying wallet type.
+
+```javascript
+import { SenderFactory, Network, AssetType } from "@tonappchain/sdk";
+
+// Create sender from configuration
+const sender = await SenderFactory.getSender(configuration);
+
+// Use sender for transactions
+const result = await tacSdk.sendCrossChainTransaction(
+  evmProxyMsg,
+  sender,
+  assets
+);
+```
+
+## TonConnect Integration
+
+TonConnect is the standard protocol for connecting TON wallets to web applications. It provides a secure, user-friendly way to authenticate and authorize transactions without exposing private keys.
+
+### Basic TonConnect Setup
+
+First, install and configure TonConnect UI:
+
+```bash
+npm install @tonconnect/ui
+```
+
+Create your TonConnect manifest file:
+
+```json
+{
+  "url": "https://yourapp.com",
+  "name": "Your dApp Name",
+  "iconUrl": "https://yourapp.com/icon-192x192.png",
+  "termsOfUseUrl": "https://yourapp.com/terms",
+  "privacyPolicyUrl": "https://yourapp.com/privacy"
+}
+```
+
+### Initialize TonConnect
+
+```javascript
+import { TonConnectUI } from "@tonconnect/ui";
+import { SenderFactory } from "@tonappchain/sdk";
+
+// Initialize TonConnect UI
+const tonConnectUI = new TonConnectUI({
+  manifestUrl: "https://yourapp.com/tonconnect-manifest.json",
+  buttonRootId: "ton-connect-button", // Optional: for custom button placement
+});
+
+// Create sender from TonConnect
+const sender = await SenderFactory.getSender({
+  tonConnect: tonConnectUI,
+});
+```
+
+### React TonConnect Integration
+
+Create a comprehensive React integration with connection management:
+
+```jsx
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { TonConnectUI } from "@tonconnect/ui";
+import { SenderFactory } from "@tonappchain/sdk";
+
+const TonConnectContext = createContext(null);
+
+export const TonConnectProvider = ({ children }) => {
+  const [tonConnectUI, setTonConnectUI] = useState(null);
+  const [sender, setSender] = useState(null);
+  const [wallet, setWallet] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const initTonConnect = async () => {
+      try {
+        const tonConnect = new TonConnectUI({
+          manifestUrl: process.env.REACT_APP_MANIFEST_URL,
+          buttonRootId: "ton-connect-button",
+        });
+
+        setTonConnectUI(tonConnect);
+
+        // Listen for wallet changes
+        tonConnect.onStatusChange(async (wallet) => {
+          setWallet(wallet);
+
+          if (wallet) {
+            try {
+              const newSender = await SenderFactory.getSender({
+                tonConnect: tonConnect,
+              });
+              setSender(newSender);
+            } catch (error) {
+              console.error("Failed to create sender:", error);
+              setSender(null);
+            }
+          } else {
+            setSender(null);
+          }
+        });
+
+        // Check if already connected
+        if (tonConnect.wallet) {
+          setWallet(tonConnect.wallet);
+          const newSender = await SenderFactory.getSender({
+            tonConnect: tonConnect,
+          });
+          setSender(newSender);
+        }
+      } catch (error) {
+        console.error("TonConnect initialization failed:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initTonConnect();
+  }, []);
+
+  const connectWallet = async () => {
+    if (tonConnectUI) {
+      await tonConnectUI.connectWallet();
+    }
+  };
+
+  const disconnectWallet = async () => {
+    if (tonConnectUI) {
+      await tonConnectUI.disconnect();
+    }
+  };
+
+  return (
+    <TonConnectContext.Provider
+      value={{
+        tonConnectUI,
+        sender,
+        wallet,
+        loading,
+        connectWallet,
+        disconnectWallet,
+        isConnected: !!wallet,
+      }}
+    >
+      {children}
+    </TonConnectContext.Provider>
+  );
+};
+
+export const useTonConnect = () => {
+  const context = useContext(TonConnectContext);
+  if (!context) {
+    throw new Error("useTonConnect must be used within a TonConnectProvider");
+  }
+  return context;
+};
+```
+
+### Using TonConnect in Components
+
+```jsx
+import { useTonConnect } from "../contexts/TonConnectContext";
+import { useTacSdk } from "../contexts/TacSdkContext";
+
+export const WalletConnector = () => {
+  const {
+    wallet,
+    sender,
+    loading,
+    connectWallet,
+    disconnectWallet,
+    isConnected,
+  } = useTonConnect();
+
+  const { tacSdk } = useTacSdk();
+
+  const handleTransaction = async () => {
+    if (!tacSdk || !sender) return;
+
+    try {
+      const evmProxyMsg = {
+        evmTargetAddress: "0x742d35Cc647332...",
+        methodName: "transfer(address,uint256)",
+        encodedParameters: "0x000000000000000000000000...",
+      };
+
+      const assets = [{ type: AssetType.FT, amount: 1.0 }]; // 1 TON
+
+      const result = await tacSdk.sendCrossChainTransaction(
+        evmProxyMsg,
+        sender,
+        assets
+      );
+
+      console.log("Transaction sent:", result.operationId);
+    } catch (error) {
+      console.error("Transaction failed:", error);
+    }
+  };
+
+  if (loading) {
+    return <div>Loading wallet...</div>;
+  }
+
+  return (
+    <div>
+      {isConnected ? (
+        <div>
+          <p>Connected: {wallet.device.appName}</p>
+          <p>Address: {wallet.account.address}</p>
+          <button onClick={handleTransaction}>Send Transaction</button>
+          <button onClick={disconnectWallet}>Disconnect</button>
+        </div>
+      ) : (
+        <button onClick={connectWallet}>Connect Wallet</button>
+      )}
+    </div>
+  );
+};
+```
+
+## Private Key Integration
+
+For backend services, automated systems, or development environments, you can create senders directly from mnemonic phrases or private keys.
+
+### Standard TON Wallets
+
+The SDK supports all standard TON wallet versions:
+
+```javascript
+import { SenderFactory, Network, AssetType } from "@tonappchain/sdk";
+
+// Wallet V4 (most common)
+const senderV4 = await SenderFactory.getSender({
+  network: Network.TESTNET,
+  version: "V4",
+  mnemonic: "word1 word2 word3 ... word24",
+});
+
+// Wallet V5R1 (latest)
+const senderV5 = await SenderFactory.getSender({
+  network: Network.TESTNET,
+  version: "V5R1",
+  mnemonic: "word1 word2 word3 ... word24",
+  options: {
+    v5r1: {
+      subwalletNumber: 0, // Optional subwallet number
+    },
+  },
+});
+
+// Legacy wallets
+const senderV3 = await SenderFactory.getSender({
+  network: Network.TESTNET,
+  version: "V3R2",
+  mnemonic: "word1 word2 word3 ... word24",
+});
+```
+
+### Highload Wallet V3
+
+For applications requiring high transaction throughput:
+
+```javascript
+const highloadSender = await SenderFactory.getSender({
+  network: Network.TESTNET,
+  version: "HIGHLOAD_V3",
+  mnemonic: "word1 word2 word3 ... word24",
+  options: {
+    highloadV3: {
+      subwalletId: 0, // Subwallet identifier
+      timeout: 60, // Transaction timeout in seconds
+    },
+  },
+});
+```
+
+<Note>
+  Highload wallets are designed for high-volume applications and have different
+  fee structures. They can process multiple transactions simultaneously but
+  require careful sequence number management.
+</Note>
+
+### Environment Configuration
+
+Store sensitive information securely:
+
+```bash
+# .env file
+WALLET_MNEMONIC="word1 word2 word3 ... word24"
+WALLET_VERSION=V4
+TAC_NETWORK=testnet
+```
+
+```javascript
+// Secure wallet initialization
+const sender = await SenderFactory.getSender({
+  network:
+    process.env.TAC_NETWORK === "mainnet" ? Network.MAINNET : Network.TESTNET,
+  version: process.env.WALLET_VERSION || "V4",
+  mnemonic: process.env.WALLET_MNEMONIC,
+});
+```
+
+## Sender Interface Methods
+
+All senders implement the `SenderAbstraction` interface with consistent methods:
+
+### Core Methods
+
+```javascript
+// Get sender's wallet address
+const address = sender.getSenderAddress();
+console.log("Wallet address:", address);
+
+// Send single transaction
+const result = await sender.sendShardTransaction(
+  shardTransaction,
+  delay,
+  network,
+  contractOpener
+);
+
+// Send multiple transactions (batch)
+const results = await sender.sendShardTransactions(
+  shardTransactions,
+  delay,
+  network,
+  contractOpener
+);
+```
+
+### Transaction Signing
+
+The SDK handles transaction signing automatically based on the sender type:
+
+```javascript
+// TonConnect sender - prompts user for approval
+const tonConnectSender = await SenderFactory.getSender({
+  tonConnect: tonConnectUI,
+});
+
+// Private key sender - signs automatically
+const privateSender = await SenderFactory.getSender({
+  network: Network.TESTNET,
+  version: "V4",
+  mnemonic: "your mnemonic here",
+});
+
+// Both use the same interface
+const result = await tacSdk.sendCrossChainTransaction(
+  evmProxyMsg,
+  sender, // Works with any sender type
+  assets
+);
+```
+
+## Advanced Wallet Features
+
+### Wallet Validation
+
+Validate wallet configuration before creating senders:
+
+```javascript
+async function validateWalletConfig(config) {
+  // Network validation
+  if (!Object.values(Network).includes(config.network)) {
+    throw new Error(`Invalid network: ${config.network}`);
+  }
+
+  // Mnemonic validation
+  if (config.mnemonic) {
+    const words = config.mnemonic.split(" ");
+    if (words.length !== 24) {
+      throw new Error("Mnemonic must contain exactly 24 words");
+    }
+  }
+
+  // Version validation
+  const validVersions = [
+    "V2R1",
+    "V2R2",
+    "V3R1",
+    "V3R2",
+    "V4",
+    "V5R1",
+    "HIGHLOAD_V3",
+  ];
+  if (config.version && !validVersions.includes(config.version)) {
+    throw new Error(`Invalid wallet version: ${config.version}`);
+  }
+
+  return true;
+}
+
+// Usage
+try {
+  await validateWalletConfig({
+    network: Network.TESTNET,
+    version: "V4",
+    mnemonic: "word1 word2 ... word24",
+  });
+
+  const sender = await SenderFactory.getSender(config);
+} catch (error) {
+  console.error("Invalid wallet configuration:", error.message);
+}
+```
+
+## Error Handling
+
+Handle wallet-related errors appropriately:
+
+```javascript
+async function createSenderWithErrorHandling(config) {
+  try {
+    const sender = await SenderFactory.getSender(config);
+    return { sender, error: null };
+  } catch (error) {
+    console.error("Sender creation failed:", error);
+
+    // Handle specific error types
+    if (error.message.includes("Invalid mnemonic")) {
+      return {
+        sender: null,
+        error: "Invalid wallet mnemonic. Please check your seed phrase.",
+      };
+    }
+
+    if (error.message.includes("TonConnect")) {
+      return {
+        sender: null,
+        error: "Wallet connection failed. Please try connecting again.",
+      };
+    }
+
+    return {
+      sender: null,
+      error: "Failed to initialize wallet. Please check your configuration.",
+    };
+  }
+}
+
+// Usage
+const { sender, error } = await createSenderWithErrorHandling({
+  network: Network.TESTNET,
+  version: "V4",
+  mnemonic: process.env.WALLET_MNEMONIC,
+});
+
+if (error) {
+  console.error("Wallet error:", error);
+  // Show error to user
+} else {
+  console.log("Wallet ready:", sender.getSenderAddress());
+}
+```
+
+## Security Best Practices
+
+<Warning>
+  Never expose private keys or mnemonics in client-side code. Always use
+  environment variables or secure configuration management for sensitive data.
+</Warning>
+
+### Client-Side Security
+
+```javascript
+// Good - Use TonConnect for web applications
+const sender = await SenderFactory.getSender({
+  tonConnect: tonConnectUI, // User controls private keys
+});
+
+// Bad - Never do this in client-side code
+const sender = await SenderFactory.getSender({
+  network: Network.TESTNET,
+  version: "V4",
+  mnemonic: "exposed mnemonic in browser", // Security risk!
+});
+```
+
+### Server-Side Security
+
+```javascript
+// Good - Use environment variables
+const sender = await SenderFactory.getSender({
+  network: Network.TESTNET,
+  version: "V4",
+  mnemonic: process.env.WALLET_MNEMONIC, // Secure
+});
+
+// Good - Use secure configuration services
+const sender = await SenderFactory.getSender({
+  network: Network.TESTNET,
+  version: "V4",
+  mnemonic: await getSecureConfig("WALLET_MNEMONIC"), // Secure
+});
+```
+
+## What's Next?
+
+With wallet integration complete, you can proceed to sending cross-chain transactions:
+
+<CardGroup cols={2}>
+  <Card
+    title="Sending Transactions"
+    icon="send"
+    href="/build/sdk/usage/sending-transactions"
+  >
+    Execute cross-chain transactions with your connected wallet
+  </Card>
+  <Card
+    title="Transaction Tracking"
+    icon="chart-line"
+    href="/build/sdk/usage/transaction-tracking"
+  >
+    Monitor transaction progress and handle completion
+  </Card>
+</CardGroup>

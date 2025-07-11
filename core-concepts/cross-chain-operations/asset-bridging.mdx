@@ -1,0 +1,355 @@
+---
+title: Asset Bridging
+description: "How tokens and assets move securely between TON and TAC EVM through lock-mint and burn-release mechanisms"
+---
+
+Asset bridging in TAC enables tokens to move seamlessly between TON and TAC EVM while maintaining supply integrity and user ownership. Unlike traditional bridges that create wrapped tokens, TAC's bridging system is designed specifically for application-level interactions where assets flow naturally based on user intent rather than explicit bridging operations.
+
+## Core Bridging Principles
+
+TAC's asset bridging system operates on fundamental principles that ensure security, maintain token economics, and provide seamless user experience.
+
+<Frame caption="Asset bridging maintaining token supply integrity across chains">
+  <img
+    src="/images/asset-bridging-flow.png"
+    alt="Asset bridging lock-mint and burn-release diagram"
+  />
+</Frame>
+
+### Supply Conservation
+
+- **Total Supply Integrity**: The combined supply of a token across both TON and TAC EVM always equals the original supply. When tokens are locked on one chain, equivalent amounts are minted on the other chain, maintaining perfect balance.
+
+- **Provable Reserves**: All locked tokens are held in verifiable smart contracts where their existence can be independently confirmed by anyone.
+
+- **Atomic Operations**: Asset locking, minting, burning, and releasing operations occur atomically within the same cross-chain transaction, preventing inconsistent states.
+
+### Bidirectional Flow
+
+Assets can move in both directions depending on user operations and application requirements:
+
+<Columns cols={2}>
+  <Card title="TON → TAC EVM" icon="arrow-right">
+    **Lock-and-Mint Process** 
+    
+    - TON tokens locked in TON Adapter 
+    - Equivalent ERC-20 tokens minted on TAC EVM 
+    - Metadata preserved across chains 
+    - User maintains full ownership
+    
+  </Card>
+
+  <Card title="TAC EVM → TON" icon="arrow-left">
+
+    **Burn-and-Release Process**
+    - ERC-20 tokens burned on TAC EVM
+    - Original tokens released from lock
+    - User receives back on TON
+    - Perfect 1:1 correspondence maintained
+
+  </Card>
+</Columns>
+
+## Token Types and Handling
+
+Different types of assets require specialized handling to ensure proper representation and functionality across both chains.
+
+### TON Native Assets
+
+<Tabs>
+  <Tab title="TON Jettons">
+    - **Jetton Bridging**: TON jettons (fungible tokens) are the most common bridged assets. When first crossing to TAC EVM, the system automatically deploys corresponding ERC-20 contracts.
+    
+    - **Metadata Preservation**: Token name, symbol, decimals, and additional metadata are captured from the TON side and replicated in the EVM contract.
+    
+    - **Address Mapping**: The system maintains deterministic mapping between TON jetton addresses and their corresponding ERC-20 addresses on TAC EVM.
+    
+    ```javascript
+    // Bridging a TON jetton
+    const assets = [{
+      address: "EQTokenAddress...", // TON jetton address
+      amount: 100.5,                // User-friendly amount
+      decimals: 9                   // TON standard decimals
+    }];
+    ```
+  </Tab>
+  
+  <Tab title="Native TON">
+    - **TON Token Handling**: Native TON tokens receive special treatment as they don't have a traditional contract address on the TON side.
+    
+    - **Wrapped Representation**: On TAC EVM, native TON is represented as a wrapped token (similar to WETH on Ethereum) with standard ERC-20 functionality.
+    
+    - **Seamless Integration**: Users can bridge native TON without understanding the wrapping mechanism - it appears as a normal token on the EVM side.
+    
+    ```javascript
+    // Bridging native TON
+    const nativeTONBridge = [{
+      // No address needed for native TON
+      amount: 5.0
+    }];
+    ```
+  </Tab>
+</Tabs>
+
+### TAC EVM Native Assets
+
+- **EVM-Origin Tokens**: Tokens originally created on TAC EVM can also be bridged to TON, creating jetton representations on the TON side.
+
+- **Liquidity Pool Tokens**: LP tokens from DEXes and other DeFi protocols on TAC EVM can be bridged to TON for use in TON-native applications.
+
+- **Governance Tokens**: TAC-native governance tokens can be bridged to enable participation in governance from TON wallets.
+
+## Bridging Mechanisms
+
+### Lock-and-Mint Process
+
+When assets move from TON to TAC EVM, they undergo a structured locking and minting process:
+
+<Steps>
+  <Step title="Asset Locking" icon="lock">
+    User tokens are locked in the TON Adapter smart contracts on the TON side.
+    These contracts serve as verifiable reserves where locked tokens remain
+    until they're bridged back.
+  </Step>
+
+<Step title="Validation" icon="shield-check">
+  Sequencers validate that the correct amount and type of tokens have been
+  locked, ensuring the bridging request matches actual asset transfers.
+</Step>
+
+<Step title="Token Deployment" icon="rocket">
+  If this is the first time a particular token crosses to TAC EVM, the system
+  automatically deploys a corresponding ERC-20 contract with matching metadata.
+</Step>
+
+  <Step title="Minting" icon="plus">
+    The exact amount of locked tokens is minted on TAC EVM and transferred to
+    the appropriate address (either the user directly or a proxy contract for
+    further operations).
+  </Step>
+</Steps>
+
+### Burn-and-Release Process
+
+The reverse process handles assets moving from TAC EVM back to TON:
+
+<Steps>
+  <Step title="Asset Burning" icon="flame">
+    ERC-20 tokens on TAC EVM are burned, permanently removing them from
+    circulation on that chain.
+  </Step>
+
+<Step title="Consensus Validation" icon="handshake">
+  Sequencers verify the burn operation and confirm that the requesting user has
+  proper authorization for the operation.
+</Step>
+
+<Step title="Release Execution" icon="lock-open">
+  The corresponding amount of originally locked tokens is released from the TON
+  Adapter contracts.
+</Step>
+
+  <Step title="Delivery" icon="circle-check">
+    Released tokens are delivered to the user's TON wallet, completing the
+    round-trip bridging process.
+  </Step>
+</Steps>
+
+## Address Calculation and Mapping
+
+TAC maintains deterministic relationships between token addresses across chains, enabling predictable bridging behavior.
+
+### Deterministic Address Generation
+
+- **TON to EVM Mapping**: When a TON jetton first crosses to TAC EVM, its corresponding ERC-20 address is calculated based on the jetton's metadata and TON address.
+
+- **EVM to TON Mapping**: Similarly, EVM tokens bridging to TON receive deterministic jetton addresses based on their EVM metadata.
+
+- **Pre-Calculation**: Applications can calculate paired addresses before tokens actually bridge, enabling advanced features like showing expected addresses in user interfaces.
+
+### Address Registry
+
+<Accordion title="Token Registry System" icon="address-book">
+The TAC system maintains an on-chain registry of all bridged tokens, providing a authoritative source for address mappings.
+
+- **Automatic Registration**: When tokens first bridge, they're automatically registered with their cross-chain counterparts.
+
+- **Query Interface**: Applications can query the registry to find corresponding addresses without needing to calculate them.
+
+- **Metadata Storage**: The registry also stores essential metadata like decimals, symbols, and names for proper display across applications.
+
+</Accordion>
+
+## Decimal and Precision Handling
+
+Different blockchain ecosystems use different decimal standards, requiring careful handling to maintain precision and user experience.
+
+### Decimal Standards
+
+<Columns cols={2}>
+  <div>
+    **TON Standard**: TON jettons typically use 9 decimals, following the
+    platform's conventions for token precision.
+  </div>
+
+  <div>
+    **EVM Standard**: Ethereum and EVM chains commonly use 18 decimals,
+    providing higher precision for complex DeFi operations.
+  </div>
+</Columns>
+
+### Precision Management
+
+- **Preservation**: When TON tokens (9 decimals) bridge to TAC EVM, they maintain their 9 decimal precision rather than being artificially inflated to 18 decimals.
+
+- **Compatibility**: TAC EVM supports tokens with various decimal counts, ensuring that bridged tokens work correctly with existing DeFi protocols.
+
+- **User Interface**: Applications display amounts using the appropriate decimal precision for user familiarity while handling the technical differences behind the scenes.
+
+<Warning>
+  While TAC EVM supports 18-decimal tokens, bridging them back to TON may have
+  limitations due to TON's 9-decimal standard. Consider keeping high-precision
+  tokens on the EVM side.
+</Warning>
+
+## Automatic Token Deployment
+
+The bridging system includes automatic token deployment capabilities that reduce friction for first-time token bridging.
+
+### Deployment Process
+
+- **Metadata Extraction**: When a token first crosses chains, the system extracts all necessary metadata including name, symbol, decimals, and description.
+
+- **Contract Generation**: A standard ERC-20 or jetton contract is automatically deployed with the extracted metadata.
+
+- **Registry Update**: The new token deployment is registered in the cross-chain address registry for future reference.
+
+### Deployment Triggers
+
+- **First Bridge Operation**: Token contracts are deployed automatically when a user first bridges a particular token type.
+
+- **Batch Deployment**: Multiple token types can be deployed in a single operation when complex transactions involve multiple new tokens.
+
+- **Permissionless Process**: Anyone can trigger token deployment by bridging assets, making the system fully permissionless.
+
+## Liquidity Management
+
+Asset bridging enables sophisticated liquidity management strategies that benefit both ecosystems.
+
+### Unified Liquidity Pools
+
+- **Cross-Chain Liquidity**: Tokens can flow between chains based on where liquidity is most needed, optimizing capital efficiency.
+
+- **Arbitrage Opportunities**: Price differences between chains create natural arbitrage opportunities that help maintain price consistency.
+
+- **Protocol Integration**: DeFi protocols can access liquidity from both ecosystems, increasing available capital and reducing slippage.
+
+### Example: DEX Liquidity
+
+When users provide liquidity to a DEX on TAC EVM using TON-origin tokens:
+
+<Steps>
+  <Step title="Token Bridging" icon="activity">
+    TON tokens are automatically bridged to TAC EVM as part of the liquidity
+    provision transaction.
+  </Step>
+
+<Step title="Liquidity Addition" icon="plus">
+  Bridged tokens are added to the DEX liquidity pool, creating trading
+  opportunities for both TON and EVM users.
+</Step>
+
+<Step title="LP Token Generation" icon="coins">
+  Users receive LP tokens representing their share of the pool, which can be
+  used on either chain.
+</Step>
+
+  <Step title="Cross-Chain Access" icon="arrow-left-right">
+    The same liquidity serves traders from both ecosystems, maximizing
+    utilization and fee generation.
+  </Step>
+</Steps>
+
+## Security Considerations
+
+Asset bridging implements multiple security layers to protect user funds and maintain system integrity.
+
+### Economic Security
+
+- **Collateral Requirements**: Sequencers stake significant collateral to participate in bridging validation, creating financial incentives for honest behavior.
+
+- **Multi-Party Validation**: Multiple independent sequencer groups must agree on bridging operations before execution.
+
+- **Slashing Mechanisms**: Provably incorrect bridging operations result in automatic collateral slashing.
+
+### Technical Security
+
+<AccordionGroup>
+  <Accordion title="Asset Verification" icon="shield-check">
+
+    - **Transfer Validation**: Sequencers verify that claimed asset transfers
+    actually occurred by checking on-chain transaction data.
+    - **Amount Verification**: The exact amounts specified in bridging messages must match
+    actual token transfers.
+    - **Authorization Checks**: Only authorized token holders can initiate bridging operations for their assets.
+
+  </Accordion>
+
+<Accordion title="Reserve Auditing" icon="search">
+
+- **Transparent Reserves**: All locked tokens are held in smart contracts with
+  publicly verifiable balances.
+- **Supply Tracking**: The system maintains precise accounting of total token supplies across both chains.
+- **Independent Verification**: Anyone can audit the bridging system by comparing locked reserves with minted supplies.
+
+</Accordion>
+
+  <Accordion title="Emergency Procedures" icon="triangle-alert">
+
+    - **Rollback Protection**: Failed bridging operations automatically trigger asset rollback procedures to protect user funds.
+    - **Circuit Breakers**: The system can halt bridging operations if anomalous activity is detected.
+    - **Recovery Mechanisms**: Users can recover assets even if individual bridging transactions fail.
+
+  </Accordion>
+</AccordionGroup>
+
+## Integration Patterns
+
+Developers can integrate asset bridging into their applications using several common patterns.
+
+### Automatic Bridging
+
+- **Transparent Operations**: Users specify what they want to do (swap, provide liquidity, etc.) and the system automatically bridges required assets.
+
+- **Single Transaction**: From the user's perspective, asset bridging and the target operation happen in a single transaction.
+
+- **Status Updates**: Applications can provide real-time updates on both bridging progress and target operation execution.
+
+### Manual Bridging
+
+- **Explicit Control**: Some applications allow users to explicitly bridge assets before performing operations.
+
+- **Batch Operations**: Users can bridge multiple assets in preparation for complex operations.
+
+- **Advanced Features**: Manual bridging enables advanced features like pre-positioning assets for better execution.
+
+## What's Next?
+
+Understanding asset bridging provides the foundation for exploring how complete transactions flow through TAC's cross-chain system.
+
+<CardGroup cols={2}>
+  <Card
+    title="Transaction Lifecycle"
+    icon="shell"
+    href="/core-concepts/cross-chain-operations/transaction-lifecycle"
+  >
+    Learn how bridging fits into the complete transaction flow
+  </Card>
+  <Card
+    title="Message Validation"
+    icon="shield-check"
+    href="/core-concepts/cross-chain-operations/message-validation"
+  >
+    Understand how the system ensures bridging security
+  </Card>
+</CardGroup>

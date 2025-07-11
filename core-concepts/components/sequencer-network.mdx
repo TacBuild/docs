@@ -1,0 +1,312 @@
+---
+title: Sequencer Network
+description: "The distributed network of nodes that validates and processes cross-chain messages through consensus"
+---
+
+The Sequencer Network is the operational backbone of the TON Adapter, consisting of distributed nodes that collect, validate, and reach consensus on cross-chain messages. These sequencers ensure that messages between TON and TAC EVM are processed securely and reliably through a multi-layered validation system.
+
+<Info>
+  **Current Network Status**: The sequencer network is currently distributed but
+  not decentralized. Full decentralization is on the roadmap as the network
+  matures.
+</Info>
+
+## Core Functions
+
+Sequencers perform several critical functions that enable secure cross-chain communication:
+
+- **Transaction Collection**: Sequencers continuously monitor both TON and TAC EVM chains for relevant events. When users initiate cross-chain operations, sequencers detect these events and store them in local databases for processing.
+
+- **Data Validation**: Before participating in consensus, each sequencer validates transaction data locally. This includes verifying that asset transfers match message parameters and ensuring users have sufficient balances for requested operations.
+
+- **Merkle Tree Formation**: At regular intervals determined by network parameters, sequencers compile validated transactions into Merkle trees. These trees provide cryptographic proof of transaction inclusion and enable efficient consensus.
+
+- **Consensus Participation**: Sequencers work together in groups to reach agreement on transaction validity, with each group requiring 3/5 internal consensus before submitting to the broader network.
+
+## Sequencer Groups
+
+The network organizes individual sequencers into groups to enhance security through redundancy and distributed validation.
+
+<Frame caption="Sequencer groups working together to validate cross-chain messages">
+  <img
+    src="/images/sequencer-groups.png"
+    alt="Sequencer network group structure"
+  />
+</Frame>
+
+### Group Formation and Management
+
+- **Approval Process**: Sequencer groups are not permissionless - they require approval through DAO voting or multisig processes. This ensures that only trusted entities with proper infrastructure and incentives can participate in securing cross-chain messages.
+
+- **Group Composition**: Each group contains multiple sequencer nodes owned by a specific entity. This could be a trusted dApp, infrastructure provider, or other stakeholder with strong incentives to maintain network security.
+
+- **Internal Operations**: Within each group, sequencers operate independently but must coordinate to reach consensus. This internal redundancy protects against individual node failures while maintaining group-level reliability.
+
+### Economic Requirements
+
+<AccordionGroup>
+  <Accordion title="Collateral Requirements" icon="coins">
+    Each sequencer group must maintain approved collateral above a minimum threshold:
+    
+    - **Liquid Staking Tokens**: stTON (TON Liquid Staking Tokens)
+    - **Ethereum LSTs**: wstETH, stETH (when Agglayer integration is live)
+    - **Other DAO-approved**: Additional liquid staking derivatives as voted by governance
+    - Minimum threshold set by DAO governance
+    - Higher collateral demonstrates stronger commitment and earns proportionally higher rewards
+  </Accordion>
+
+<Accordion title="Stake Management" icon="chart-line">
+  Groups can modify their collateral when changing proofs, but there are
+  protections in place to prevent abuse. If an incorrect proof is submitted,
+  there's a time window for other groups to issue penalties before collateral
+  can be withdrawn. This system ensures that groups maintain skin in the game
+  throughout their participation in the network.
+</Accordion>
+
+  <Accordion title="Profitability Incentives" icon="trending-up">
+    Higher collateral amounts lead to increased profitability, creating natural
+    incentives for groups to stake substantial amounts. 
+    
+    This aligns economic incentives with network security requirements.
+  </Accordion>
+</AccordionGroup>
+
+## Consensus Mechanism
+
+The sequencer network achieves consensus through a multi-layer validation process that ensures security while maintaining operational efficiency.
+
+### Network-Level Consensus
+
+- **Cross-Group Validation**: For a Merkle tree to be accepted by the network, multiple independent groups must submit identical trees. This requirement prevents any single group from manipulating the message flow or processing incorrect transactions.
+
+- **Consensus Threshold**: The network requires agreement from enough groups to ensure security. This threshold is configurable through DAO governance to balance security requirements with operational efficiency.
+
+- **Tree Application**: Only when sufficient groups submit matching trees does the CrossChainLayer smart contract accept the tree for transaction execution.
+
+## Transaction Processing Flow
+
+<Steps>
+  <Step title="Event Detection" icon="radar">
+    Sequencers monitor both TON and TAC EVM chains for cross-chain events. When
+    a user initiates a transaction, multiple sequencers detect it simultaneously
+    and begin validation processes.
+  </Step>
+
+<Step title="Local Validation" icon="shield-check">
+  Each sequencer validates the transaction locally, checking asset transfers,
+  user balances, and message parameters. Only valid transactions proceed to the
+  next stage.
+</Step>
+
+<Step title="Database Storage" icon="database">
+  Validated transactions are stored in each sequencer's local database, creating
+  a distributed record of all cross-chain activity during the current epoch.
+</Step>
+
+<Step title="Merkle Tree Creation" icon="network">
+  At the end of each epoch, sequencers compile their validated transactions into
+  Merkle trees and submit root hashes to their respective SequencerGroup
+  contracts.
+</Step>
+
+<Step title="Group Consensus" icon="users">
+  Groups work to reach 3/5 internal agreement on their Merkle trees.
+  Successfully agreed-upon trees are submitted to the network for cross-group
+  validation.
+</Step>
+
+<Step title="Network Consensus" icon="handshake">
+  Multiple groups must submit identical trees for network acceptance. Once
+  sufficient groups agree, the tree becomes eligible for execution.
+</Step>
+
+  <Step title="Transaction Execution" icon="play">
+    Validated transactions are executed on the target chain using cryptographic
+    proofs from the consensus-approved Merkle trees.
+  </Step>
+</Steps>
+
+## Economic Security Model
+
+The sequencer network's security relies on economic incentives that align participant behavior with network health.
+
+### Reward Structure
+
+- **Stake-Based Selection**: Executors are chosen for specific transactions based on their collateral amounts. Higher stake increases the probability of selection and larger potential rewards.
+
+- **Proportional Distribution**: At the end of each execution round, rewards are distributed proportionally to sequencer stakes, regardless of who actually performed the execution.
+
+- **Performance Incentives**: This system incentivizes sequencers to maintain higher collateral commitments while ensuring rewards are fairly distributed based on economic contribution.
+
+### Penalty Mechanisms
+
+<Warning>
+  The network includes robust penalty systems to discourage malicious behavior
+  and maintain security standards.
+</Warning>
+
+- **Penalty Applications**: Other sequencer groups can submit penalty applications to the Penalty smart contract when they detect incorrect behavior or invalid proofs.
+
+- **Collateral Locking**: If enough groups agree on a penalty application, partial collateral locking occurs while the penalty is investigated and resolved.
+
+- **Network Voting**: Penalty resolution happens through network-wide voting, ensuring that punishments are applied fairly and only when warranted.
+
+## Epoch-Based Processing
+
+The sequencer network operates on an epoch-based system that provides structure and predictability to cross-chain message processing.
+
+### Epoch Structure
+
+- **Time-Based Windows**: Each epoch represents a specific time period during which transactions are collected and processed together. The epoch duration is configurable through DAO governance.
+
+- **Deterministic Timing**: Epoch boundaries are calculated using the formula:
+
+```
+EpochId = (currentTime - protocolDeployTime) / epochDuration
+```
+
+- **Processing Boundaries**: Transactions are processed within specific timeframes:
+
+```
+[protocolDeployTime + EpochId × epochDuration,
+ protocolDeployTime + (EpochId + 1) × epochDuration]
+```
+
+### Benefits of Epoch Processing
+
+- **Ordered Processing**: The epoch system ensures that all sequencers work with the same set of transactions, preventing timing-based attacks and inconsistencies.
+
+- **Batch Efficiency**: Processing transactions in batches is more efficient than handling them individually and provides better opportunities for validation and consensus.
+
+- **Predictable Timing**: Users and applications can understand approximately when their transactions will be processed based on epoch timing.
+
+## Governance and Elections
+
+The sequencer network operates under distributed governance that manages participation and network parameters.
+
+### Election Cycles
+
+- **Regular Elections**: The system includes regular election cycles every N hours, where N is configurable through DAO voting. This ensures that sequencer participation remains current and responsive to network needs.
+
+- **Performance Monitoring**: During election cycles, sequencer performance is evaluated based on reliability, accuracy, and participation in consensus.
+
+- **Dynamic Participation**: The election system allows for adding new groups and removing underperforming ones based on community governance decisions.
+
+### Parameter Management
+
+<Tabs>
+  <Tab title="Operational Parameters">
+    **Epoch Duration**: The length of processing windows can be adjusted to
+    balance security with performance requirements. **Consensus Thresholds**:
+    The number of groups required for network consensus can be modified based on
+    security needs and participation levels. **Timing Windows**: Various timeout
+    and processing windows can be tuned for optimal network performance.
+  </Tab>
+
+<Tab title="Economic Parameters">
+  **Minimum Stake**: The required collateral amounts for group participation can
+  be adjusted based on network security requirements. **Reward Rates**: The
+  distribution of rewards to sequencers can be modified to maintain proper
+  incentive alignment. **Penalty Amounts**: The severity of penalties for
+  malicious behavior can be calibrated to ensure effective deterrence.
+</Tab>
+
+  <Tab title="Security Parameters">
+    **Group Requirements**: The approval criteria for new sequencer groups can
+    be refined based on network experience. **Validation Rules**: The specific
+    validation requirements for transactions can be enhanced as new attack
+    vectors are identified. **Monitoring Systems**: Performance and security
+    monitoring can be improved through governance-approved updates.
+  </Tab>
+</Tabs>
+
+## Executor Mechanism
+
+TAC employs a separation of responsibilities between cross-chain message sequencing and execution, with designated executors handling the final transaction processing.
+
+### Executor Selection and Assignment
+
+<AccordionGroup>
+  <Accordion title="Permissionless Participation" icon="unlock">
+    **Open executor network:** - Any participant can become an executor without
+    central approval - No collateral requirements for executors (security
+    through cryptographic proofs) - Executors compete for transaction processing
+    opportunities - Selection based on assignment specified in cross-chain
+    messages
+  </Accordion>
+
+  <Accordion title="Assignment Mechanism" icon="target">
+    **Message-specific executor designation:** - Each cross-chain message
+    specifies which executor is authorized to process it - For round-trip
+    operations (TON → TAC → TON), two executors must be specified -
+    CrossChainLayer contract verifies executor authorization before execution -
+    Only designated executor can claim rewards for processing
+  </Accordion>
+</AccordionGroup>
+
+### Executor Responsibilities
+
+<Tabs>
+  <Tab title="Message Execution">
+    **Primary execution duties:** - Submit finalized message batches with Merkle
+    proofs to CrossChainLayer contract - Verify cryptographic proofs of
+    consensus approval - Trigger asset minting/unlocking operations before
+    contract calls - Execute target smart contract methods with validated
+    parameters
+  </Tab>
+
+  <Tab title="Fee Management">
+    **Reward collection and verification:** - Estimate gas usage before
+    execution using Merkle proofs - Verify attached fees cover execution costs
+    (gas + overhead) - Collect executor fees upon successful transaction
+    completion - Optional subsidization of small fee deficits for UX
+    preservation
+  </Tab>
+
+  <Tab title="Oracle Services">
+    **Future enhancement capabilities:** - Provide oracle data during message
+    execution (planned feature) - Access to up-to-date market data and external
+    information - Enhanced execution context for complex cross-chain operations
+  </Tab>
+</Tabs>
+
+### Security Through Cryptography
+
+**No Collateral Required:**
+
+- Executor security guaranteed through cryptographic proofs rather than economic staking
+- Merkle proofs ensure only consensus-approved messages can be executed
+- CrossChainLayer contract validates all proofs before allowing execution
+- Eliminates need for executor collateral or centralized approval processes
+
+## Future Evolution
+
+The modular design of the sequencer network allows for future improvements and adaptations as the network grows and requirements evolve.
+
+### Planned Enhancements
+
+- **FROST Consensus Upgrade**: Migration to FROST-Ed25519 threshold signatures with DKG
+- **Enhanced Oracle Integration**: Expanded oracle services during execution
+- **Scalability Improvements**: Support for more groups, shorter epochs, efficient consensus
+- **Additional Blockchain Support**: Potential expansion beyond TON and TAC EVM
+
+## What's Next?
+
+Understanding the sequencer network helps you appreciate how TAC maintains security and reliability for cross-chain operations.
+
+<CardGroup cols={2}>
+  <Card
+    title="Cross-Chain Messaging"
+    icon="arrow-left-right"
+    href="/core-concepts/cross-chain-operations/cross-chain-messaging"
+  >
+    Learn how sequencers process and validate messages
+  </Card>
+  <Card
+    title="Asset Bridging"
+    icon="coins"
+    href="/core-concepts/cross-chain-operations/asset-bridging"
+  >
+    Understand how sequencers handle token operations
+  </Card>
+</CardGroup>

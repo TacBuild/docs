@@ -1,0 +1,283 @@
+---
+title: JavaScript SDK
+description: "Track SDK updates, breaking changes, and new features across versions"
+---
+
+This changelog documents all notable changes to the TAC SDK, including new features, improvements, bug fixes, and breaking changes.
+
+<Update label="v0.6.4" description="June 2025">
+
+### Changed
+
+- Switched to spb(chain) set of addresses
+
+</Update>
+
+<Update label="v0.6.3" description="June 2025">
+
+### Added
+
+- Advanced options to `sendCrossChainTransaction`
+- Method to send multiple crosschain transactions at once: `sendCrossChainTransactions`
+- Batch sending support for crosschain transactions
+- Error handling while sending crosschain transactions
+
+### Changed
+
+- TonClient with TAC endpoint as default contract opener
+
+</Update>
+
+<Update label="v0.6.2" description="May 2025">
+
+### Added
+
+- `metaInfo` field to the `ExecutionStages`
+- LiteSequencerClient to handle lite sequencer requests and its parameters
+- Method to calculate tvmExecutorFee: `getTVMExecutorFeeInfo`
+
+### Changed
+
+- `getEVMTokenAddress` now automatically normalizes addresses to `EQ` form
+- For TAC->TON transactions tvmExecutorFee calculated via lite sequencer
+
+</Update>
+
+<Update label="v0.6.1" description="May 2025">
+
+### Added
+
+- Fee support for crosschain transactions
+- New methods for requesting execution fees and simulation `getTransactionSimulationInfo`
+- Methods to work with NFT items: bridging and getting addresses
+
+### Changed
+
+- Switched to v3 sequencer
+
+</Update>
+
+<Update label="v0.5.7" description="April 2025">
+
+### Changed
+
+- Changed tvm jetton minter stateInit in `getJettonOpType`
+
+</Update>
+
+<Update label="v0.5.6" description="March 2025">
+
+### Changed
+
+- Changed tvm jetton minter stateInit
+
+</Update>
+
+<Update label="v0.5.5" description="March 2025">
+
+### Changed
+
+- Fixed bug with crossChainTonAmount in generating jetton payload
+
+</Update>
+
+<Update label="v0.5.4" description="March 2025">
+
+### Changed
+
+- Due to an API change, updated the `operationId` retrieval. An empty string will be returned for 404 errors
+
+</Update>
+
+<Update label="v0.5.3" description="March 2025">
+
+### Changed
+
+- Fixed bug with V5 wallet
+
+</Update>
+
+<Update label="v0.5.2" description="March 2025">
+
+### Changed
+
+- `StageName` value namings
+- `startTracking` has been improved. Added optional parameters
+
+### Removed
+
+- `ExecutionStagesTableData` type
+- `TrackingOperationResult` type
+
+</Update>
+
+<Update label="v0.5.1" description="March 2025">
+
+### Added
+
+- `OperationType` type
+- `ExecutionStagesTableData` type
+- `TrackingOperationResult` type
+- `StageName` enum
+- `getOperationType` in `OperationTracker` retrieves the `OperationType` for `operationId`
+
+### Changed
+
+- The stage names have been changed
+- Changed namings in enums
+- `OperationType` added in the `ExecutionStages`
+- `ExecutionStages` structure
+- Added return value in method `sendShardTransaction` in `TonConnectSender`
+- Added `forceSend` option in method `sendCrossChainTransaction` in `TacSdk`
+- `startTracking` has been improved. Added optional parameters and return values
+
+### Removed
+
+- Deleted `isBridgeOperation` (now it can be determined with `getOperationType`)
+
+</Update>
+
+<Update label="v0.5.0" description="March 2025">
+
+### Changed
+
+- **Changed package tac-sdk -> @tonappchain/sdk**
+- `calculateEVMTokenAddress` function now requires tokenUtils address as deployer and crossChainLayer address as constructor params
+- Rename shardedId -> shardsKey
+- A `gasLimit` field has been added to `EvmProxyMsg` (defaulting to undefined, which will be set through simulation in this case)
+- Renamed json properties in `buildEvmDataCell`
+- Renamed urls in `OperationTracker`
+
+### Added
+
+- `options` parameter in `getSender` method to modify W5 and Highload V3 wallets
+- `customLiteSequencerEndpoints` parameter in `SDKParams` to specify custom lite sequencer endpoints
+- `simulateEVMMessage` method in `TacSdk` to simulate EVM message execution on TAC side
+- `getOperationStatuses` method in `OperationTracker` retrieves the statuses of multiple operations based on their respective `operationId's`
+- `getOperationIdsByShardsKeys` method in `OperationTracker` retrieves the `operationId's` based on their respective `shardsKey's`
+- `getStageProfilings` method in `OperationTracker` retrieves the `ExecutionStages's` based on their respective `operationId's`
+- `getStageProfiling` method in `OperationTracker` retrieves the `ExecutionStages` for `operationId`
+- Added a pre-check before sending to the blockchain to ensure the transaction will execute successfully on the TAC side using the `simulateEVMMessage` method
+- Support for highload V3 wallet as a sender
+
+</Update>
+
+<Update label="v0.4.2" description="February 2025">
+
+### Added
+
+- Contract opener `orbsOpener4` that uses new version TON endpoints
+
+### Changed
+
+- `orbsOpener4` set as default in SDK
+
+</Update>
+
+<Update label="v0.4.1" description="February 2025">
+
+### Changed
+
+- `@tonappchain/artifacts` upgraded to `0.0.14`
+
+</Update>
+
+<Update label="v0.4.0" description="February 2025">
+
+### Added
+
+- `getUserJettonBalanceExtended` method in `TacSdk` to get user jetton balance extended with decimals info
+
+### Changed
+
+- `AssetBridgingData` now supports multiple formats of asset value: with decimals and without decimals. In case decimals are not provided, the SDK will try to extract it from chain
+
+</Update>
+
+<Update label="v0.3.7" description="January 2025">
+
+### Added
+
+- Section in readme about TACHeader
+- AddLiquidity uniswap_v2 test
+- `orbsOpener` method to construct custom contractOpener for TacSDK. It uses Orbs Network and does not have rate limits
+
+### Changed
+
+- SDK uses orbsOpener by default
+- `address` field in `AssetBridgingData` can be either EVM or TVM address
+- Method `SenderFactory.getSender` requires additional parameter `network` when creating wallet wrapper using mnemonic
+- Fixed `getContractState` in `liteClientOpener`
+- Fixed all tests for TACHeader logic
+- Version `@tonappchain/artifacts` upgraded to `0.0.12-addresses`
+- Request to `/status` endpoint of Sequencer API changed from `GET` to `POST` with body
+- Signature of `getOperationStatus` is changed
+
+### Removed
+
+- Deleted test bridgeData
+
+</Update>
+
+<Update label="v0.3.6" description="January 2025">
+
+### Changed
+
+- Calculate token addresses through emulation
+- Renamed `TransactionStatus` to `OperationTracker`
+- Renamed method `OperationTracker.getStatusTransaction()` to `OperationTracker.getOperationStatus()`
+- Renamed method `OperationTracker.getSimpifiedTransactionStatus()` to `OperationTracker.getSimplifiedOperationStatus()`
+- Renamed `TacSDKTonClientParams` to `SDKParams`
+- Changed struct of `SDKParams`
+- Changed `ton-lite-client` library to its fork `@tonappchain/ton-lite-client`
+
+### Added
+
+- Custom `TONParams` and `TACParams` in `SDKParams`
+- `network` and `customLiteSequencerEndpoints` params to `OperationTracker` constructor
+- Static async function `create` in `TacSdk` for creating an instance of `TacSdk`
+- Custom errors
+- Methods that may construct custom contractOpener for TacSDK
+- Method `closeConnections` in `TacSdk` for closing all network connections
+- Optional method `closeConnections` to `ContractOpener` interface
+
+### Removed
+
+- `init` function in `TacSdk`
+- Public constructor of `TacSdk`
+
+</Update>
+
+<Update label="v0.3.5" description="December 2024">
+
+### Added
+
+- Method to get TVM address based on EVM address
+- Tests for SDK methods using contract emulation
+- Support for custom contract opener
+- SDK uses @tonappchain/artifacts
+- Added get methods for native token addresses
+- Added support for native token address calculation in _getEVMTokenAddress_ and _getTVMTokenAddress_ methods
+
+### Removed
+
+- Support for TON wallet v1
+
+</Update>
+
+<Update label="v0.3.4" description="December 2024">
+
+### Added
+
+- Code formatting
+
+</Update>
+
+<Update label="v0.3.3" description="December 2024">
+
+### Added
+
+- Support for all versions of TON wallet (v1 - v5)
+- SenderFactory to create AbstractSender
+
+</Update>
