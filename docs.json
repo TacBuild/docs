@@ -139,7 +139,8 @@
             "pages": [
               "ecosystem/oracles/redstone",
               "ecosystem/oracles/stork",
-              "ecosystem/oracles/eoracle"
+              "ecosystem/oracles/eoracle",
+              "ecosystem/oracles/apro"
             ]
           },
           {
