@@ -102,6 +102,16 @@ The SDK accepts flexible method name formats:
 
 Use ethers.js or similar libraries to encode contract parameters:
 
+<Note>
+
+Make sure the encoded parameters are valid tuples.
+
+```
+abi.encode(["tuple(uint256,....)"], [1, ...]);
+```
+
+</Note>
+
 ```javascript
 import { ethers } from "ethers";
 

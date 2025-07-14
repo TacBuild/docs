@@ -118,12 +118,14 @@ The SDK is designed to feel familiar to web developers while providing powerful 
     Standard async/await patterns, Promise-based error handling, and conventional configuration objects make the SDK feel like any other JavaScript library.
     
     ```javascript
-    try {
-      const result = await tacSdk.sendCrossChainTransaction(message, sender, assets);
-      console.log("Transaction successful:", result.operationId);
+      try {
+      const transactionLinker = await tacSdk.sendCrossChainTransaction(message, sender, assets);
+      const tracker = new OperationTracker(Network.TESTNET);
+      await tacSdk.startTracking(transactionLinker, Network.TESTNET);
+      const operationId = await tracker.getOperationId(transactionLinker);
     } catch (error) {
       handleTransactionError(error);
-    }
+    } 
     ```
   </Tab>
   

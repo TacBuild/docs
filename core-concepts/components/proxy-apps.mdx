@@ -113,8 +113,8 @@ Proxy contracts decode this header to access information about the original user
 pragma solidity ^0.8.28;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { TacProxyV1 } from "tac-l2-ccl/contracts/proxies/TacProxyV1.sol";
-import { TokenAmount, OutMessageV1, TacHeaderV1 } from "tac-l2-ccl/contracts/core/Structs.sol";
+import { TacProxyV1 } from "@tonappchain/evm-ccl/contracts/proxies/TacProxyV1.sol";
+import { TokenAmount, OutMessageV1, TacHeaderV1 } from "@tonappchain/evm-ccl/contracts/core/Structs.sol";
 
 contract MyDeFiProxy is TacProxyV1 {
     IDeFiContract public targetContract;
@@ -174,7 +174,7 @@ pragma solidity ^0.8.28;
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import { TacProxyV1Upgradeable } from "tac-l2-ccl/contracts/proxies/TacProxyV1Upgradeable.sol";
+import { TacProxyV1Upgradeable } from "@tonappchain/evm-ccl/contracts/proxies/TacProxyV1Upgradeable.sol";
 
 contract MyUpgradeableProxy is
     Initializable,
@@ -272,7 +272,11 @@ For complex applications with unique requirements, developers create custom prox
 TAC provides comprehensive testing utilities for proxy contract development:
 
 ```typescript
-import { TacLocalTestSdk, JettonInfo, TokenMintInfo } from "tac-l2-ccl";
+import {
+  TacLocalTestSdk,
+  JettonInfo,
+  TokenMintInfo,
+} from "@tonappchain/evm-ccl";
 
 describe("Proxy Contract Tests", () => {
   let testSdk: TacLocalTestSdk;
