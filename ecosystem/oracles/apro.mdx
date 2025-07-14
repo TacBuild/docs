@@ -3,7 +3,18 @@ title: APRO
 description: Fast integration of APRO predictor services into TAC chain
 ---
 
-APRO is building a secure platform by combining off-chain processing with on-chain verification, extending both data access and computational capabilities. This forms the foundation of APRO Data Service, improving data accuracy and efficiency while offering the flexibility to create custom solutions tailored to the specific needs of DApp businesses. Currently, we support 161 Price Feed services across 15 major blockchain networks:
+APRO is building a secure platform by combining off-chain processing with on-chain verification, extending both data access and computational capabilities. This forms the foundation of APRO Data Service, improving data accuracy and efficiency while offering the flexibility to create custom solutions tailored to the specific needs of DApp businesses.
+
+## Available Price Feeds
+
+| Feed Name | Network | Address                                                                                                                         |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| BTC/USD   | Mainnet | [0xe3C2d89Ef01A06F1d2817036919e0424675290AD](https://explorer.tac.build/address/0xe3C2d89Ef01A06F1d2817036919e0424675290AD)     |
+| TON/USD   | Mainnet | [0x0d72Da0e698D97538759174a66DB8cAA55522313](https://explorer.tac.build/address/0x0d72Da0e698D97538759174a66DB8cAA55522313)     |
+| ETH/USD   | Mainnet | [0xd0E76152Af372D2a85FaF3E4c4E52E6F95e22e53](https://explorer.tac.build/address/0xd0E76152Af372D2a85FaF3E4c4E52E6F95e22e53)     |
+| USDT/USD  | Mainnet | [0xE13FEf4A5940392941B51D0760b81750364F5aC5](https://explorer.tac.build/address/0xE13FEf4A5940392941B51D0760b81750364F5aC5)     |
+| BTC/USD   | Testnet | [0xd0E76152Af372D2a85FaF3E4c4E52E6F95e22e53](https://spb.explorer.tac.build/address/0xd0E76152Af372D2a85FaF3E4c4E52E6F95e22e53) |
+| USDT/USD  | Testnet | [0xF424cAA15eF7F8524bF55bD838935A25cDf1caae](https://spb.explorer.tac.build/address/0xF424cAA15eF7F8524bF55bD838935A25cDf1caae) |
 
 Data Push: APRO Data Push uses a "Push-Based" data model to deliver Price Feed services. Decentralized independent node operators continuously gather and push data updates to the blockchain when certain price thresholds or time intervals are met. This method improves blockchain scalability, supports various data products, and provides timely updates.
 
@@ -437,5 +448,3 @@ function version() external view returns (uint256)
 - `RETURN`: The version number.
 
 For inquiries regarding Price Feeds for additional chains, check out the [Price Feed Contract Documentation](https://docs.apro.com/en/data-push/price-feed-contract).
-
-You can also view details through our browser for [Tac testnet details](https://www.apro.com/data-push?chain=tac-test)
