@@ -161,7 +161,7 @@ contract TacEnabledContract is TacProxyV1 {
         // Optionally send result back to TON
         OutMessageV1 memory response = OutMessageV1({
             target: header.sender,
-            methodName: "counterUpdated",
+            methodName: "counterUpdated(bytes,bytes)",
             arguments: abi.encode(counter)
         });
 

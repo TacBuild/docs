@@ -210,7 +210,7 @@ const multiAssetBridging = async () => {
 
   const evmProxyMsg = {
     evmTargetAddress: complexDeFiContractAddress,
-    methodName: "multiAssetOperation(uint256,uint256,uint256)",
+    methodName: "multiAssetOperation(bytes,bytes)",
     encodedParameters: encodedComplexParams,
     gasLimit: 800000n,
   };

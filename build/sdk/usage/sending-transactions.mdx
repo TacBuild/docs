@@ -25,7 +25,7 @@ const sender = await SenderFactory.getSender({ tonConnect: tonConnectUI });
 // Define EVM operation
 const evmProxyMsg = {
   evmTargetAddress: "0x742d35Cc647332...", // Target contract address
-  methodName: "transfer(address,uint256)", // Contract method signature
+  methodName: "transfer(bytes,bytes)", // Contract method signature
   encodedParameters: "0x000000000000000000...", // ABI-encoded parameters
 };
 
@@ -56,7 +56,7 @@ The `EvmProxyMsg` object defines what contract call to execute on the TAC EVM si
 ```javascript
 const evmProxyMsg = {
   evmTargetAddress: "0x742d35Cc647332...", // Target contract address (required)
-  methodName: "methodName(uint256,address)", // Method signature (optional)
+  methodName: "methodName(bytes,bytes)", // Method signature (optional)
   encodedParameters: "0x00000000000000...", // ABI-encoded params (optional)
   gasLimit: 500000n, // Gas limit (optional)
 };
@@ -71,7 +71,7 @@ The SDK accepts flexible method name formats:
     ```javascript
     const evmProxyMsg = {
       evmTargetAddress: "0x742d35Cc647332...",
-      methodName: "swapExactTokensForTokens(uint256,uint256,address[],address,uint256)",
+      methodName: "swapExactTokensForTokens(bytes,bytes)",
       encodedParameters: encodedSwapParams
     };
     ```
@@ -81,7 +81,7 @@ The SDK accepts flexible method name formats:
     ```javascript
     const evmProxyMsg = {
       evmTargetAddress: "0x742d35Cc647332...",
-      methodName: "transfer", // SDK will format as "transfer()"
+      methodName: "transfer", // SDK will format as "transfer(bytes,bytes)"
       encodedParameters: encodedTransferParams
     };
     ```
@@ -136,8 +136,7 @@ const swapParams = abi.encode(
 
 const evmProxyMsg = {
   evmTargetAddress: uniswapRouterAddress,
-  methodName:
-    "swapExactTokensForTokens(uint256,uint256,address[],address,uint256)",
+  methodName: "swapExactTokensForTokens",
   encodedParameters: swapParams,
 };
 ```
@@ -269,7 +268,7 @@ const batchTransactions = async () => {
     {
       evmProxyMsg: {
         evmTargetAddress: "0xContract1...",
-        methodName: "method1(uint256)",
+        methodName: "method1(bytes,bytes)",
         encodedParameters: "0x...",
       },
       assets: [{ amount: 1.0 }],
@@ -277,7 +276,7 @@ const batchTransactions = async () => {
     {
       evmProxyMsg: {
         evmTargetAddress: "0xContract2...",
-        methodName: "method2(address)",
+        methodName: "method2(bytes,bytes)",
         encodedParameters: "0x...",
       },
       assets: [{ address: "EQJetton...", amount: 100 }],

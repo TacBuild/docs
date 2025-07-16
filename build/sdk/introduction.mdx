@@ -35,8 +35,7 @@ Execute complex EVM contract calls directly from TON wallets. The SDK handles al
 // Call an EVM DEX directly from TON
 const evmProxyMsg = {
   evmTargetAddress: "0x742d35Cc647332...",
-  methodName:
-    "swapExactTokensForTokens(uint256,uint256,address[],address,uint256)",
+  methodName: "swapExactTokensForTokens(bytes,bytes)",
   encodedParameters: encodedSwapData,
 };
 
@@ -142,7 +141,7 @@ The SDK is designed to feel familiar to web developers while providing powerful 
     
     const evmProxyMsg: EvmProxyMsg = {
       evmTargetAddress: "0x742d35Cc647332...",
-      methodName: "transfer(address,uint256)",
+      methodName: "transfer(bytes,bytes)",
       encodedParameters: encodedTransferData
     };
     ```

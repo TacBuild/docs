@@ -213,7 +213,7 @@ describe("Cross-Chain Transaction Tests", () => {
     test("should simulate successful token transfer", async () => {
       const evmProxyMsg = {
         evmTargetAddress: testEnv.getTestContract("testERC20"),
-        methodName: "transfer(address,uint256)",
+        methodName: "transfer(bytes,bytes)",
         encodedParameters: ethers.utils.defaultAbiCoder.encode(
           ["address", "uint256"],
           ["0xRecipientAddress...", ethers.utils.parseEther("100")]
@@ -238,7 +238,7 @@ describe("Cross-Chain Transaction Tests", () => {
 
       const evmProxyMsg = {
         evmTargetAddress: testEnv.getTestContract("testERC20"),
-        methodName: "transfer(address,uint256)",
+        methodName: "transfer(bytes,bytes)",
         encodedParameters: ethers.utils.defaultAbiCoder.encode(
           ["address", "uint256"],
           ["0xRecipientAddress...", ethers.utils.parseEther("100")]
@@ -257,7 +257,7 @@ describe("Cross-Chain Transaction Tests", () => {
     test("should execute and track cross-chain transaction", async () => {
       const evmProxyMsg = {
         evmTargetAddress: testEnv.getTestContract("testERC20"),
-        methodName: "transfer(address,uint256)",
+        methodName: "transfer(bytes,bytes)",
         encodedParameters: ethers.utils.defaultAbiCoder.encode(
           ["address", "uint256"],
           ["0xRecipientAddress...", ethers.utils.parseEther("10")]
@@ -308,7 +308,7 @@ describe("Cross-Chain Transaction Tests", () => {
 
       const evmProxyMsg = {
         evmTargetAddress: testEnv.getTestContract("testDEX"),
-        methodName: "swap(uint256)",
+        methodName: "swap(bytes,bytes)",
         encodedParameters: ethers.utils.defaultAbiCoder.encode(
           ["uint256"],
           [ethers.utils.parseUnits("100", testAsset.decimals)]
@@ -334,7 +334,7 @@ describe("Cross-Chain Transaction Tests", () => {
 
       const evmProxyMsg = {
         evmTargetAddress: testEnv.getTestContract("testDEX"),
-        methodName: "swap(uint256)",
+        methodName: "swap(bytes,bytes)",
         encodedParameters: "0x",
       };
 
@@ -352,7 +352,7 @@ describe("Cross-Chain Transaction Tests", () => {
     test("should handle invalid EVM contract address", async () => {
       const evmProxyMsg = {
         evmTargetAddress: "0xInvalidContract...",
-        methodName: "nonexistentMethod()",
+        methodName: "nonexistentMethod(bytes,bytes)",
         encodedParameters: "0x",
       };
 
@@ -369,7 +369,7 @@ describe("Cross-Chain Transaction Tests", () => {
     test("should handle malformed method signatures", async () => {
       const evmProxyMsg = {
         evmTargetAddress: testEnv.getTestContract("testERC20"),
-        methodName: "invalidMethod(invalidType)", // Invalid parameter type
+        methodName: "invalidMethod(bytes,bytes)", // Valid parameter type
         encodedParameters: "0x",
       };
 
@@ -668,7 +668,7 @@ class CrossChainLoadTester {
     return {
       evmProxyMsg: {
         evmTargetAddress: "0xTestContract...",
-        methodName: "testMethod(uint256)",
+        methodName: "testMethod(bytes,bytes)",
         encodedParameters: ethers.utils.defaultAbiCoder.encode(
           ["uint256"],
           [BigInt(userId * 1000 + txIndex)]
