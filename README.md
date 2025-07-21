@@ -1,5 +1,5 @@
 <div align="center">
-    <h3>TAC Docs</h3>
+    <h3>TAC Developer Docs</h3>
     <a href="https://docs.tac.build">https://docs.tac.build</a>
 </div>
 
