@@ -132,7 +132,7 @@
         "groups": [
           {
             "group": "Overview",
-            "pages": ["ecosystem/index"]
+            "pages": ["ecosystem/index", "ecosystem/token-list"]
           },
           {
             "group": "Oracles",
