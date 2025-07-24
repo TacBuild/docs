@@ -139,7 +139,7 @@
             "pages": [
               "ecosystem/oracles/redstone",
               "ecosystem/oracles/stork",
-              "ecosystem/oracles/eoracle",
+              "ecosystem/oracles/EO",
               "ecosystem/oracles/apro"
             ]
           },
@@ -208,6 +208,12 @@
       }
     ]
   },
+  "redirects": [
+    {
+      "source": "/ecosystem/oracles/eoracle",
+      "destination": "/ecosystem/oracles/eo"
+    }
+  ],
   "logo": {
     "light": "/images/logo/light.svg",
     "dark": "/images/logo/dark.svg"

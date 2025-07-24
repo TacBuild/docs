@@ -46,7 +46,7 @@ Quantstamp
 Halborn
 Hypernative
 Goldsky
-eOracle
+EO
 subgraphs
 RWAfi
 RWAs
