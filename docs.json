@@ -166,7 +166,7 @@
           },
           {
             "group": "Multi-Sig Wallets",
-            "pages": ["ecosystem/multi-sig-wallets/safe"]
+            "pages": ["ecosystem/multi-sig-wallets/safe", "ecosystem/multi-sig-wallets/ton-multisig"]
           },
           {
             "group": "RPCs",

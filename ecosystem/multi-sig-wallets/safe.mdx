@@ -1,1 +1,60 @@
-<Info>Coming soon!</Info>
+---
+title: Safe
+description: "Deploy secure multi-signature wallets on TAC with Safe's battle-tested smart contracts"
+---
+
+Safe (formerly Gnosis Safe) is a multi-signature wallet that requires multiple signatures to execute transactions. Instead of one private key controlling funds, Safe requires M-of-N signatures from designated owners.
+
+## How it works
+
+Safe deploys a smart contract that acts as your wallet. You define:
+
+- **Owners**: Addresses that can sign transactions
+- **Threshold**: Number of signatures required (e.g., 2 of 3 owners)
+
+When you want to send a transaction, enough owners must sign it before execution.
+
+<Info>
+  Safe deployment on TAC is provided by **Protofire**. Protofire is the official
+  partner of the Safe Team.
+</Info>
+
+## Features
+
+- **Configurable thresholds**: Change owners and signature requirements
+- **Spending limits**: Set daily limits for specific tokens
+- **Transaction batching**: Execute multiple operations in one transaction
+- **Module system**: Add custom logic through Safe modules
+
+## Setup
+
+<Steps>
+  <Step title="Visit Safe Interface">
+    Navigate to [safe.tac.build](https://safe.tac.build) to access the Safe
+    interface for TAC
+  </Step>
+
+<Step title="Connect Your Wallet">
+  Connect your preferred wallet (MetaMask, WalletConnect, etc.) to the TAC
+  network
+</Step>
+
+  <Step title="Create New Safe">
+
+    Click "Create new Safe" and configure your multi-sig parameters:
+
+Add owner addresses
+Set signature threshold (e.g., 2 of 3, 3 of 5)
+Choose a name for your Safe
+
+</Step>
+
+<Step title="Deploy & Fund">
+Deploy your Safe contract and fund it with your desired assets
+</Step>
+</Steps>
+
+<Note>
+  Make sure all owner addresses are accessible and secure. Lost access to
+  required owner keys can result in locked funds.
+</Note>

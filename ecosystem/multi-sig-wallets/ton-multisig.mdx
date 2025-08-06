@@ -1,0 +1,53 @@
+---
+title: TON Multisig
+description: "Create multi-signature wallets on TON blockchain"
+---
+
+TON Multisig is a multi-signature wallet solution for the TON blockchain that requires multiple signatures to execute transactions. It uses TON's native smart contracts to provide secure shared custody.
+
+## How it works
+
+TON Multisig deploys a smart contract on TON that requires multiple signatures before executing transactions. You configure:
+
+- **Signers**: Addresses that can sign transactions
+- **Proposers**: Addresses that can propose new transactions
+- **Threshold**: Number of signatures required for execution
+
+## Setup
+
+<Steps>
+  <Step title="Go to multisig.ton.org">
+    Open [multisig.ton.org](https://multisig.ton.org)
+  </Step>
+
+<Step title="Add signers">
+  Click "Add signer" and input TON addresses that can sign transactions
+</Step>
+
+<Step title="Add proposers">
+  Click "Add proposer" and input TON addresses that can propose transactions
+</Step>
+
+<Step title="Set threshold">
+  Set the number of signatures required to execute transactions
+</Step>
+
+  <Step title="Create multisig">
+    Click "Create" to deploy the multisig contract
+  </Step>
+</Steps>
+
+<Note>
+  Ensure all signer and proposer addresses are accessible. Lost access to
+  required keys can lock your funds.
+</Note>
+
+## Usage
+
+Once deployed, your multisig works as follows:
+
+1. **Proposer** submits a transaction proposal
+2. Required number of **signers** approve the proposal
+3. Transaction executes automatically once threshold is met
+
+This provides secure shared custody for TON assets without requiring complex coordination between parties.
