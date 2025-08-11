@@ -1,0 +1,433 @@
+---
+title: Creating Basic Proxy Contracts
+description: "Build your first TAC Proxy contract step-by-step"
+---
+
+TAC Proxy contracts are Solidity contracts that can receive function calls from TON users. This guide walks you through creating your first basic proxy contract, explaining each concept as we build.
+
+## Why Proxy Contracts?
+
+Regular smart contracts can only be called by users on the same blockchain. TAC Proxy contracts solve a different problem: **they let TON users call your EVM functions directly**.
+
+Without proxies:
+
+1. TON user bridges tokens to TAC
+2. User switches to MetaMask
+3. User interacts with your dApp
+4. User bridges tokens back to TON
+
+With proxies:
+
+1. TON user calls your function directly from TON wallet
+2. ✨ Everything else happens automatically
+
+Think of proxy contracts as **API endpoints that TON users can call with blockchain transactions instead of HTTP requests**.
+
+## Your First Proxy Contract
+
+Let's start with the absolute minimum proxy contract:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.28;
+
+import { TacProxyV1 } from "@tonappchain/evm-ccl/contracts/proxies/TacProxyV1.sol";
+import { TacHeaderV1 } from "@tonappchain/evm-ccl/contracts/core/Structs.sol";
+
+contract HelloProxy is TacProxyV1 {
+    event HelloFromTON(string indexed tonUser, string message);
+
+    constructor(address crossChainLayer) TacProxyV1(crossChainLayer) {}
+
+    function sayHello(bytes calldata tacHeader, bytes calldata arguments)
+        external
+        _onlyCrossChainLayer
+    {
+        // 1. Decode who's calling from TON
+        TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
+
+        // 2. Decode their message
+        string memory message = abi.decode(arguments, (string));
+
+        // 3. Do something with it
+        emit HelloFromTON(header.tvmCaller, message);
+    }
+}
+```
+
+That's it! This contract can receive messages from any TON user.
+
+## Understanding the Structure
+
+### Required Imports
+
+```solidity
+import { TacProxyV1 } from "@tonappchain/evm-ccl/contracts/proxies/TacProxyV1.sol";
+import { TacHeaderV1 } from "@tonappchain/evm-ccl/contracts/core/Structs.sol";
+```
+
+- `TacProxyV1`: The base contract that handles all cross-chain communication
+- `TacHeaderV1`: Data structure containing information about the TON user
+
+### Inheritance
+
+```solidity
+contract HelloProxy is TacProxyV1 {
+```
+
+Your contract **must** inherit from `TacProxyV1` to receive cross-chain calls.
+
+### Constructor Parameter
+
+```solidity
+constructor(address crossChainLayer) TacProxyV1(crossChainLayer) {}
+```
+
+The `crossChainLayer` address is TAC's infrastructure contract that will call your functions. You get this address from TAC documentation or contract addresses page.
+
+### Function Signature (Critical!)
+
+```solidity
+function sayHello(bytes calldata tacHeader, bytes calldata arguments)
+    external
+    _onlyCrossChainLayer
+{
+```
+
+**Every cross-chain function must follow this exact pattern:**
+
+- `bytes calldata tacHeader` - Encoded TacHeaderV1 containing TON user information
+- `bytes calldata arguments` - Your custom ABI-encoded parameters
+- `external` - Must be externally callable
+- `_onlyCrossChainLayer` - Security modifier that ensures only CrossChainLayer can call this function
+
+## Step-by-Step Walkthrough
+
+### Step 1: Decode the Header
+
+```solidity
+TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
+```
+
+The header tells you:
+
+- `header.tvmCaller` - TON user's address (like "EQAbc123...")
+- `header.operationId` - Unique ID for this operation
+- `header.timestamp` - When the TON transaction happened
+
+### Step 2: Decode Your Parameters
+
+```solidity
+string memory message = abi.decode(arguments, (string));
+```
+
+The `arguments` contain whatever data the TON user sent. You decide what format this should be - it could be:
+
+- A single string: `abi.decode(arguments, (string))`
+- Multiple values: `abi.decode(arguments, (uint256, address, bool))`
+- A struct: `abi.decode(arguments, (MyCustomStruct))`
+
+### Step 3: Execute Your Logic
+
+```solidity
+emit HelloFromTON(header.tvmCaller, message);
+```
+
+This is where you do whatever your contract is supposed to do. In this example, we just emit an event, but you could:
+
+- Store data in state variables
+- Call other contracts
+- Perform calculations
+- Transfer tokens (we'll cover this next)
+
+## Handling Tokens
+
+Most proxy contracts work with tokens that TON users bridge. Here's a simple token handling example:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.28;
+
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { TacProxyV1 } from "@tonappchain/evm-ccl/contracts/proxies/TacProxyV1.sol";
+import { TacHeaderV1 } from "@tonappchain/evm-ccl/contracts/core/Structs.sol";
+
+contract TokenProxy is TacProxyV1 {
+    mapping(string => uint256) public userBalances; // TON address -> balance
+
+    event TokensReceived(string indexed tonUser, address token, uint256 amount);
+
+    constructor(address crossChainLayer) TacProxyV1(crossChainLayer) {}
+
+    function deposit(bytes calldata tacHeader, bytes calldata arguments)
+        external
+        _onlyCrossChainLayer
+    {
+        TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
+        (address token, uint256 amount) = abi.decode(arguments, (address, uint256));
+
+        // Tokens are automatically transferred to this contract by CrossChainLayer
+        // BEFORE your function is called - verify we received them
+        require(IERC20(token).balanceOf(address(this)) >= amount, "Tokens not received");
+
+        // Track the user's deposit
+        userBalances[header.tvmCaller] += amount;
+
+        emit TokensReceived(header.tvmCaller, token, amount);
+    }
+}
+```
+
+**Key insight**: When TON users send tokens with their function call, those tokens are automatically transferred to your proxy contract _before_ your function is called by the CrossChainLayer. The bridging is handled automatically by the TAC infrastructure.
+
+## Sending Responses Back to TON
+
+Sometimes you want to send tokens back to the TON user. Here's a simple example:
+
+```solidity
+import { TokenAmount, OutMessageV1 } from "@tonappchain/evm-ccl/contracts/core/Structs.sol";
+
+contract EchoProxy is TacProxyV1 {
+    constructor(address crossChainLayer) TacProxyV1(crossChainLayer) {}
+
+    function echoTokens(bytes calldata tacHeader, bytes calldata arguments)
+        external
+        _onlyCrossChainLayer
+    {
+        TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
+        (address token, uint256 amount) = abi.decode(arguments, (address, uint256));
+
+        // Send the same tokens back to the user
+        TokenAmount[] memory tokensToSend = new TokenAmount[](1);
+        tokensToSend[0] = TokenAmount(token, amount);
+
+        // Approve CrossChainLayer to take our tokens
+        IERC20(token).approve(_getCrossChainLayerAddress(), amount);
+
+        // Send back to TON user (no fees for RoundTrip messages)
+        OutMessageV1 memory outMsg = OutMessageV1({
+            shardsKey: header.shardsKey,        // Link to original operation
+            tvmTarget: header.tvmCaller,        // Send back to caller
+            tvmPayload: "",                     // Must be empty - not supported
+            tvmProtocolFee: 0,                  // 0 for RoundTrip - already paid on TON
+            tvmExecutorFee: 0,                  // 0 for RoundTrip - already paid on TON
+            tvmValidExecutors: new string[](0), // Empty for RoundTrip - already defined on TON
+            toBridge: tokensToSend,             // Tokens to send
+            toBridgeNFT: new NFTAmount[](0)     // No NFTs
+        });
+
+        _sendMessageV1(outMsg, 0);
+    }
+}
+```
+
+## Common Patterns
+
+### Validation Pattern
+
+Always validate inputs from TON users:
+
+```solidity
+function processWithValidation(bytes calldata tacHeader, bytes calldata arguments)
+    external
+    _onlyCrossChainLayer
+{
+    TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
+    (uint256 amount, address recipient) = abi.decode(arguments, (uint256, address));
+
+    // Validate inputs
+    require(amount > 0, "Amount must be positive");
+    require(amount <= 1000000e18, "Amount too large");
+    require(recipient != address(0), "Invalid recipient");
+    require(block.timestamp - header.timestamp < 3600, "Request too old");
+
+    // Process the valid request
+    processRequest(amount, recipient);
+}
+```
+
+### State Management Pattern
+
+Track user interactions for your business logic:
+
+```solidity
+contract UserTrackingProxy is TacProxyV1 {
+    struct UserInfo {
+        uint256 totalTransactions;
+        uint256 totalVolume;
+        uint256 lastSeen;
+    }
+
+    mapping(string => UserInfo) public users; // TON address -> info
+
+    function trackUser(bytes calldata tacHeader, bytes calldata arguments)
+        external
+        _onlyCrossChainLayer
+    {
+        TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
+        uint256 volume = abi.decode(arguments, (uint256));
+
+        UserInfo storage user = users[header.tvmCaller];
+        user.totalTransactions++;
+        user.totalVolume += volume;
+        user.lastSeen = block.timestamp;
+
+        // Business logic based on user history
+        if (user.totalTransactions >= 10) {
+            // Give premium benefits
+            grantPremiumAccess(header.tvmCaller);
+        }
+    }
+}
+```
+
+## Deployment
+
+Deploy your basic proxy like any other contract:
+
+```javascript
+// scripts/deploy-basic-proxy.js
+const { ethers } = require("hardhat");
+
+async function main() {
+  // CrossChainLayer address for TAC testnet
+  const crossChainLayerAddress = "0x4f3b05a601B7103CF8Fc0aBB56d042e04f222ceE";
+
+  const HelloProxy = await ethers.getContractFactory("HelloProxy");
+  const proxy = await HelloProxy.deploy(crossChainLayerAddress);
+  await proxy.deployed();
+
+  console.log("HelloProxy deployed to:", proxy.address);
+}
+
+main().catch(console.error);
+```
+
+## Frontend Integration Basics
+
+Your proxy contract is only half the equation. TON users need to call your functions through their wallets. Here's how to encode arguments for your proxy functions:
+
+### Basic Argument Encoding
+
+```javascript
+// Using ethers.js to encode arguments
+import { ethers } from "ethers";
+
+// For simple parameters
+const simpleArgs = ethers.AbiCoder.defaultAbiCoder().encode(
+  ["address", "uint256"],
+  ["0x123...", "1000000000000000000"] // 1 token with 18 decimals
+);
+
+// For struct parameters
+const structArgs = ethers.AbiCoder.defaultAbiCoder().encode(
+  ["tuple(address,uint256,address)"],
+  [["0x123...", "1000000000000000000", "0x456..."]]
+);
+```
+
+### Complex Nested Structures
+
+```javascript
+// For complex parameters with arrays
+const complexArgs = ethers.AbiCoder.defaultAbiCoder().encode(
+  ["tuple(address[],uint256[],bytes,uint256)"],
+  [
+    [
+      ["0x123...", "0x456..."], // address[] tokens
+      ["1000000000000000000", "2000000000000000000"], // uint256[] amounts
+      "0x1234", // bytes swapData
+      1640995200, // uint256 deadline
+    ],
+  ]
+);
+```
+
+### TAC SDK Integration
+
+```javascript
+// Using tac-sdk to call your proxy function
+const myProxyFunctionName = "myProxyFunction(bytes,bytes)";
+
+const userMessage = {
+    target: MyProxyContractAddress,
+    method_name: myProxyFunctionName,
+    arguments: myProxyFunctionArguments,  // encoded bytes from above
+    gasLimit?: 300000  // optional
+};
+
+// Send through TAC SDK
+await tacSdk.sendMessage(userMessage);
+```
+
+## Basic Testing Setup
+
+Test your proxy contracts locally before deploying:
+
+```solidity
+// test/BasicProxy.test.sol
+pragma solidity ^0.8.28;
+
+import "../contracts/HelloProxy.sol";
+import { TacLocalTestSdk } from "@tonappchain/evm-ccl/contracts/test/TacLocalTestSdk.sol";
+import { TacHeaderV1 } from "@tonappchain/evm-ccl/contracts/core/Structs.sol";
+
+contract BasicProxyTest is Test {
+    HelloProxy proxy;
+    TacLocalTestSdk testSdk;
+    address crossChainLayer;
+
+    function setUp() public {
+        testSdk = new TacLocalTestSdk();
+        crossChainLayer = testSdk.create();
+        proxy = new HelloProxy(crossChainLayer);
+    }
+
+    function testSayHello() public {
+        // Create mock TAC header
+        TacHeaderV1 memory header = TacHeaderV1({
+            shardsKey: 1,
+            timestamp: block.timestamp,
+            operationId: keccak256("test-op"),
+            tvmCaller: "EQTestUser123456789...",
+            extraData: ""
+        });
+
+        bytes memory encodedHeader = abi.encode(header);
+        bytes memory encodedArgs = abi.encode("Hello from TON!");
+
+        // Simulate cross-chain call
+        vm.prank(crossChainLayer);
+        proxy.sayHello(encodedHeader, encodedArgs);
+
+        // Verify event was emitted
+        // Add event assertions here
+    }
+}
+```
+
+## What's Next?
+
+You now understand the basics of TAC Proxy contracts. Ready for more complex patterns?
+
+<CardGroup cols={2}>
+  <Card
+    title="Upgradeable Proxy Contracts"
+    icon="arrow-up"
+    href="/build/proxy/usage/upgradeable-contracts"
+  >
+    Learn when and how to build contracts that can be upgraded over time
+  </Card>
+  <Card
+    title="Understanding Message Flow"
+    icon="arrow-left-right"
+    href="/build/proxy/usage/message-flow"
+  >
+    Deep dive into how cross-chain messages work under the hood
+  </Card>
+</CardGroup>
+
+<Tip>
+  **Start simple**: Build and test basic proxy contracts before moving to
+  upgradeable patterns. Most use cases don't actually need upgradeability.
+</Tip>

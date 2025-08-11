@@ -1,0 +1,311 @@
+---
+title: Fee Management
+description: "Understand how to handle protocol fees and executor payments in cross-chain messages"
+---
+
+TAC's cross-chain messaging system has different fee structures depending on message direction and type. Understanding these fees is crucial for implementing cost-effective proxy contracts and providing predictable user experiences.
+
+## OutMessageV1 Structure Detailed
+
+Before diving into fees, understand the complete `OutMessageV1` structure and when to use each field:
+
+```solidity
+struct OutMessageV1 {
+    uint64 shardsKey;           // Developer ID for linking messages
+    string tvmTarget;           // The recipient address on TON network
+    string tvmPayload;          // Custom payload (currently not supported - must be empty)
+    uint256 tvmProtocolFee;     // Protocol fee you pay (0 for RoundTrip messages)
+    uint256 tvmExecutorFee;     // Executor fee you pay (0 for RoundTrip messages)
+    string[] tvmValidExecutors; // List of valid executors (empty array for RoundTrip)
+    TokenAmount[] toBridge;     // ERC20 tokens to bridge to TON
+    NFTAmount[] toBridgeNFT;    // NFTs to bridge to TON
+}
+```
+
+### Field Usage Guide
+
+**shardsKey**: Developer ID. It is recommended to set it from the tacHeader.
+
+**tvmTarget**: The recipient address on the TON network in base64 format starting with "EQ".
+
+**tvmPayload**: A custom payload to be executed on the TON side. Currently not supported — must be empty.
+
+**tvmProtocolFee**: The protocol fee you must pay. For roundTrip messages, this fee is already covered on the TON side, so set this field to 0.
+
+**tvmExecutorFee**: The fee you offer to the executor on the TON side (in TAC tokens). For roundTrip messages, the fee is already locked on TON, so set this field to 0.
+
+**tvmValidExecutors**: A list of executors you trust to execute the message on the TON side. For roundTrip messages, this must be an empty array; the trusted executors are already defined in the initial TON message.
+
+**toBridge**: List of ERC20 tokens you want to bridge to the TON network and transfer to tvmTarget.
+
+**toBridgeNFT**: List of NFTs you want to bridge to the TON network and transfer to tvmTarget.
+
+## Fee Structure Overview
+
+<AccordionGroup>
+  <Accordion title="Protocol Fees" icon="coins">
+    **Purpose**: Cover TAC network operation costs **Who Pays**: Varies by
+    message type **When Applied**: For certain cross-chain message types
+    **Amount**: Set by TAC protocol governance
+  </Accordion>
+
+{" "}
+<Accordion title="Executor Fees" icon="truck">
+  **Purpose**: Compensate sequencers for message processing **Who Pays**:
+  Message sender (varies by pattern) **When Applied**: For messages requiring
+  execution **Amount**: Market-determined based on network congestion
+</Accordion>
+
+  <Accordion title="Gas Fees" icon="fuel">
+    **Purpose**: EVM transaction execution costs **Who Pays**: TAC executors
+    initially, covered by other fees **When Applied**: Every proxy function
+    execution **Amount**: Standard EVM gas pricing
+  </Accordion>
+</AccordionGroup>
+
+## Message Types and Fee Patterns
+
+### Round-Trip Messages (TON → TAC → TON)
+
+Most common pattern where fees are paid upfront on TON:
+
+```solidity
+function roundTripSwap(bytes calldata tacHeader, bytes calldata arguments)
+    external
+    _onlyCrossChainLayer
+{
+    TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
+    SwapParams memory params = abi.decode(arguments, (SwapParams));
+
+    // Execute swap logic
+    uint256 outputAmount = executeSwap(params);
+
+    // Send result back to TON - NO FEES REQUIRED
+    TokenAmount[] memory tokensToSend = new TokenAmount[](1);
+    tokensToSend[0] = TokenAmount(params.tokenOut, outputAmount);
+
+    IERC20(params.tokenOut).approve(_getCrossChainLayerAddress(), outputAmount);
+
+    OutMessageV1 memory outMsg = OutMessageV1({
+        shardsKey: header.shardsKey,        // Links to original operation
+        tvmTarget: header.tvmCaller,        // Send back to original user
+        tvmPayload: "",                     // Must be empty
+        tvmProtocolFee: 0,                  // Set to 0 for RoundTrip - already paid on TON
+        tvmExecutorFee: 0,                  // Set to 0 for RoundTrip - already paid on TON
+        tvmValidExecutors: new string[](0), // Empty for RoundTrip - already defined on TON
+        toBridge: tokensToSend,
+        toBridgeNFT: new NFTAmount[](0)
+    });
+
+    _sendMessageV1(outMsg, 0);
+}
+```
+
+**Key Points**:
+
+- User pays all fees upfront on TON
+- RoundTrip response messages must set `tvmProtocolFee: 0` and `tvmExecutorFee: 0`
+- Use same `shardsKey` from incoming header
+- Set `tvmValidExecutors` to empty array - executors already defined in original TON message
+
+### Direct TAC → TON Messages (Not in Response)
+
+When sending new messages directly to TON (not in response to a TON call), your contract pays the fees. Here's the complete pattern:
+
+```solidity
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { TacProxyV1 } from "@tonappchain/evm-ccl/contracts/proxies/TacProxyV1.sol";
+import { TokenAmount, OutMessageV1 } from "@tonappchain/evm-ccl/contracts/core/Structs.sol";
+
+interface ICrossChainLayer {
+    function getProtocolFee() external view returns (uint256);
+}
+
+contract DirectMessageProxy is TacProxyV1 {
+    uint256 public constant PROTOCOL_FEE = 0.1e18;  // 0.1 wTON (DEMO - JUST FOR ILLUSTRATION)
+    uint256 public constant EXECUTOR_FEE = 0.05e18; // 0.05 wTON (DEMO - JUST FOR ILLUSTRATION)
+
+    IERC20 public immutable wTON;
+
+    constructor(address _crossChainLayer, address _wTON)
+        TacProxyV1(_crossChainLayer)
+    {
+        wTON = IERC20(_wTON);
+    }
+
+    function bridgeTokensToTON(OutMessageV1 calldata outMessage) payable external {
+        // Approve tokens for bridging
+        for (uint i = 0; i < outMessage.toBridge.length; i++) {
+            IERC20(outMessage.toBridge[i].evmAddress).transferFrom(
+                msg.sender,
+                address(this),
+                outMessage.toBridge[i].amount
+            );
+            IERC20(outMessage.toBridge[i].evmAddress).approve(
+                _getCrossChainLayerAddress(),
+                outMessage.toBridge[i].amount
+            );
+        }
+
+        // Get current protocol fee
+        uint256 protocolFee = getProtocolFee();
+        if (outMessage.tvmProtocolFee < protocolFee) {
+            revert NotEnoughProtocolFee(outMessage.tvmProtocolFee, protocolFee);
+        }
+
+        // Check total fees provided
+        if (outMessage.tvmProtocolFee + outMessage.tvmExecutorFee > msg.value) {
+            revert NotEnoughValue(msg.value, outMessage.tvmProtocolFee + outMessage.tvmExecutorFee);
+        }
+
+        // Send the message to TON
+        _sendMessageV1(outMessage, msg.value);
+    }
+
+    function getProtocolFee() public view returns (uint256) {
+        // Get current protocol fee from CrossChainLayer
+        return ICrossChainLayer(_getCrossChainLayerAddress()).getProtocolFee();
+    }
+
+    error NotEnoughProtocolFee(uint256 provided, uint256 required);
+    error NotEnoughValue(uint256 provided, uint256 required);
+}
+```
+
+### One-Way Messages from Proxy Functions
+
+When sending messages from within proxy functions, your contract pays the fees:
+
+```solidity
+contract OneWayProxy is TacProxyV1 {
+    uint256 public constant PROTOCOL_FEE = 0.1e18;  // 0.1 wTON
+    uint256 public constant EXECUTOR_FEE = 0.05e18; // 0.05 wTON
+
+    IERC20 public immutable wTON;
+
+    constructor(address _crossChainLayer, address _wTON)
+        TacProxyV1(_crossChainLayer)
+    {
+        wTON = IERC20(_wTON);
+    }
+
+    function sendRewardToTON(bytes calldata tacHeader, bytes calldata arguments)
+        external
+        _onlyCrossChainLayer
+    {
+        TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
+        RewardParams memory params = abi.decode(arguments, (RewardParams));
+
+        // Calculate reward
+        uint256 rewardAmount = calculateReward(params.taskId);
+
+        // Prepare reward tokens
+        TokenAmount[] memory rewards = new TokenAmount[](1);
+        rewards[0] = TokenAmount(params.rewardToken, rewardAmount);
+
+        // Approve tokens and fees for CrossChainLayer
+        IERC20(params.rewardToken).approve(_getCrossChainLayerAddress(), rewardAmount);
+        wTON.approve(_getCrossChainLayerAddress(), PROTOCOL_FEE + EXECUTOR_FEE);
+
+        // Send with fees
+        OutMessageV1 memory outMsg = OutMessageV1({
+            shardsKey: generateNewShardsKey(),     // New operation
+            tvmTarget: header.tvmCaller,           // Send to user
+            tvmPayload: abi.encode("REWARD_COMPLETED", params.taskId),
+            tvmProtocolFee: PROTOCOL_FEE,          // Contract pays protocol fee
+            tvmExecutorFee: EXECUTOR_FEE,          // Contract pays executor fee
+            tvmValidExecutors: new string[](0),    // Use default executors
+            toBridge: rewards,
+            toBridgeNFT: new NFTAmount[](0)
+        });
+
+        _sendMessageV1(outMsg, PROTOCOL_FEE + EXECUTOR_FEE);
+    }
+
+    function generateNewShardsKey() internal view returns (uint64) {
+        // Generate unique key for new operations
+        return uint64(uint256(keccak256(abi.encodePacked(block.timestamp, block.number))));
+    }
+}
+```
+
+## Direct Message Fee Handling
+
+For Direct TAC → TON messages (not RoundTrip), you must handle fees properly:
+
+```solidity
+function bridgeTokensToTON(OutMessageV1 calldata outMessage) payable external {
+    // Approve tokens for bridging
+    for (uint i = 0; i < outMessage.toBridge.length; i++) {
+        IERC20(outMessage.toBridge[i].evmAddress).transferFrom(
+            msg.sender,
+            address(this),
+            outMessage.toBridge[i].amount
+        );
+        IERC20(outMessage.toBridge[i].evmAddress).approve(
+            _getCrossChainLayerAddress(),
+            outMessage.toBridge[i].amount
+        );
+    }
+
+    // Get current protocol fee
+    uint256 protocolFee = getProtocolFee();
+    if (outMessage.tvmProtocolFee < protocolFee) {
+        revert NotEnoughProtocolFee(outMessage.tvmProtocolFee, protocolFee);
+    }
+
+    // Check total fees provided
+    if (outMessage.tvmProtocolFee + outMessage.tvmExecutorFee > msg.value) {
+        revert NotEnoughValue(msg.value, outMessage.tvmProtocolFee + outMessage.tvmExecutorFee);
+    }
+
+    // Send the message to TON
+    _sendMessageV1(outMessage, msg.value);
+}
+
+function getProtocolFee() public view returns (uint256) {
+    // Get current protocol fee from CrossChainLayer
+    return ICrossChainLayer(_getCrossChainLayerAddress()).getProtocolFee();
+}
+
+error NotEnoughProtocolFee(uint256 provided, uint256 required);
+error NotEnoughValue(uint256 provided, uint256 required);
+```
+
+## Key Points to Remember
+
+**For RoundTrip Messages (TON → TAC → TON):**
+
+- Set `tvmProtocolFee: 0` and `tvmExecutorFee: 0` (fees already paid on TON)
+- Use same `shardsKey` from incoming header
+- Set `tvmTarget` to `header.tvmCaller`
+- Set `tvmValidExecutors` to empty array
+- Set `tvmPayload` to empty string
+
+**For Direct TAC → TON Messages:**
+
+- Calculate and pay appropriate protocol and executor fees
+- Ensure your contract has sufficient balance to pay fees
+- Use `getProtocolFee()` to get current protocol fee
+- Generate new `shardsKey` for new operations
+
+## What's Next?
+
+You've now covered all the core usage patterns for TAC Proxy development. Explore advanced topics:
+
+<CardGroup cols={2}>
+  <Card
+    title="Advanced Usage Patterns"
+    icon="rocket"
+    href="/build/proxy/advanced-usage/argument-encoding"
+  >
+    Learn complex argument encoding and decoding strategies
+  </Card>
+  <Card
+    title="Testing Proxy Contracts"
+    icon="test-tube"
+    href="/build/proxy/advanced-usage/testing-proxies"
+  >
+    Comprehensive testing strategies for cross-chain contracts
+  </Card>
+</CardGroup>

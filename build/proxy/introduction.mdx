@@ -1,0 +1,129 @@
+---
+title: Overview
+description: "TAC Proxy contracts receive cross-chain calls from TON users and execute EVM logic"
+---
+
+TAC Proxy contracts are Solidity contracts that enable TON users to interact with your EVM applications directly from their TON wallets. Instead of bridging tokens and switching networks, users can call your smart contract functions and receive results in a single transaction.
+
+<Note>
+  Think of TAC Proxies as API endpoints for TON users. Instead of HTTP requests, 
+  TON users send blockchain transactions that trigger your EVM functions and get 
+  processed results back automatically.
+</Note>
+
+## What TAC Proxies Enable
+
+TAC Proxies solve the cross-chain user experience problem by creating **direct connections** between TON users and EVM applications:
+
+### Direct Function Calls
+TON users can call your EVM contract functions directly from their TON wallets without switching networks or managing multiple wallets.
+
+```solidity
+contract SwapProxy is TacProxyV1 {
+    function swap(bytes calldata tacHeader, bytes calldata arguments) 
+        external 
+        _onlyCrossChainLayer 
+    {
+        // TON user's swap request is processed here
+        // Results automatically sent back to their TON wallet
+    }
+}
+```
+
+### Seamless Asset Bridging
+Tokens are automatically bridged from TON to your contract before your function executes, then bridged back with the results.
+
+### One Transaction Experience
+What used to require multiple transactions across different chains now happens in a single TON transaction:
+
+**Without TAC Proxies:**
+1. Bridge tokens TON → EVM
+2. Switch to MetaMask
+3. Interact with your dApp
+4. Bridge tokens back EVM → TON
+
+**With TAC Proxies:**
+1. Call your function from TON wallet ✨
+
+## Real-World Use Cases
+
+### DeFi Protocols
+```solidity
+// TON user supplies collateral and borrows in one transaction
+function supplyAndBorrow(bytes calldata tacHeader, bytes calldata arguments) 
+    external 
+    _onlyCrossChainLayer 
+{
+    // Supply collateral to lending protocol
+    // Borrow against it
+    // Send borrowed tokens back to TON user
+}
+```
+
+### NFT Marketplaces
+```solidity
+// TON user buys NFT with their TON assets
+function buyNFT(bytes calldata tacHeader, bytes calldata arguments) 
+    external 
+    _onlyCrossChainLayer 
+{
+    // Process payment
+    // Transfer NFT to TON user
+}
+```
+
+### Gaming & Rewards
+```solidity
+// Player completes quest, receives tokens
+function completeQuest(bytes calldata tacHeader, bytes calldata arguments) 
+    external 
+    _onlyCrossChainLayer 
+{
+    // Verify quest completion
+    // Mint and send reward tokens back to player
+}
+```
+
+## Key Benefits
+
+**For Users:**
+- Keep using familiar TON wallets
+- No network switching or gas token management
+- Single transaction for complex operations
+
+**For Developers:**
+- Same Solidity development experience
+- Access to TON's large user base
+- Existing EVM tools and infrastructure
+
+**For Applications:**
+- Tap into TON ecosystem without rebuilding
+- Unified liquidity across chains
+- Simplified user onboarding
+
+## Getting Started
+
+Ready to build your first TAC Proxy? Follow our step-by-step guides:
+
+<CardGroup cols={2}>
+  <Card
+    title="Installation & Setup"
+    icon="download"
+    href="/build/proxy/installation"
+  >
+    Install dependencies and configure your development environment
+  </Card>
+  <Card
+    title="Creating Basic Contracts"
+    icon="code"
+    href="/build/proxy/usage/basic-contracts"
+  >
+    Build your first proxy contract with step-by-step examples
+  </Card>
+</CardGroup>
+
+<Note>
+  **New to cross-chain development?** TAC Proxies handle all the complexity 
+  behind the scenes. You write standard Solidity contracts with a simple 
+  function signature pattern - everything else is automated.
+</Note>

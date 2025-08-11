@@ -38,8 +38,25 @@
                   "build/smart-contracts/tools/hardhat",
                   "build/smart-contracts/tools/foundry"
                 ]
-              },
-              "build/smart-contracts/develop-tac-proxy"
+              }
+            ]
+          },
+          {
+            "group": "TAC Proxy (Cross-Chain)",
+            "icon": "arrow-left-right",
+            "pages": [
+              "build/proxy/introduction",
+              "build/proxy/installation",
+              {
+                "group": "Usage",
+                "pages": [
+                  "build/proxy/usage/basic-contracts",
+                  "build/proxy/usage/upgradeable-contracts",
+                  "build/proxy/usage/message-flow",
+                  "build/proxy/usage/proxy-functions",
+                  "build/proxy/usage/fee-management"
+                ]
+              }
             ]
           },
           {

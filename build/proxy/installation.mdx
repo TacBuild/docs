@@ -1,0 +1,388 @@
+---
+title: Installation & Setup
+description: "Install dependencies and configure your development environment for TAC Proxy development"
+---
+
+Setting up TAC Proxy development requires installing the TAC cross-chain libraries and configuring your Solidity development environment. Currently, TAC Proxy development is supported with **Hardhat only** - Foundry support is coming soon.
+
+<Note>
+  TAC Proxy development currently requires Hardhat. Foundry support is planned
+  for a future release.
+</Note>
+
+## Installation
+
+Install the TAC cross-chain library that provides all necessary components for proxy development:
+
+<CodeGroup>
+
+```bash npm
+npm install --save @tonappchain/evm-ccl@latest
+```
+
+```bash yarn
+yarn add @tonappchain/evm-ccl@latest
+```
+
+```bash pnpm
+pnpm add @tonappchain/evm-ccl@latest
+```
+
+</CodeGroup>
+
+The `@tonappchain/evm-ccl` package includes:
+- Base proxy contracts (`TacProxyV1`, `TacProxyV1Upgradeable`)
+- Core data structures and interfaces
+- Local testing SDK for development
+- Cross-chain message utilities
+
+## Hardhat Environment Setup
+
+Ensure your Hardhat project includes the necessary dependencies:
+
+```json package.json
+{
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@nomicfoundation/hardhat-verify": "^2.0.0",
+    "hardhat": "^2.22.5",
+    "ethers": "^6.13.2",
+    "chai": "^4.3.7",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.3",
+    "@tonappchain/evm-ccl": "^latest"
+  }
+}
+```
+
+Configure your `hardhat.config.js` for TAC networks:
+
+```javascript hardhat.config.js
+require("@nomicfoundation/hardhat-toolbox");
+require("@nomicfoundation/hardhat-verify");
+
+module.exports = {
+  solidity: {
+    version: "0.8.28",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200,
+      },
+      viaIR: true,
+    },
+  },
+  networks: {
+    tac_testnet: {
+      url: "https://spb.rpc.tac.build",
+      chainId: 2391,
+      accounts: [process.env.PRIVATE_KEY || ""],
+      gasPrice: 20000000000,
+    },
+    tac_mainnet: {
+      url: "https://rpc.tac.build", 
+      chainId: 239,
+      accounts: [process.env.PRIVATE_KEY || ""],
+      gasPrice: 20000000000,
+    },
+  },
+};
+```
+
+
+## Project Structure Setup
+
+Create an organized project structure for proxy development:
+
+<Steps>
+  <Step title="Create Contract Directory" icon="folder-plus">
+    Organize your contracts with clear separation between proxy and application logic:
+    
+    ```
+    contracts/
+    ├── proxies/          # TAC proxy contracts
+    │   ├── MyProxy.sol
+    │   └── MyNFTProxy.sol
+    ├── interfaces/       # Custom interfaces
+    │   └── IMyDApp.sol
+    ├── libraries/        # Utility libraries
+    └── mocks/           # Testing contracts
+        ├── TestToken.sol
+        └── TestNFT.sol
+    ```
+  </Step>
+
+  <Step title="Setup Testing Environment" icon="test-tube">
+    Create a test directory with proper organization:
+    
+    ```
+    test/
+    ├── proxies/          # Proxy-specific tests
+    │   ├── MyProxy.test.ts
+    │   └── NFTProxy.test.ts
+    ├── integration/      # Cross-chain integration tests
+    └── helpers/         # Test utilities
+        └── tacTestHelpers.ts
+    ```
+  </Step>
+
+  <Step title="Configure Environment Variables" icon="key">
+    Create a `.env` file for sensitive configuration:
+    
+    ```bash .env
+    # Deployment
+    PRIVATE_KEY=your_private_key_here
+    
+    # Network Configuration
+    TAC_TESTNET_RPC=https://spb.rpc.tac.build
+    TAC_MAINNET_RPC=https://rpc.tac.build
+    
+    # Optional: API Keys
+    ETHERSCAN_API_KEY=your_etherscan_api_key
+    ```
+    
+    <Warning>
+      Never commit your `.env` file. Add it to your `.gitignore` immediately.
+    </Warning>
+  </Step>
+</Steps>
+
+## Verify Installation
+
+Create a basic proxy contract to verify your setup:
+
+```solidity contracts/TestProxy.sol
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.28;
+
+import { TacProxyV1 } from "@tonappchain/evm-ccl/contracts/proxies/TacProxyV1.sol";
+import { TacHeaderV1 } from "@tonappchain/evm-ccl/contracts/core/Structs.sol";
+
+contract TestProxy is TacProxyV1 {
+    event MessageReceived(address indexed caller, string message);
+    
+    constructor(address crossChainLayer) TacProxyV1(crossChainLayer) {}
+    
+    function receiveMessage(bytes calldata tacHeader, bytes calldata arguments)
+        external
+        _onlyCrossChainLayer
+    {
+        TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
+        string memory message = abi.decode(arguments, (string));
+        
+        emit MessageReceived(header.tvmCaller, message);
+    }
+}
+```
+
+Compile to verify setup:
+```bash
+npx hardhat compile
+```
+
+<Tip>
+  If compilation succeeds, your environment is properly configured for TAC Proxy development.
+</Tip>
+
+## Advanced Configuration Options
+
+### Custom Network Configuration
+
+For specific deployment needs, configure additional network settings:
+
+```javascript
+// Advanced Hardhat configuration
+module.exports = {
+  networks: {
+    tac_testnet: {
+      url: "https://spb.rpc.tac.build",
+      chainId: 2391,
+      accounts: [process.env.PRIVATE_KEY],
+      gas: 20000000,           // Block gas limit
+      gasPrice: 20000000000,   // 20 gwei
+      timeout: 60000,          // 1 minute timeout
+      httpHeaders: {
+        "User-Agent": "hardhat-tac-proxy"
+      }
+    }
+  },
+  // Enable contract verification
+  etherscan: {
+    apiKey: {
+      tac_testnet: process.env.TAC_EXPLORER_API_KEY,
+      tac_mainnet: process.env.TAC_EXPLORER_API_KEY
+    },
+    customChains: [
+      {
+        network: "tac_testnet",
+        chainId: 2391,
+        urls: {
+          apiURL: "https://spb.explorer.tac.build/api",
+          browserURL: "https://spb.explorer.tac.build"
+        }
+      }
+    ]
+  }
+};
+```
+
+### TypeScript Configuration
+
+For TypeScript projects, ensure proper type resolution:
+
+```json tsconfig.json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "lib": ["ES2020"],
+    "outDir": "./dist",
+    "rootDir": "./",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true
+  },
+  "include": ["./scripts", "./test", "./typechain-types"],
+  "files": ["./hardhat.config.ts"]
+}
+```
+
+### Local Testing Configuration
+
+Configure the local test SDK for comprehensive testing:
+
+```javascript test/helpers/tacTestHelpers.js
+import { TacLocalTestSdk } from "@tonappchain/evm-ccl";
+import { ethers } from "hardhat";
+
+export async function setupLocalTacEnvironment() {
+  const testSdk = new TacLocalTestSdk();
+  const crossChainLayerAddress = testSdk.create(ethers.provider);
+  
+  return {
+    testSdk,
+    crossChainLayerAddress,
+    provider: ethers.provider
+  };
+}
+
+export function createMockTacHeader(overrides = {}) {
+  return {
+    shardsKey: 1n,
+    timestamp: BigInt(Math.floor(Date.now() / 1000)),
+    operationId: ethers.encodeBytes32String("test-operation"),
+    tvmCaller: "EQTestTONAddress123456789...",
+    extraData: "0x",
+    ...overrides
+  };
+}
+```
+
+## Dependency Management
+
+### OpenZeppelin Integration
+
+For upgradeable proxies, install OpenZeppelin upgradeable contracts:
+
+```bash
+npm install --save @openzeppelin/contracts-upgradeable @openzeppelin/contracts
+```
+
+### Testing Dependencies
+
+Install additional testing utilities for comprehensive proxy testing:
+
+```bash
+# For enhanced testing capabilities
+npm install --save-dev @nomicfoundation/hardhat-chai-matchers
+npm install --save-dev @typechain/hardhat @typechain/ethers-v6
+
+# For gas reporting
+npm install --save-dev hardhat-gas-reporter
+
+# For coverage
+npm install --save-dev solidity-coverage
+```
+
+## Common Setup Issues
+
+<AccordionGroup>
+  <Accordion title="Compilation Errors" icon="triangle-alert">
+    **Problem**: Import resolution failures or compilation errors
+    
+    **Solutions**:
+    - Ensure `@tonappchain/evm-ccl` is properly installed
+    - Verify Solidity version compatibility (0.8.28+)
+    - Check import paths are correct
+    - Clean and rebuild: `npx hardhat clean && npx hardhat compile`
+    
+    ```bash
+    # Reset and reinstall
+    rm -rf node_modules package-lock.json
+    npm install
+    ```
+  </Accordion>
+  
+  <Accordion title="Network Connection Issues" icon="wifi-off">
+    **Problem**: Unable to connect to TAC networks
+    
+    **Solutions**:
+    - Verify RPC URLs are correct
+    - Check network configuration in hardhat.config.js
+    - Test connection manually: `curl https://spb.rpc.tac.build`
+    - Ensure firewall allows outbound connections
+    
+    ```javascript
+    // Test network connectivity
+    const { ethers } = require("hardhat");
+    async function testConnection() {
+      const provider = new ethers.JsonRpcProvider("https://spb.rpc.tac.build");
+      const blockNumber = await provider.getBlockNumber();
+      console.log("Connected! Latest block:", blockNumber);
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Private Key Issues" icon="key">
+    **Problem**: Deployment fails with account/key errors
+    
+    **Solutions**:
+    - Verify private key is in `.env` file
+    - Ensure private key starts with `0x` if required by your configuration
+    - Check that the account has sufficient TAC tokens for deployment
+    - Use different private key formats if needed
+    
+    ```bash
+    # Get testnet tokens
+    # Visit: https://spb.faucet.tac.build
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+With your development environment configured, you're ready to create your first TAC Proxy contract:
+
+<CardGroup cols={2}>
+  <Card
+    title="Creating Proxy Contracts"
+    icon="code"
+    href="/build/proxy/usage/creating-contracts"
+  >
+    Build basic and upgradeable proxy contracts with cross-chain functionality
+  </Card>
+  <Card
+    title="Understanding Message Flow"
+    icon="arrow-left-right"
+    href="/build/proxy/usage/message-flow"
+  >
+    Learn how cross-chain messages work and how to handle them
+  </Card>
+</CardGroup>
+
+<Note>
+  Keep your development environment up to date by regularly updating the
+  `@tonappchain/evm-ccl` package as new features and improvements are released.
+</Note>
