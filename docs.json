@@ -60,8 +60,11 @@
               {
                 "group": "Advanced Usage",
                 "pages": [
+                  "build/proxy/advanced-usage/smart-accounts",
                   "build/proxy/advanced-usage/nft-support",
-                  "build/proxy/advanced-usage/smart-accounts"
+                  "build/proxy/advanced-usage/testing-framework",
+                  "build/proxy/advanced-usage/advanced-testing",
+                  "build/proxy/advanced-usage/argument-encoding"
                 ]
               }
             ]

@@ -1,0 +1,224 @@
+---
+title: NFT Support
+description: "Learn how to handle NFTs in TAC proxy contracts with cross-chain bridging"
+---
+
+TAC proxy contracts can receive, process, and bridge NFTs between TON and EVM networks. This guide shows the exact implementation patterns from the TAC engineering team.
+
+<Note>
+  NFT proxy contracts must inherit from `IERC721Receiver` and implement the
+  required `onERC721Received` function to correctly receive ERC-721 tokens.
+</Note>
+
+## NFT Proxy Implementation
+
+The NFT proxy contract must inherit from `IERC721Receiver` and implement the required `onERC721Received` function to correctly receive ERC‑721 tokens.
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.28;
+
+import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import { TacProxyV1 } from "@tonappchain/evm-ccl/contracts/proxies/TacProxyV1.sol";
+import { TacHeaderV1, TokenAmount, NFTAmount, OutMessageV1 } from "@tonappchain/evm-ccl/contracts/core/Structs.sol";
+
+contract TestNFTProxy is TacProxyV1, IERC721Receiver {
+
+    constructor(address crossChainLayer) TacProxyV1(crossChainLayer) {}
+
+    /**
+     * @dev Handles the receipt of an ERC-721 token.
+     *
+     * Returns its Solidity selector to confirm the token transfer.
+     */
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) external pure override(IERC721Receiver) returns (bytes4) {
+        return this.onERC721Received.selector;
+    }
+
+    /**
+     * @dev Receives NFTs bridged from TON.
+     */
+    function receiveNFT(bytes calldata tacHeader, bytes calldata arguments) external _onlyCrossChainLayer {
+        // this arguments just for example, you can define your own
+        NFTAmount[] memory nfts = abi.decode(arguments, (NFTAmount[]));
+
+        for (uint i = 0; i < nfts.length; i++) {
+            IERC721(nfts[i].evmAddress).approve(_getCrossChainLayerAddress(), nfts[i].tokenId);
+        }
+
+        TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
+        // Bridge NFT back by creating an OutMessageV1
+        OutMessageV1 memory outMessage = OutMessageV1(
+            header.shardsKey,
+            header.tvmCaller,
+            "",
+            0, // roundTripMessages don't require tvmProtocolFee as it's already paid on TON
+            0, // roundTripMessages don't require tvmExecutorFee as it's already paid on TON
+            new string[](0), // no need to specify validExecutors as it's already specified in initial tx on TON
+            new TokenAmount[](0), // No ERC20 tokens bridged
+            nfts            // NFTs to bridge (the 'amount' field is ignored for ERC721)
+        );
+        _sendMessageV1(outMessage, 0);
+    }
+}
+```
+
+## Test ERC‑721 Token Contract
+
+For testing purposes, you can use this simple ERC-721 implementation:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.28;
+
+import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+
+contract TestERC721Token is ERC721 {
+
+    string private __baseURI;
+
+    constructor(string memory _name, string memory _symbol, string memory baseURI) ERC721(_name, _symbol) {
+        __baseURI = baseURI;
+    }
+
+    function mint(address _to, uint256 _tokenId) external {
+        _mint(_to, _tokenId);
+    }
+
+    function _baseURI() internal view override returns (string memory) {
+        return __baseURI;
+    }
+}
+```
+
+## Key Implementation Points
+
+### 1. Required Inheritance
+
+```solidity
+contract TestNFTProxy is TacProxyV1, IERC721Receiver {
+```
+
+- Must inherit from both `TacProxyV1` and `IERC721Receiver`
+- Order of inheritance matters for proper functionality
+
+### 2. onERC721Received Implementation
+
+```solidity
+function onERC721Received(
+    address,
+    address,
+    uint256,
+    bytes calldata
+) external pure override(IERC721Receiver) returns (bytes4) {
+    return this.onERC721Received.selector;
+}
+```
+
+- **Must** return the correct selector to confirm token receipt
+- Without this, NFT transfers to your contract will fail
+
+### 3. NFT Approval Pattern
+
+```solidity
+for (uint i = 0; i < nfts.length; i++) {
+    IERC721(nfts[i].evmAddress).approve(_getCrossChainLayerAddress(), nfts[i].tokenId);
+}
+```
+
+- Approve each NFT individually by tokenId before cross-chain transfer
+- Use `_getCrossChainLayerAddress()` to get the correct approval target
+
+### 4. OutMessageV1 Structure for NFTs
+
+```solidity
+OutMessageV1 memory outMessage = OutMessageV1(
+    header.shardsKey,                   // Use from incoming header
+    header.tvmCaller,                   // Send back to caller
+    "",                                 // Must be empty
+    0,                                  // roundTrip - already paid on TON
+    0,                                  // roundTrip - already paid on TON
+    new string[](0),                    // roundTrip - already defined on TON
+    new TokenAmount[](0),               // No ERC20 tokens
+    nfts                               // NFTs to bridge
+);
+```
+
+### 5. NFTAmount Structure
+
+The `NFTAmount` struct contains:
+
+- `evmAddress` - The NFT contract address
+- `tokenId` - The specific token ID
+- `amount` - Ignored for ERC721 (always 0)
+
+## Function Signature Requirements
+
+NFT proxy functions follow the same signature requirements as regular proxy functions:
+
+```solidity
+function receiveNFT(bytes calldata tacHeader, bytes calldata arguments)
+    external
+    _onlyCrossChainLayer
+{
+    // Implementation
+}
+```
+
+You can name the function whatever you want (e.g., `processNFT`, `handleNFT`, etc.) as long as it follows the `function <name>(bytes calldata, bytes calldata) external` pattern.
+
+## Argument Encoding for NFTs
+
+When calling NFT proxy functions from the frontend, encode the NFTAmount array:
+
+```javascript
+// Example: Encoding NFTAmount[]
+const nftAmounts = [
+  [nftContractAddress1, tokenId1, 0], // amount is always 0 for ERC-721
+  [nftContractAddress2, tokenId2, 0],
+];
+
+const encodedArguments = ethers.AbiCoder.defaultAbiCoder().encode(
+  ["tuple(address,uint256,uint256)[]"],
+  [nftAmounts]
+);
+
+const userMessage = {
+  target: nftProxyAddress,
+  method_name: "receiveNFT(bytes,bytes)",
+  arguments: encodedArguments,
+};
+```
+
+## What's Next?
+
+Now that you understand NFT handling, learn how to test these contracts:
+
+<CardGroup cols={2}>
+  <Card
+    title="Testing Framework"
+    icon="test-tube"
+    href="/build/proxy/advanced-usage/testing-framework"
+  >
+    Learn comprehensive testing with @tonappchain/evm-ccl
+  </Card>
+  <Card
+    title="Advanced Testing Scenarios"
+    icon="flask"
+    href="/build/proxy/advanced-usage/advanced-testing"
+  >
+    Testing patterns for NFTs and complex cross-chain operations
+  </Card>
+</CardGroup>
+
+<Warning>
+  **Important**: NFT proxy contracts must implement `IERC721Receiver` or NFT
+  transfers will fail. Always test NFT functionality thoroughly before deploying
+  to mainnet.
+</Warning>

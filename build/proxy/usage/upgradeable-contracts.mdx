@@ -1,12 +1,14 @@
 ---
-title: Creating Upgradeable Proxy Contracts
+title: Upgradeable Proxy
 description: "Build proxy contracts that can evolve and be upgraded over time"
 ---
 
 Upgradeable proxy contracts allow you to fix bugs, add features, and evolve your application after deployment. They're more complex than basic contracts, so only use them when you actually need upgrade functionality.
 
 <Warning>
-  **Use upgradeable contracts sparingly**. They add complexity, potential security risks, and higher gas costs. Most applications work fine with basic, immutable contracts.
+  **Use upgradeable contracts sparingly**. They add complexity, potential
+  security risks, and higher gas costs. Most applications work fine with basic,
+  immutable contracts.
 </Warning>
 
 ## When You Need Upgradeable Contracts
@@ -14,19 +16,21 @@ Upgradeable proxy contracts allow you to fix bugs, add features, and evolve your
 ### Good Reasons to Use Upgradeability
 
 **Bug fixes**: Critical security issues that need immediate fixes
+
 ```solidity
 // V1: Bug in calculation
 function calculateReward(uint256 amount) public pure returns (uint256) {
     return amount * 1.5; // Wrong: this truncates decimals
 }
 
-// V2: Fixed calculation  
+// V2: Fixed calculation
 function calculateReward(uint256 amount) public pure returns (uint256) {
     return (amount * 15) / 10; // Correct: preserves decimals
 }
 ```
 
 **Regulatory compliance**: Legal requirements that change over time
+
 ```solidity
 // V1: No KYC required
 function processTransaction(uint256 amount) external {
@@ -41,6 +45,7 @@ function processTransaction(uint256 amount) external {
 ```
 
 **Protocol integrations**: Adding support for new DeFi protocols
+
 ```solidity
 // V1: Only supports Uniswap
 contract DeFiProxy is TacProxyV1Upgradeable {
@@ -52,7 +57,7 @@ contract DeFiProxy is TacProxyV1Upgradeable {
 // V2: Adds SushiSwap support
 contract DeFiProxy is TacProxyV1Upgradeable {
     enum Protocol { UNISWAP, SUSHISWAP }
-    
+
     function swap(Protocol protocol) external {
         if (protocol == Protocol.UNISWAP) {
             uniswapRouter.swap(/*...*/);
@@ -93,28 +98,28 @@ contract MyUpgradeableProxy is
     // Your state variables go here
     mapping(string => uint256) public userBalances;
     uint256 public totalProcessed;
-    
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
-    function initialize(address owner, address crossChainLayer) 
-        public 
-        initializer 
+    function initialize(address owner, address crossChainLayer)
+        public
+        initializer
     {
         __UUPSUpgradeable_init();
         __Ownable_init(owner);
         __TacProxyV1Upgradeable_init(crossChainLayer);
-        
+
         // Initialize your contract state
         totalProcessed = 0;
     }
 
-    function _authorizeUpgrade(address newImplementation) 
-        internal 
-        override 
-        onlyOwner 
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        override
+        onlyOwner
     {}
 
     // Your proxy functions go here
@@ -124,13 +129,13 @@ contract MyUpgradeableProxy is
     {
         TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
         uint256 amount = abi.decode(arguments, (uint256));
-        
+
         userBalances[header.tvmCaller] += amount;
         totalProcessed += amount;
-        
+
         emit RequestProcessed(header.tvmCaller, amount);
     }
-    
+
     event RequestProcessed(string indexed user, uint256 amount);
 }
 ```
@@ -143,7 +148,7 @@ contract MyUpgradeableProxy is
 contract MyUpgradeableProxy is
     Initializable,           // Must be first
     OwnableUpgradeable,      // Access control
-    UUPSUpgradeable,         // Upgrade mechanism  
+    UUPSUpgradeable,         // Upgrade mechanism
     TacProxyV1Upgradeable    // TAC functionality (last)
 ```
 
@@ -158,9 +163,9 @@ constructor(address crossChainLayer) {
 }
 
 // ✅ DO use initializer function
-function initialize(address owner, address crossChainLayer) 
-    public 
-    initializer 
+function initialize(address owner, address crossChainLayer)
+    public
+    initializer
 {
     __UUPSUpgradeable_init();
     __Ownable_init(owner);
@@ -182,10 +187,10 @@ This prevents the implementation contract from being initialized, which could be
 ### 4. Upgrade Authorization
 
 ```solidity
-function _authorizeUpgrade(address newImplementation) 
-    internal 
-    override 
-    onlyOwner 
+function _authorizeUpgrade(address newImplementation)
+    internal
+    override
+    onlyOwner
 {}
 ```
 
@@ -222,19 +227,19 @@ contract LendingProxy is
     ILendingProtocol public lendingProtocol;
     mapping(string => bool) public authorizedUsers; // V2 addition
     uint256 public minAmount; // V2 addition
-    
+
     struct SupplyParams {
         address token;
         uint256 amount;
     }
-    
+
     struct BorrowParams {
         address collateralToken;
         uint256 collateralAmount;
         address borrowToken;
         uint256 borrowAmount;
     }
-    
+
     event LendingOperation(
         string indexed user,
         string operation,
@@ -255,15 +260,15 @@ contract LendingProxy is
         __UUPSUpgradeable_init();
         __Ownable_init(owner);
         __TacProxyV1Upgradeable_init(crossChainLayer);
-        
+
         lendingProtocol = ILendingProtocol(_lendingProtocol);
         minAmount = 1e18; // 1 token minimum
     }
 
-    function _authorizeUpgrade(address newImplementation) 
-        internal 
-        override 
-        onlyOwner 
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        override
+        onlyOwner
     {}
 
     // V1 Function: Basic supply
@@ -273,21 +278,21 @@ contract LendingProxy is
     {
         TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
         SupplyParams memory params = abi.decode(arguments, (SupplyParams));
-        
+
         // V2 validation (added in upgrade)
         require(params.amount >= minAmount, "Amount below minimum");
-        
+
         // Supply collateral to lending protocol
         IERC20Upgradeable(params.token).approve(
-            address(lendingProtocol), 
+            address(lendingProtocol),
             params.amount
         );
         lendingProtocol.supply(params.token, params.amount);
-        
+
         emit LendingOperation(
-            header.tvmCaller, 
-            "SUPPLY", 
-            params.token, 
+            header.tvmCaller,
+            "SUPPLY",
+            params.token,
             params.amount
         );
     }
@@ -299,37 +304,37 @@ contract LendingProxy is
     {
         TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
         BorrowParams memory params = abi.decode(arguments, (BorrowParams));
-        
+
         // V2 authorization check (added in upgrade)
         require(authorizedUsers[header.tvmCaller], "User not authorized");
-        
+
         // Supply collateral
         IERC20Upgradeable(params.collateralToken).approve(
-            address(lendingProtocol), 
+            address(lendingProtocol),
             params.collateralAmount
         );
         lendingProtocol.supply(params.collateralToken, params.collateralAmount);
-        
+
         // Borrow tokens
         lendingProtocol.borrow(params.borrowToken, params.borrowAmount);
-        
+
         // Send borrowed tokens back to TON user
         sendTokensBack(header, params.borrowToken, params.borrowAmount);
-        
+
         emit LendingOperation(
-            header.tvmCaller, 
-            "SUPPLY_AND_BORROW", 
-            params.borrowToken, 
+            header.tvmCaller,
+            "SUPPLY_AND_BORROW",
+            params.borrowToken,
             params.borrowAmount
         );
     }
-    
+
     // V2 Function: Added in upgrade
     function authorizeUser(string memory tonUser) external onlyOwner {
         authorizedUsers[tonUser] = true;
     }
-    
-    // V2 Function: Added in upgrade  
+
+    // V2 Function: Added in upgrade
     function setMinAmount(uint256 _minAmount) external onlyOwner {
         minAmount = _minAmount;
     }
@@ -341,9 +346,9 @@ contract LendingProxy is
     ) internal {
         TokenAmount[] memory tokensToSend = new TokenAmount[](1);
         tokensToSend[0] = TokenAmount(token, amount);
-        
+
         IERC20Upgradeable(token).approve(_getCrossChainLayerAddress(), amount);
-        
+
         OutMessageV1 memory outMsg = OutMessageV1({
             shardsKey: header.shardsKey,
             tvmTarget: header.tvmCaller,
@@ -354,7 +359,7 @@ contract LendingProxy is
             toBridge: tokensToSend,
             toBridgeNFT: new NFTAmount[](0)
         });
-        
+
         _sendMessageV1(outMsg, 0);
     }
 
@@ -377,7 +382,7 @@ contract MyProxy is /* ... */ {
     // Your state variables
     mapping(string => uint256) public userBalances;
     uint256 public totalProcessed;
-    
+
     // Reserve space for future variables
     uint256[48] private __gap; // 50 slots - 2 used = 48 remaining
 }
@@ -418,39 +423,46 @@ const { ethers, upgrades } = require("hardhat");
 
 async function main() {
   const [deployer] = await ethers.getSigners();
-  
+
   const crossChainLayerAddress = process.env.CROSS_CHAIN_LAYER_ADDRESS;
   const lendingProtocolAddress = "0x..."; // Your lending protocol
-  
+
   console.log("Deploying upgradeable proxy...");
-  
+
   const LendingProxy = await ethers.getContractFactory("LendingProxy");
-  
-  const proxy = await upgrades.deployProxy(LendingProxy, [
-    deployer.address,        // owner
-    crossChainLayerAddress,  // TAC CrossChainLayer
-    lendingProtocolAddress   // lending protocol
-  ], {
-    initializer: 'initialize',
-    kind: 'uups',
-  });
-  
+
+  const proxy = await upgrades.deployProxy(
+    LendingProxy,
+    [
+      deployer.address, // owner
+      crossChainLayerAddress, // TAC CrossChainLayer
+      lendingProtocolAddress, // lending protocol
+    ],
+    {
+      initializer: "initialize",
+      kind: "uups",
+    }
+  );
+
   await proxy.deployed();
-  
+
   console.log("Proxy deployed to:", proxy.address);
-  console.log("Implementation deployed to:", 
+  console.log(
+    "Implementation deployed to:",
     await upgrades.erc1967.getImplementationAddress(proxy.address)
   );
-  
+
   // Save deployment info
   const deploymentInfo = {
     proxy: proxy.address,
-    implementation: await upgrades.erc1967.getImplementationAddress(proxy.address),
+    implementation: await upgrades.erc1967.getImplementationAddress(
+      proxy.address
+    ),
     deployer: deployer.address,
     network: network.name,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   };
-  
+
   console.log("Deployment info:", deploymentInfo);
 }
 ```
@@ -463,22 +475,23 @@ const { ethers, upgrades } = require("hardhat");
 
 async function main() {
   const proxyAddress = "0x..."; // Your proxy address from initial deployment
-  
+
   console.log("Upgrading contract at:", proxyAddress);
-  
+
   const LendingProxyV2 = await ethers.getContractFactory("LendingProxy");
-  
+
   // This validates the upgrade is safe
   await upgrades.validateUpgrade(proxyAddress, LendingProxyV2);
-  
+
   // Perform the upgrade
   const upgraded = await upgrades.upgradeProxy(proxyAddress, LendingProxyV2);
-  
+
   console.log("Contract upgraded successfully");
-  console.log("New implementation:", 
+  console.log(
+    "New implementation:",
     await upgrades.erc1967.getImplementationAddress(proxyAddress)
   );
-  
+
   // Test the upgrade worked
   const contract = await ethers.getContractAt("LendingProxy", proxyAddress);
   console.log("Min amount (new in V2):", await contract.minAmount());
@@ -503,7 +516,7 @@ const { upgrades } = require("hardhat");
 async function main() {
   const proxyAddress = "0x...";
   const LendingProxyV2 = await ethers.getContractFactory("LendingProxyV2");
-  
+
   try {
     await upgrades.validateUpgrade(proxyAddress, LendingProxyV2);
     console.log("✅ Upgrade is safe");
@@ -518,31 +531,19 @@ async function main() {
 
 <AccordionGroup>
   <Accordion title="Pre-Upgrade Validation" icon="check-circle">
-    
-    ✅ Run `upgrades.validateUpgrade()` to check compatibility
-    ✅ Review storage layout changes
-    ✅ Test upgrade on testnet first
-    ✅ Verify all existing functions still work
-    ✅ Check that new functions work correctly
-    
+    ✅ Run `upgrades.validateUpgrade()` to check compatibility ✅ Review storage
+    layout changes ✅ Test upgrade on testnet first ✅ Verify all existing
+    functions still work ✅ Check that new functions work correctly
   </Accordion>
-  
+
   <Accordion title="During Upgrade" icon="settings">
-    
-    ✅ Announce upgrade to users in advance  
-    ✅ Consider pausing contract during upgrade
-    ✅ Monitor for any failed transactions
-    ✅ Have rollback plan ready
-    
+    ✅ Announce upgrade to users in advance ✅ Consider pausing contract during
+    upgrade ✅ Monitor for any failed transactions ✅ Have rollback plan ready
   </Accordion>
-  
+
   <Accordion title="Post-Upgrade" icon="eye">
-    
-    ✅ Verify upgrade completed successfully
-    ✅ Test critical functions
-    ✅ Monitor contract behavior
-    ✅ Update documentation and interfaces
-    
+    ✅ Verify upgrade completed successfully ✅ Test critical functions ✅
+    Monitor contract behavior ✅ Update documentation and interfaces
   </Accordion>
 </AccordionGroup>
 
@@ -555,10 +556,10 @@ const { ethers, upgrades } = require("hardhat");
 
 describe("LendingProxy Upgrades", function () {
   let proxy, owner, user;
-  
+
   beforeEach(async function() {
     [owner, user] = await ethers.getSigners();
-    
+
     // Deploy V1
     const LendingProxyV1 = await ethers.getContractFactory("LendingProxy");
     proxy = await upgrades.deployProxy(LendingProxyV1, [
@@ -567,28 +568,28 @@ describe("LendingProxy Upgrades", function () {
       mockLendingProtocol.address
     ]);
   });
-  
+
   it("should upgrade while preserving state", async function() {
     // Use V1 to set some state
     await proxy.connect(mockCrossChainLayer).supply(mockHeader, mockArgs);
     const balanceBefore = await proxy.userBalances("EQUser123");
-    
+
     // Upgrade to V2
     const LendingProxyV2 = await ethers.getContractFactory("LendingProxy");
     const upgradedProxy = await upgrades.upgradeProxy(proxy.address, LendingProxyV2);
-    
+
     // Verify state was preserved
     const balanceAfter = await upgradedProxy.userBalances("EQUser123");
     expect(balanceAfter).to.equal(balanceBefore);
-    
+
     // Verify new functionality works
     await upgradedProxy.authorizeUser("EQUser123");
     expect(await upgradedProxy.authorizedUsers("EQUser123")).to.be.true;
   });
-  
+
   it("should prevent unauthorized upgrades", async function() {
     const LendingProxyV2 = await ethers.getContractFactory("LendingProxy");
-    
+
     await expect(
       upgrades.upgradeProxy(proxy.address, LendingProxyV2.connect(user))
     ).to.be.revertedWith("Ownable: caller is not the owner");
@@ -601,28 +602,30 @@ describe("LendingProxy Upgrades", function () {
 Sometimes it's better to deploy a new contract:
 
 **Deploy new contract when:**
-- Fundamental architecture changes needed  
+
+- Fundamental architecture changes needed
 - Storage layout conflicts can't be resolved
 - Business model changes significantly
 - Security model needs complete overhaul
 
 **Migration strategy:**
+
 ```solidity
 contract ProxyV1 {
     address public migrationTarget;
     bool public migrationEnabled;
-    
+
     function enableMigration(address newContract) external onlyOwner {
         migrationTarget = newContract;
         migrationEnabled = true;
     }
-    
+
     function migrate(bytes calldata tacHeader, bytes calldata arguments)
         external
         _onlyCrossChainLayer
     {
         require(migrationEnabled, "Migration not enabled");
-        
+
         // Forward call to new contract
         INewProxy(migrationTarget).processRequest(tacHeader, arguments);
     }
@@ -651,5 +654,6 @@ You now understand both basic and upgradeable proxy patterns. Choose the right a
 </CardGroup>
 
 <Warning>
-  **Remember**: Start with basic contracts. Only add upgradeability when you have a specific, concrete reason that justifies the added complexity.
+  **Remember**: Start with basic contracts. Only add upgradeability when you
+  have a specific, concrete reason that justifies the added complexity.
 </Warning>

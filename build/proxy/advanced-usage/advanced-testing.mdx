@@ -1,0 +1,313 @@
+---
+title: Advanced Testing
+description: "Complex testing patterns for NFTs and multi-asset cross-chain operations"
+---
+
+This guide covers advanced testing scenarios using the TAC Local Test SDK, including NFT operations, multi-asset bridging, and complex cross-chain workflows. All examples are based on the official TAC engineering test patterns.
+
+<Note>
+  Advanced testing scenarios combine multiple asset types (tokens + NFTs) and
+  complex bridging operations to ensure your proxy contracts handle real-world
+  use cases.
+</Note>
+
+## NFT Testing with sendMessageWithNFT
+
+### NFT Data Structures
+
+The TAC testing framework provides specialized structures for NFT operations:
+
+#### NFTInfo
+
+```typescript
+const nftCollectionInfo: NFTInfo = {
+  tvmAddress: "NftCollectionAddress", // TON NFT collection address
+  name: "NftCollection1",
+  symbol: "NFT1",
+  baseURI: "https://nft1.com/",
+};
+```
+
+#### NFTMintInfo
+
+```typescript
+const nftMintInfo: NFTMintInfo = {
+  info: nftCollectionInfo,
+  tokenId: 1n, // Token ID to mint
+};
+```
+
+#### NFTUnlockInfo
+
+```typescript
+const nftUnlockInfo: NFTUnlockInfo = {
+  evmAddress: await existedERC721.getAddress(),
+  tokenId: lockedTokenId,
+  amount: 0n, // Amount is ignored for ERC721
+};
+```
+
+## Complete NFT Testing Example
+
+Here's the complete NFT testing setup from the TAC engineering team:
+
+```typescript
+import hre, { ethers } from "hardhat";
+import {
+  deploy,
+  TacLocalTestSdk,
+  NFTInfo,
+  NFTMintInfo,
+  NFTUnlockInfo,
+} from "@tonappchain/evm-ccl";
+import { Signer } from "ethers";
+import { TestERC721Token, TestNFTProxy } from "../typechain-types";
+import { expect } from "chai";
+
+describe("TacLocalTestSDK NFT", () => {
+  let admin: Signer;
+  let testSdk: TacLocalTestSdk;
+  let testNFTProxy: TestNFTProxy;
+  let existedERC721: TestERC721Token;
+
+  before(async () => {
+    [admin] = await ethers.getSigners();
+    testSdk = new TacLocalTestSdk();
+    const crossChainLayerAddress = testSdk.create(ethers.provider);
+
+    existedERC721 = await deploy<TestERC721Token>(
+      admin,
+      hre.artifacts.readArtifactSync("TestERC721Token"),
+      ["ExistedNFT", "NFTE", "https://test-nft.com/"],
+      undefined,
+      false
+    );
+    testNFTProxy = await deploy<TestNFTProxy>(
+      admin,
+      hre.artifacts.readArtifactSync("TestNFTProxy"),
+      [crossChainLayerAddress],
+      undefined,
+      false
+    );
+  });
+
+  it("Test send message with NFT", async () => {
+    const shardsKey = 1n;
+    const operationId = ethers.encodeBytes32String("operationId");
+    const extraData = "0x";
+    const timestamp = BigInt(Math.floor(Date.now() / 1000));
+    const tvmWalletCaller = "TVMCallerAddress";
+
+    const nftCollectionInfo: NFTInfo = {
+      tvmAddress: "NftCollectionAddress",
+      name: "NftCollection1",
+      symbol: "NFT1",
+      baseURI: "https://nft1.com/",
+    };
+
+    const nftMintInfo: NFTMintInfo = {
+      info: nftCollectionInfo,
+      tokenId: 1n,
+    };
+
+    // Lock an NFT on the cross-chain layer to simulate bridging from EVM
+    const lockedTokenId = 1n;
+    await (
+      await existedERC721.mint(
+        testSdk.getCrossChainLayerAddress(),
+        lockedTokenId
+      )
+    ).wait();
+
+    const nftUnlockInfo: NFTUnlockInfo = {
+      evmAddress: await existedERC721.getAddress(),
+      tokenId: lockedTokenId,
+      amount: 0n, // 'amount' is ignored for ERC721
+    };
+
+    // Calculate the deployed NFT collection address
+    const calculatedNFTAddress = testSdk.getEVMNFTCollectionAddress(
+      nftCollectionInfo.tvmAddress
+    );
+    const target = await testNFTProxy.getAddress();
+    const methodName = "receiveNFT(bytes,bytes)";
+
+    // Encode two NFTs:
+    // - One minted (nftMintInfo) with amount 0 (ignored)
+    // - One unlocked (nftUnlockInfo) with amount 0
+    const receivedToken1 = [calculatedNFTAddress, nftMintInfo.tokenId, 0n];
+    const receivedToken2 = [
+      nftUnlockInfo.evmAddress,
+      nftUnlockInfo.tokenId,
+      nftUnlockInfo.amount,
+    ];
+
+    const encodedArguments = ethers.AbiCoder.defaultAbiCoder().encode(
+      ["tuple(address,uint256,uint256)[]"],
+      [[receivedToken1, receivedToken2]]
+    );
+
+    const { receipt, deployedTokens, outMessages } =
+      await testSdk.sendMessageWithNFT(
+        shardsKey,
+        target,
+        methodName,
+        encodedArguments,
+        tvmWalletCaller,
+        [],
+        [],
+        [nftMintInfo],
+        [nftUnlockInfo],
+        0n,
+        extraData,
+        operationId,
+        timestamp
+      );
+
+    expect(receipt.status).to.be.eq(1);
+    expect(deployedTokens.length).to.be.eq(1);
+    expect(deployedTokens[0].evmAddress).to.be.eq(calculatedNFTAddress);
+    expect(deployedTokens[0].tvmAddress).to.be.eq(nftCollectionInfo.tvmAddress);
+    expect(outMessages.length).to.be.eq(1);
+    const outMessage = outMessages[0];
+    expect(outMessage.shardsKey).to.be.eq(shardsKey);
+    expect(outMessage.operationId).to.be.eq(operationId);
+    expect(outMessage.callerAddress).to.be.eq(await testNFTProxy.getAddress());
+    expect(outMessage.targetAddress).to.be.eq(tvmWalletCaller);
+    expect(outMessage.payload).to.be.eq("");
+    expect(outMessage.tokensBurned.length).to.be.eq(0);
+    expect(outMessage.tokensLocked.length).to.be.eq(0);
+    expect(outMessage.nftsBurned.length).to.be.eq(1);
+    expect(outMessage.nftsBurned[0].evmAddress).to.be.eq(calculatedNFTAddress);
+    expect(outMessage.nftsBurned[0].tokenId).to.be.eq(nftMintInfo.tokenId);
+    expect(outMessage.nftsLocked.length).to.be.eq(1);
+    expect(outMessage.nftsLocked[0].evmAddress).to.be.eq(
+      nftUnlockInfo.evmAddress
+    );
+    expect(outMessage.nftsLocked[0].tokenId).to.be.eq(nftUnlockInfo.tokenId);
+  });
+});
+```
+
+## Key NFT Testing Patterns
+
+### 1. NFT Minting vs Unlocking
+
+**NFT Minting** (TON → EVM):
+
+```typescript
+// Create NFT collection info
+const nftCollectionInfo: NFTInfo = {
+  tvmAddress: "NftCollectionAddress", // TON collection
+  name: "TestCollection",
+  symbol: "TC",
+  baseURI: "https://test.com/",
+};
+
+// Specify which token to mint
+const nftMintInfo: NFTMintInfo = {
+  info: nftCollectionInfo,
+  tokenId: 1n,
+};
+
+// Get the calculated EVM address
+const evmNFTAddress = testSdk.getEVMNFTCollectionAddress(
+  nftCollectionInfo.tvmAddress
+);
+```
+
+**NFT Unlocking** (Existing EVM NFT):
+
+```typescript
+// Pre-mint NFT to CrossChainLayer
+const tokenId = 1n;
+await existedERC721.mint(testSdk.getCrossChainLayerAddress(), tokenId);
+
+// Create unlock info
+const nftUnlockInfo: NFTUnlockInfo = {
+  evmAddress: await existedERC721.getAddress(),
+  tokenId: tokenId,
+  amount: 0n, // Always 0 for ERC721
+};
+```
+
+### 2. sendMessageWithNFT Method Signature
+
+```typescript
+const { receipt, deployedTokens, outMessages } =
+  await testSdk.sendMessageWithNFT(
+    shardsKey, // uint64 - Operation identifier
+    target, // string - Target contract address
+    methodName, // string - Function signature
+    encodedArguments, // bytes - ABI-encoded arguments
+    tvmWalletCaller, // string - Simulated TON caller
+    [], // TokenMintInfo[] - Regular tokens to mint
+    [], // TokenUnlockInfo[] - Regular tokens to unlock
+    [nftMintInfo], // NFTMintInfo[] - NFTs to mint
+    [nftUnlockInfo], // NFTUnlockInfo[] - NFTs to unlock
+    tacAmountToBridge, // bigint - Native TAC amount
+    extraData, // bytes - Extra data
+    operationId, // bytes32 - Operation ID
+    timestamp // bigint - Block timestamp
+  );
+```
+
+### 3. NFT Argument Encoding
+
+```typescript
+// Encode NFTAmount[] for proxy function
+const receivedNFTs = [
+  [calculatedNFTAddress, nftMintInfo.tokenId, 0n], // Minted NFT
+  [nftUnlockInfo.evmAddress, nftUnlockInfo.tokenId, nftUnlockInfo.amount], // Unlocked NFT
+];
+
+const encodedArguments = ethers.AbiCoder.defaultAbiCoder().encode(
+  ["tuple(address,uint256,uint256)[]"],
+  [receivedNFTs]
+);
+```
+
+
+## Testing Result Verification
+
+### NFT-Specific Assertions
+
+```typescript
+// Verify NFT deployment
+expect(deployedTokens.length).to.equal(1);
+expect(deployedTokens[0].evmAddress).to.equal(calculatedNFTAddress);
+expect(deployedTokens[0].tvmAddress).to.equal(nftCollectionInfo.tvmAddress);
+
+// Verify NFT operations in outMessages
+const outMessage = outMessages[0];
+expect(outMessage.nftsBurned.length).to.equal(1);
+expect(outMessage.nftsBurned[0].evmAddress).to.equal(calculatedNFTAddress);
+expect(outMessage.nftsBurned[0].tokenId).to.equal(nftMintInfo.tokenId);
+
+expect(outMessage.nftsLocked.length).to.equal(1);
+expect(outMessage.nftsLocked[0].evmAddress).to.equal(nftUnlockInfo.evmAddress);
+expect(outMessage.nftsLocked[0].tokenId).to.equal(nftUnlockInfo.tokenId);
+```
+
+
+
+## What's Next?
+
+This completes the NFT testing patterns available in the TAC Local Test SDK.
+
+<CardGroup cols={2}>
+  <Card
+    title="Testing Framework"
+    icon="test-tube"
+    href="/build/proxy/advanced-usage/testing-framework"
+  >
+    Back to basic testing framework documentation
+  </Card>
+  <Card
+    title="NFT Support"
+    icon="image"
+    href="/build/proxy/advanced-usage/nft-support"
+  >
+    Learn how to implement NFT proxy contracts
+  </Card>
+</CardGroup>

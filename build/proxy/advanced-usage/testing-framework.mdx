@@ -1,0 +1,482 @@
+---
+title: Testing Framework
+description: "Comprehensive testing setup for TAC proxy contracts using the local test SDK"
+---
+
+The `@tonappchain/evm-ccl` package includes a local test SDK that helps emulate bridging logic and cross-chain operations, ensuring your proxy behaves as expected without deploying a full cross-chain setup.
+
+<Note>
+  The TAC Local Test SDK provides a complete testing environment that simulates
+  cross-chain message flows, token bridging, and NFT operations locally.
+</Note>
+
+## Installation and Setup
+
+The testing utilities come with the `@tonappchain/evm-ccl` package:
+
+```bash
+npm install --save @tonappchain/evm-ccl@latest
+```
+
+Ensure your package.json includes the necessary testing dependencies:
+
+```json
+{
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.5",
+    "ethers": "^6.13.2",
+    "chai": "^4.3.7",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.3",
+    "@tonappchain/evm-ccl": "^latest"
+  }
+}
+```
+
+If you cannot deploy your Dapp contracts directly for local testing, consider forking another network where the necessary contracts are already deployed. This can simplify local development and testing.
+
+## Test Proxy Contract
+
+Here's the minimal test proxy from the TAC engineering team:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.28;
+
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { OutMessageV1, TacHeaderV1, TokenAmount, NFTAmount } from "@tonappchain/evm-ccl/contracts/core/Structs.sol";
+import { TacProxyV1 } from "@tonappchain/evm-ccl/contracts/proxies/TacProxyV1.sol";
+
+contract TestProxy is TacProxyV1 {
+    event InvokeWithCallback(
+        uint64 shardsKey,
+        uint256 timestamp,
+        bytes32 operationId,
+        string tvmCaller,
+        bytes extraData,
+        TokenAmount[] receivedTokens
+    );
+
+    constructor(address _crossChainLayer) TacProxyV1(_crossChainLayer) {}
+
+    function invokeWithCallback(bytes calldata tacHeader, bytes calldata arguments)
+        external
+        _onlyCrossChainLayer
+    {
+        // 1. Decode the header
+        TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
+
+        // 2. Decode the array of TokenAmount structs
+        TokenAmount[] memory receivedTokens = abi.decode(arguments, (TokenAmount[]));
+
+        // Optional: Here you could call an external Dapp contract with these tokens
+
+        // 3. Log an event for testing
+        emit InvokeWithCallback(
+            header.shardsKey,
+            header.timestamp,
+            header.operationId,
+            header.tvmCaller,
+            header.extraData,
+            receivedTokens
+        );
+
+        // 4. Approve and forward the tokens back via the cross-chain layer
+        for (uint i = 0; i < receivedTokens.length; i++) {
+            IERC20(receivedTokens[i].evmAddress).approve(
+                _getCrossChainLayerAddress(),
+                receivedTokens[i].amount
+            );
+        }
+
+        // 5. Create and send an OutMessage
+        _sendMessageV1(
+            OutMessageV1({
+                shardsKey: header.shardsKey,
+                tvmTarget: header.tvmCaller,
+                tvmPayload: "",
+                tvmProtocolFee: 0,
+                tvmExecutorFee: 0,
+                tvmValidExecutors: new string[](0),
+                toBridge: receivedTokens,
+                toBridgeNFT: new NFTAmount[](0)
+            }),
+            0
+        );
+    }
+}
+```
+
+## Test Token Contract
+
+Simple ERC20 token for testing:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.28;
+
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+contract TestToken is ERC20 {
+    constructor(string memory _name, string memory _symbol) ERC20(_name, _symbol) {}
+
+    function mint(address _to, uint256 _amount) external {
+        _mint(_to, _amount);
+    }
+}
+```
+
+## Complete Test Setup
+
+Create a test file such as `TestProxy.spec.ts` under your test directory:
+
+```typescript
+import hre, { ethers } from "hardhat";
+import { Signer } from "ethers";
+import { expect } from "chai";
+
+// The following items come from '@tonappchain/evm-ccl' to help test cross-chain logic locally.
+import {
+  deploy,
+  TacLocalTestSdk,
+  JettonInfo,
+  TokenMintInfo,
+  TokenUnlockInfo,
+} from "@tonappchain/evm-ccl";
+
+// Types for your compiled contracts
+import { TestProxy, TestToken } from "../typechain-types";
+import { InvokeWithCallbackEvent } from "../typechain-types/contracts/TestProxy";
+
+describe("TestProxy with @tonappchain/evm-ccl", () => {
+  let admin: Signer;
+  let testSdk: TacLocalTestSdk;
+  let proxyContract: TestProxy;
+  let existedToken: TestToken;
+
+  before(async () => {
+    [admin] = await ethers.getSigners();
+
+    // 1. Initialize local test SDK
+    testSdk = new TacLocalTestSdk();
+    const crossChainLayerAddress = testSdk.create(ethers.provider);
+
+    // 2. Deploy a sample ERC20 token
+    existedToken = await deploy<TestToken>(
+      admin,
+      hre.artifacts.readArtifactSync("TestToken"),
+      ["TestToken", "TTK"],
+      undefined,
+      false
+    );
+
+    // 3. Deploy the proxy contract
+    proxyContract = await deploy<TestProxy>(
+      admin,
+      hre.artifacts.readArtifactSync("TestProxy"),
+      [crossChainLayerAddress],
+      undefined,
+      false
+    );
+  });
+
+  it("Should correctly handle invokeWithCallback", async () => {
+    // Prepare call parameters
+    const shardsKey = 1n;
+    const operationId = ethers.encodeBytes32String("operationId");
+    const extraData = "0x"; // untrusted data from the executor
+    const timestamp = BigInt(Math.floor(Date.now() / 1000));
+    const tvmWalletCaller = "TVMCallerAddress";
+
+    // Example bridging: create a Jetton and specify how many tokens to mint
+    const jettonInfo: JettonInfo = {
+      tvmAddress: "JettonMinterAddress",
+      name: "TestJetton",
+      symbol: "TJT",
+      decimals: 9n,
+    };
+
+    const tokenMintInfo: TokenMintInfo = {
+      info: jettonInfo,
+      amount: 10n ** 9n,
+    };
+
+    // Also handle an existing EVM token to simulate bridging
+    const tokenUnlockInfo: TokenUnlockInfo = {
+      evmAddress: await existedToken.getAddress(),
+      amount: 10n ** 18n,
+    };
+
+    // Lock existedToken in the cross-chain layer to emulate bridging from EVM
+    await existedToken.mint(
+      testSdk.getCrossChainLayerAddress(),
+      tokenUnlockInfo.amount
+    );
+
+    // You can define a native TAC amount to bridge to your proxy,
+    // but you must first lock this amount on the CrossChainLayer contract
+    // use the testSdk.lockNativeTacOnCrossChainLayer(nativeTacAmount) function
+    const tacAmountToBridge = 0n;
+
+    // Determine the EVM address of the bridged Jetton (for minted jettons)
+    const bridgedJettonAddress = testSdk.getEVMJettonAddress(
+      jettonInfo.tvmAddress
+    );
+
+    // Prepare the method call
+    const target = await proxyContract.getAddress();
+    const methodName = "invokeWithCallback(bytes,bytes)";
+
+    // Our 'arguments' is an array of TokenAmount: (address, uint256)[]
+    const receivedTokens = [
+      [bridgedJettonAddress, tokenMintInfo.amount],
+      [tokenUnlockInfo.evmAddress, tokenUnlockInfo.amount],
+    ];
+
+    const encodedArguments = ethers.AbiCoder.defaultAbiCoder().encode(
+      ["tuple(address,uint256)[]"],
+      [receivedTokens]
+    );
+
+    // 4. Use testSdk to simulate a cross-chain message
+    const { receipt, deployedTokens, outMessages } = await testSdk.sendMessage(
+      shardsKey,
+      target,
+      methodName,
+      encodedArguments,
+      tvmWalletCaller,
+      [tokenMintInfo], // which jettons to mint
+      [tokenUnlockInfo], // which EVM tokens to unlock
+      tacAmountToBridge,
+      extraData,
+      operationId,
+      timestamp,
+      0, // gasLimit - if 0 - simulate and fill inside sendMessage
+      false // force send (if simulation failed)
+    );
+
+    // 5. Assertions
+    expect(receipt.status).to.equal(1);
+
+    // - Check if the Jetton was deployed
+    expect(deployedTokens.length).to.equal(1);
+    expect(deployedTokens[0].evmAddress).to.equal(bridgedJettonAddress);
+
+    // - Check the outMessages array
+    expect(outMessages.length).to.equal(1);
+    const outMessage = outMessages[0];
+    expect(outMessage.shardsKey).to.equal(shardsKey);
+    expect(outMessage.operationId).to.equal(operationId);
+    expect(outMessage.callerAddress).to.equal(await proxyContract.getAddress());
+    expect(outMessage.targetAddress).to.equal(tvmWalletCaller);
+
+    // - The returned tokens should be burned or locked as bridging back to TON
+    expect(outMessage.tokensBurned.length).to.equal(1);
+    expect(outMessage.tokensBurned[0].evmAddress).to.equal(
+      bridgedJettonAddress
+    );
+    expect(outMessage.tokensBurned[0].amount).to.equal(tokenMintInfo.amount);
+
+    expect(outMessage.tokensLocked.length).to.equal(1);
+    expect(outMessage.tokensLocked[0].evmAddress).to.equal(
+      tokenUnlockInfo.evmAddress
+    );
+    expect(outMessage.tokensLocked[0].amount).to.equal(tokenUnlockInfo.amount);
+
+    // - Confirm the event was emitted
+    let eventFound = false;
+    receipt.logs.forEach((log) => {
+      const parsed = proxyContract.interface.parseLog(log);
+      if (parsed && parsed.name === "InvokeWithCallback") {
+        eventFound = true;
+        const typedEvent =
+          parsed as unknown as InvokeWithCallbackEvent.LogDescription;
+        expect(typedEvent.args.shardsKey).to.equal(shardsKey);
+        expect(typedEvent.args.timestamp).to.equal(timestamp);
+        expect(typedEvent.args.operationId).to.equal(operationId);
+        expect(typedEvent.args.tvmCaller).to.equal(tvmWalletCaller);
+        expect(typedEvent.args.extraData).to.equal(extraData);
+        expect(typedEvent.args.receivedTokens.length).to.equal(2);
+        expect(typedEvent.args.receivedTokens[0].evmAddress).to.equal(
+          bridgedJettonAddress
+        );
+        expect(typedEvent.args.receivedTokens[1].evmAddress).to.equal(
+          tokenUnlockInfo.evmAddress
+        );
+      }
+    });
+    expect(eventFound).to.be.true;
+  });
+});
+```
+
+## Key Testing Components
+
+### TacLocalTestSdk
+
+The core testing utility that provides:
+
+```typescript
+// Initialize the SDK
+testSdk = new TacLocalTestSdk();
+const crossChainLayerAddress = testSdk.create(ethers.provider);
+
+// Get addresses for operations
+testSdk.getCrossChainLayerAddress();
+testSdk.getEVMJettonAddress(jettonInfo.tvmAddress);
+testSdk.getEVMNFTCollectionAddress(nftCollectionInfo.tvmAddress);
+
+// Lock native TAC tokens for testing
+testSdk.lockNativeTacOnCrossChainLayer(nativeTacAmount);
+```
+
+### Data Structures
+
+#### JettonInfo
+
+```typescript
+const jettonInfo: JettonInfo = {
+  tvmAddress: "JettonMinterAddress", // TON jetton address
+  name: "TestJetton",
+  symbol: "TJT",
+  decimals: 9n,
+};
+```
+
+#### TokenMintInfo
+
+```typescript
+const tokenMintInfo: TokenMintInfo = {
+  info: jettonInfo,
+  amount: 10n ** 9n, // Amount to mint
+};
+```
+
+#### TokenUnlockInfo
+
+```typescript
+const tokenUnlockInfo: TokenUnlockInfo = {
+  evmAddress: await existedToken.getAddress(),
+  amount: 10n ** 18n, // Amount to unlock
+};
+```
+
+### sendMessage Method
+
+The main testing method that simulates cross-chain operations:
+
+```typescript
+const { receipt, deployedTokens, outMessages } = await testSdk.sendMessage(
+  shardsKey, // uint64 - Operation identifier
+  target, // string - Target proxy contract address
+  methodName, // string - Function signature "functionName(bytes,bytes)"
+  encodedArguments, // bytes - ABI-encoded arguments
+  tvmWalletCaller, // string - Simulated TON wallet address
+  [tokenMintInfo], // TokenMintInfo[] - Jettons to mint
+  [tokenUnlockInfo], // TokenUnlockInfo[] - EVM tokens to unlock
+  tacAmountToBridge, // bigint - Native TAC amount to bridge
+  extraData, // bytes - Extra data (usually "0x")
+  operationId, // bytes32 - Unique operation ID
+  timestamp, // bigint - Block timestamp
+  0, // gasLimit - 0 to auto-simulate
+  false // force send if simulation fails
+);
+```
+
+### sendMessageWithNFT Method
+
+For testing NFT operations, use the specialized NFT testing method:
+
+```typescript
+const { receipt, deployedTokens, outMessages } = await testSdk.sendMessageWithNFT(
+  shardsKey,
+  target,
+  methodName,
+  encodedArguments,
+  tvmWalletCaller,
+  [tokenMintInfo],     // TokenMintInfo[] - Regular tokens to mint
+  [tokenUnlockInfo],   // TokenUnlockInfo[] - Regular tokens to unlock
+  [nftMintInfo],       // NFTMintInfo[] - NFTs to mint
+  [nftUnlockInfo],     // NFTUnlockInfo[] - NFTs to unlock
+  tacAmountToBridge,
+  extraData,
+  operationId,
+  timestamp
+);
+```
+
+### Return Values
+
+The `sendMessage` method returns:
+
+- `receipt` - Transaction receipt with status and logs
+- `deployedTokens` - Array of newly deployed jetton contracts
+- `outMessages` - Array of messages sent back to TON, containing:
+  - `shardsKey`, `operationId`, `callerAddress`, `targetAddress`
+  - `tokensBurned` - Jettons burned (returned to TON)
+  - `tokensLocked` - EVM tokens locked (returned to TON)
+  - `nftsBurned`, `nftsLocked` - NFT operations
+
+## Test Flow Pattern
+
+### 1. Initialization
+
+- Create local cross-chain environment (`TacLocalTestSdk`)
+- Deploy test tokens and proxy contracts
+- Set up initial state
+
+### 2. Bridging Simulation
+
+- Mint or lock tokens on the cross-chain layer
+- Create test parameters (`shardsKey`, `operationId`, etc.)
+- Prepare method call arguments
+
+### 3. Invoke Proxy
+
+- Use `testSdk.sendMessage(...)` to simulate cross-chain call
+- Pass all required parameters for complete simulation
+
+### 4. Verification
+
+- Confirm transaction succeeded (`receipt.status === 1`)
+- Inspect `deployedTokens` for newly minted jettons
+- Inspect `outMessages` for tokens returning to TON
+- Check emitted events for correct data
+
+## Running Tests
+
+Inside your project directory:
+
+```bash
+npx hardhat test
+```
+
+The TAC Local Test SDK handles all the complex cross-chain simulation, letting you focus on testing your proxy contract logic.
+
+## What's Next?
+
+Now that you understand the testing framework, learn advanced testing patterns:
+
+<CardGroup cols={2}>
+  <Card
+    title="Advanced Testing Scenarios"
+    icon="flask"
+    href="/build/proxy/advanced-usage/advanced-testing"
+  >
+    Complex testing patterns for NFTs and multi-asset operations
+  </Card>
+  <Card
+    title="NFT Support"
+    icon="image"
+    href="/build/proxy/advanced-usage/nft-support"
+  >
+    Learn how to implement and test NFT proxy contracts
+  </Card>
+</CardGroup>
+
+<Tip>
+  **Testing Best Practice**: Always test both successful operations and edge
+  cases. The TAC Local Test SDK makes it easy to simulate various bridging
+  scenarios.
+</Tip>

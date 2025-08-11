@@ -1,5 +1,5 @@
 ---
-title: Creating Basic Proxy Contracts
+title: Basic Proxy
 description: "Build your first TAC Proxy contract step-by-step"
 ---
 
@@ -138,47 +138,8 @@ This is where you do whatever your contract is supposed to do. In this example, 
 - Store data in state variables
 - Call other contracts
 - Perform calculations
-- Transfer tokens (we'll cover this next)
+- Transfer tokens
 
-## Handling Tokens
-
-Most proxy contracts work with tokens that TON users bridge. Here's a simple token handling example:
-
-```solidity
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.28;
-
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { TacProxyV1 } from "@tonappchain/evm-ccl/contracts/proxies/TacProxyV1.sol";
-import { TacHeaderV1 } from "@tonappchain/evm-ccl/contracts/core/Structs.sol";
-
-contract TokenProxy is TacProxyV1 {
-    mapping(string => uint256) public userBalances; // TON address -> balance
-
-    event TokensReceived(string indexed tonUser, address token, uint256 amount);
-
-    constructor(address crossChainLayer) TacProxyV1(crossChainLayer) {}
-
-    function deposit(bytes calldata tacHeader, bytes calldata arguments)
-        external
-        _onlyCrossChainLayer
-    {
-        TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
-        (address token, uint256 amount) = abi.decode(arguments, (address, uint256));
-
-        // Tokens are automatically transferred to this contract by CrossChainLayer
-        // BEFORE your function is called - verify we received them
-        require(IERC20(token).balanceOf(address(this)) >= amount, "Tokens not received");
-
-        // Track the user's deposit
-        userBalances[header.tvmCaller] += amount;
-
-        emit TokensReceived(header.tvmCaller, token, amount);
-    }
-}
-```
-
-**Key insight**: When TON users send tokens with their function call, those tokens are automatically transferred to your proxy contract _before_ your function is called by the CrossChainLayer. The bridging is handled automatically by the TAC infrastructure.
 
 ## Sending Responses Back to TON
 

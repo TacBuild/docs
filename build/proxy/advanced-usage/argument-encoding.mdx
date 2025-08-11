@@ -1,0 +1,157 @@
+---
+title: Argument Encoding Patterns
+description: "Advanced patterns for encoding complex data structures for TAC proxy functions"
+---
+
+TAC proxy functions receive their parameters as ABI-encoded bytes. This guide shows the exact encoding patterns from the TAC engineering team for different data structure complexities.
+
+<Note>
+  All proxy functions must follow the signature `function name(bytes calldata tacHeader, bytes calldata arguments)`.
+  The `arguments` parameter contains your custom ABI-encoded data.
+</Note>
+
+## Basic Encoding Patterns
+
+### Simple Parameters
+
+You typically define a struct that represents the arguments your proxy function expects:
+
+```solidity
+struct MyProxyFunctionArguments {
+    address tokenFrom;
+    address tokenTo;
+    uint256 amount;
+}
+```
+
+You then encode these fields in your frontend code using ethers.js:
+
+```javascript
+import { ethers } from "ethers";
+const abiCoder = ethers.AbiCoder.defaultAbiCoder();
+
+const myProxyFunctionArguments = abiCoder.encode(
+  ["address", "address", "uint256"],
+  [tokenFromAddress, tokenToAddress, tokenFromAmount]
+);
+```
+
+## Advanced Encoding Patterns
+
+### Complex Example with Nested Structures
+
+For structs containing other structs:
+
+```solidity
+struct AnyExtraInfo {
+    address feeCollector;
+    uint256 feeRate;
+}
+
+struct MyProxyFunctionArguments {
+    AnyExtraInfo extraInfo;
+    address tokenFrom;
+    address tokenTo;
+    uint256 amount;
+}
+```
+
+Encoding:
+
+```javascript
+const extraInfo = [feeCollectorAddress, feeRate];
+const myProxyFunctionArguments = abiCoder.encode(
+  ["tuple(address,uint256)", "address", "address", "uint256"],
+  [extraInfo, tokenFromAddress, tokenToAddress, tokenAmount]
+);
+```
+
+### Complex Example with Dynamic Arrays
+
+For structs containing arrays:
+
+```solidity
+struct MyProxyFunctionArguments {
+    address[] path;
+    uint256 amount;
+}
+```
+
+Encoding:
+
+```javascript
+const path = [tokenFromAddress, tokenToAddress];
+const myProxyFunctionArguments = abiCoder.encode(
+  ["tuple(address[],uint256)"],
+  [[path, tokenFromAmount]]
+);
+```
+
+## TAC SDK Integration
+
+When using the tac-sdk to create messages for bridging, you must provide:
+
+- **target**: the address of your Proxy contract
+- **method_name**: the complete function signature, e.g. `"myProxyFunction(bytes,bytes)"`
+- **arguments**: the ABI-encoded arguments (second parameter in your proxy function)
+- **gasLimit** (optional): the parameter that will be passed to the TAC side. The executor must allocate at least `gasLimit` gas for executing the transaction on the TAC side. If this parameter is not specified, it will be calculated using the `simulateEVMMessage` method (preferred)
+
+Example:
+
+```javascript
+const myProxyFunctionName = "myProxyFunction(bytes,bytes)";
+
+const userMessage = {
+  target: MyProxyContractAddress,
+  method_name: myProxyFunctionName,
+  arguments: myProxyFunctionArguments, // from the previous encoding step
+  gasLimit?: // optional
+};
+```
+
+
+## Decoding in Proxy Functions
+
+Your proxy functions decode the arguments using `abi.decode()`:
+
+```solidity
+function executeSwap(bytes calldata tacHeader, bytes calldata arguments)
+    external
+    _onlyCrossChainLayer
+{
+    TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
+    
+    // Decode the custom arguments
+    SwapParams memory params = abi.decode(arguments, (SwapParams));
+    
+    // Use the decoded parameters
+    require(params.amountIn > 0, "Invalid amount");
+    require(params.deadline > block.timestamp, "Expired");
+    
+    // Execute swap logic
+    performSwap(params);
+}
+```
+
+
+## What's Next?
+
+You now understand all the argument encoding patterns for TAC proxy development:
+
+<CardGroup cols={2}>
+  <Card
+    title="Testing Framework"
+    icon="test-tube"
+    href="/build/proxy/advanced-usage/testing-framework"
+  >
+    Learn how to test your encoded arguments with TAC Local Test SDK
+  </Card>
+  <Card
+    title="Basic Proxy Contracts"
+    icon="code"
+    href="/build/proxy/usage/basic-contracts"
+  >
+    Back to implementing basic proxy contracts
+  </Card>
+</CardGroup>
+
