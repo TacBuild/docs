@@ -3,68 +3,26 @@ title: Message Flow
 description: "Learn how cross-chain messages work and what data they contain"
 ---
 
-Understanding how messages flow between TON and TAC EVM is crucial for building effective proxy contracts. This guide explains the complete message lifecycle, data structures, and timing considerations.
+Understanding how messages flow between TON and TAC EVM is crucial for building effective proxy contracts. This guide explains the data structures and message patterns.
 
-## What are RoundTrip Messages?
+## RoundTrip Messages
 
-Before diving into message flow, understand the core concept: **RoundTrip messages** are the most common pattern in TAC proxy development.
-
-A RoundTrip message follows this flow:
+RoundTrip messages follow this flow:
 
 1. **TON user** sends transaction with assets and function call
 2. **TAC proxy** receives the call and processes it
 3. **TAC proxy** sends result assets back to the same TON user
 
-This is different from regular asset bridging - it's a complete interaction where the user gets a processed result back.
+With RoundTrip messages, the user pays all fees upfront on TON, so your proxy sets fees to 0 when responding.
 
-**Key insight**: With RoundTrip messages, the user pays all fees upfront on TON, so your proxy sets fees to 0 when responding.
+## Message Processing
 
-## Cross-Chain Message Lifecycle
+When a TON user interacts with your EVM contract:
 
-When a TON user interacts with your EVM contract, several steps happen automatically:
-
-<Steps>
-  <Step title="TON Transaction" icon="send">
-    User submits a transaction on TON containing:
-    - Target proxy contract address on TAC
-    - Function name to call
-    - Encoded arguments
-    - Assets to bridge (optional)
-  </Step>
-
-<Step title="Asset Locking" icon="lock">
-  If assets are included, they're locked in TON contracts: - Native TON locked
-  in bridge contract - Jettons locked in jetton bridge contracts - NFTs
-  transferred to bridge contracts
-</Step>
-
-<Step title="Message Validation" icon="shield-check">
-  TAC sequencers validate the cross-chain message: - Verify transaction
-  signatures and proofs - Check asset lock confirmations - Validate target
-  contract and function
-</Step>
-
-<Step title="Asset Minting" icon="coins">
-  Equivalent assets are minted on TAC EVM: - Wrapped TON (wTON) minted for
-  native TON - Bridged jettons minted from templates - NFT equivalents minted
-  with metadata
-</Step>
-
-<Step title="Token Transfer" icon="arrow-right">
-  **Critical timing**: Tokens (if any) are automatically transferred from the
-  CrossChainLayer contract to your proxy contract before the function call.
-</Step>
-
-<Step title="Function Execution" icon="play">
-  CrossChainLayer calls your proxy function with: - TAC header containing
-  verified TON user information - Your custom encoded arguments - Tokens already
-  in your contract balance
-</Step>
-
-  <Step title="Response (Optional)" icon="arrow-left">
-    Your contract can send assets back to TON by calling `_sendMessageV1()`
-  </Step>
-</Steps>
+1. User submits a transaction on TON with target contract, function name, and arguments
+2. Assets (if any) are bridged to TAC and transferred to your proxy contract
+3. CrossChainLayer calls your proxy function with TAC header and arguments
+4. Your contract can optionally send assets back to TON using `_sendMessageV1()`
 
 ## TAC Header Structure
 
@@ -88,7 +46,7 @@ struct TacHeaderV1 {
 
 **operationId**: Unique identifier for this specific cross-chain operation. Use for logging and tracking.
 
-**tvmCaller**: The TON user's wallet address. **!!! Important !!!** It is always base64 mainnet bounceable format and **always starts with "EQ"**. This is your authenticated user identity - treat it like `msg.sender` in regular Ethereum contracts.
+**tvmCaller**: The TON user's wallet address. **!!! Important !!!** It is always base64 mainnet bounceable format and starts with "EQ". This is your authenticated user identity - treat it like `msg.sender` in regular Ethereum contracts.
 
 **extraData**: For now it's always a zero-bytes array and not used.
 
@@ -103,7 +61,7 @@ function processMessage(bytes calldata tacHeader, bytes calldata arguments)
     TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
 
     // Access user information
-    address tonUser = header.tvmCaller;
+    string memory tonUser = header.tvmCaller;
     uint256 operationTime = header.timestamp;
     bytes32 opId = header.operationId;
 
@@ -111,106 +69,6 @@ function processMessage(bytes calldata tacHeader, bytes calldata arguments)
     require(block.timestamp - operationTime < 3600, "Operation too old");
 
     emit MessageProcessed(tonUser, opId, block.timestamp);
-}
-```
-
-## Message Types and Patterns
-
-### Round-Trip Messages
-
-Most common pattern where TON users expect a response:
-
-```solidity
-contract SwapProxy is TacProxyV1 {
-    function swap(bytes calldata tacHeader, bytes calldata arguments)
-        external
-        _onlyCrossChainLayer
-    {
-        TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
-
-        // 1. Process the swap
-        (address tokenIn, address tokenOut, uint256 amountIn, uint256 minOut) =
-            abi.decode(arguments, (address, address, uint256, uint256));
-
-        uint256 amountOut = performSwap(tokenIn, tokenOut, amountIn);
-        require(amountOut >= minOut, "Slippage too high");
-
-        // 2. Send result back to TON user
-        TokenAmount[] memory result = new TokenAmount[](1);
-        result[0] = TokenAmount(tokenOut, amountOut);
-
-        IERC20(tokenOut).approve(_getCrossChainLayerAddress(), amountOut);
-
-        OutMessageV1 memory response = OutMessageV1({
-            shardsKey: header.shardsKey,        // Link to original operation
-            tvmTarget: header.tvmCaller,        // Send back to original user
-            tvmPayload: "",                     // Must be empty - not supported
-            tvmProtocolFee: 0,                  // 0 for RoundTrip - already paid on TON
-            tvmExecutorFee: 0,                  // 0 for RoundTrip - already paid on TON
-            tvmValidExecutors: new string[](0), // Empty for RoundTrip - already defined on TON
-            toBridge: result,                   // Tokens to send back
-            toBridgeNFT: new NFTAmount[](0)     // No NFTs
-        });
-
-        _sendMessageV1(response, 0);
-    }
-}
-```
-
-### One-Way Messages
-
-For operations that don't need to send anything back:
-
-```solidity
-function depositToProtocol(bytes calldata tacHeader, bytes calldata arguments)
-    external
-    _onlyCrossChainLayer
-{
-    TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
-
-    // Process deposit (tokens already in contract)
-    (address token, uint256 amount) = abi.decode(arguments, (address, uint256));
-
-    // Deposit to external protocol
-    IERC20(token).approve(protocolAddress, amount);
-    IProtocol(protocolAddress).deposit(token, amount);
-
-    // Store user's deposit for future reference
-    userDeposits[header.tvmCaller] += amount;
-
-    emit DepositProcessed(header.tvmCaller, token, amount);
-
-    // No response needed - one-way operation
-}
-```
-
-### Notification Messages
-
-For sending data without tokens:
-
-```solidity
-function notifyCompletion(bytes calldata tacHeader, bytes calldata arguments)
-    external
-    _onlyCrossChainLayer
-{
-    TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
-
-    // Process some operation
-    string memory status = processOperation(arguments);
-
-    // Send notification back to TON (no tokens)
-    OutMessageV1 memory notification = OutMessageV1({
-        shardsKey: header.shardsKey,
-        tvmTarget: header.tvmCaller,
-        tvmPayload: "",                     // Must be empty - not supported
-        tvmProtocolFee: 0,                  // Round-trip, no fee - already paid on TON
-        tvmExecutorFee: 0,                  // Round-trip, no fee - already paid on TON
-        tvmValidExecutors: new string[](0), // Empty for RoundTrip
-        toBridge: new TokenAmount[](0),     // No tokens
-        toBridgeNFT: new NFTAmount[](0)     // No NFTs
-    });
-
-    _sendMessageV1(notification, 0);
 }
 ```
 
@@ -235,79 +93,6 @@ function handleTokens(bytes calldata tacHeader, bytes calldata arguments)
 
         // Process each token
         processToken(expectedTokens[i].evmAddress, expectedTokens[i].amount);
-    }
-}
-```
-
-## Timing and Async Considerations
-
-### Message Delays
-
-Cross-chain messages are not instant.
-
-Design your UX accordingly and provide status updates.
-
-### Handling Failures
-
-```solidity
-contract RobustProxy is TacProxyV1 {
-    event OperationFailed(address indexed user, bytes32 indexed operationId, string reason);
-
-    function robustOperation(bytes calldata tacHeader, bytes calldata arguments)
-        external
-        _onlyCrossChainLayer
-    {
-        TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
-
-        try this.performRiskyOperation(arguments) {
-            // Success path
-            sendSuccessResponse(header);
-        } catch Error(string memory reason) {
-            // Handle expected errors
-            emit OperationFailed(header.tvmCaller, header.operationId, reason);
-            sendErrorResponse(header, reason);
-        } catch {
-            // Handle unexpected errors
-            emit OperationFailed(header.tvmCaller, header.operationId, "Unknown error");
-            sendErrorResponse(header, "Unexpected failure");
-        }
-    }
-
-    function performRiskyOperation(bytes calldata arguments) external {
-        require(msg.sender == address(this), "Only internal calls");
-        // Risky operation that might fail
-    }
-}
-```
-
-### Idempotency
-
-Handle duplicate messages gracefully:
-
-```solidity
-contract IdempotentProxy is TacProxyV1 {
-    mapping(bytes32 => bool) public processedOperations;
-
-    function idempotentOperation(bytes calldata tacHeader, bytes calldata arguments)
-        external
-        _onlyCrossChainLayer
-    {
-        TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
-
-        // Check if already processed
-        if (processedOperations[header.operationId]) {
-            emit DuplicateOperation(header.operationId);
-            return; // Already processed, skip
-        }
-
-        // Mark as processed first
-        processedOperations[header.operationId] = true;
-
-        // Perform operation
-        performOperation(arguments);
-
-        // Send response
-        sendResponse(header);
     }
 }
 ```

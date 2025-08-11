@@ -143,103 +143,24 @@ This is where you do whatever your contract is supposed to do. In this example, 
 
 ## Sending Responses Back to TON
 
-Sometimes you want to send tokens back to the TON user. Here's a simple example:
+Sometimes you want to send tokens back to the TON user. Use the `OutMessageV1` structure:
 
 ```solidity
 import { TokenAmount, OutMessageV1 } from "@tonappchain/evm-ccl/contracts/core/Structs.sol";
 
-contract EchoProxy is TacProxyV1 {
-    constructor(address crossChainLayer) TacProxyV1(crossChainLayer) {}
+// Send back to TON user (no fees for RoundTrip messages)
+OutMessageV1 memory outMsg = OutMessageV1({
+    shardsKey: header.shardsKey,        // Link to original operation
+    tvmTarget: header.tvmCaller,        // Send back to caller
+    tvmPayload: "",                     // Must be empty - not supported
+    tvmProtocolFee: 0,                  // 0 for RoundTrip - already paid on TON
+    tvmExecutorFee: 0,                  // 0 for RoundTrip - already paid on TON
+    tvmValidExecutors: new string[](0), // Empty for RoundTrip - already defined on TON
+    toBridge: tokensToSend,             // Tokens to send
+    toBridgeNFT: new NFTAmount[](0)     // No NFTs
+});
 
-    function echoTokens(bytes calldata tacHeader, bytes calldata arguments)
-        external
-        _onlyCrossChainLayer
-    {
-        TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
-        (address token, uint256 amount) = abi.decode(arguments, (address, uint256));
-
-        // Send the same tokens back to the user
-        TokenAmount[] memory tokensToSend = new TokenAmount[](1);
-        tokensToSend[0] = TokenAmount(token, amount);
-
-        // Approve CrossChainLayer to take our tokens
-        IERC20(token).approve(_getCrossChainLayerAddress(), amount);
-
-        // Send back to TON user (no fees for RoundTrip messages)
-        OutMessageV1 memory outMsg = OutMessageV1({
-            shardsKey: header.shardsKey,        // Link to original operation
-            tvmTarget: header.tvmCaller,        // Send back to caller
-            tvmPayload: "",                     // Must be empty - not supported
-            tvmProtocolFee: 0,                  // 0 for RoundTrip - already paid on TON
-            tvmExecutorFee: 0,                  // 0 for RoundTrip - already paid on TON
-            tvmValidExecutors: new string[](0), // Empty for RoundTrip - already defined on TON
-            toBridge: tokensToSend,             // Tokens to send
-            toBridgeNFT: new NFTAmount[](0)     // No NFTs
-        });
-
-        _sendMessageV1(outMsg, 0);
-    }
-}
-```
-
-## Common Patterns
-
-### Validation Pattern
-
-Always validate inputs from TON users:
-
-```solidity
-function processWithValidation(bytes calldata tacHeader, bytes calldata arguments)
-    external
-    _onlyCrossChainLayer
-{
-    TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
-    (uint256 amount, address recipient) = abi.decode(arguments, (uint256, address));
-
-    // Validate inputs
-    require(amount > 0, "Amount must be positive");
-    require(amount <= 1000000e18, "Amount too large");
-    require(recipient != address(0), "Invalid recipient");
-    require(block.timestamp - header.timestamp < 3600, "Request too old");
-
-    // Process the valid request
-    processRequest(amount, recipient);
-}
-```
-
-### State Management Pattern
-
-Track user interactions for your business logic:
-
-```solidity
-contract UserTrackingProxy is TacProxyV1 {
-    struct UserInfo {
-        uint256 totalTransactions;
-        uint256 totalVolume;
-        uint256 lastSeen;
-    }
-
-    mapping(string => UserInfo) public users; // TON address -> info
-
-    function trackUser(bytes calldata tacHeader, bytes calldata arguments)
-        external
-        _onlyCrossChainLayer
-    {
-        TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
-        uint256 volume = abi.decode(arguments, (uint256));
-
-        UserInfo storage user = users[header.tvmCaller];
-        user.totalTransactions++;
-        user.totalVolume += volume;
-        user.lastSeen = block.timestamp;
-
-        // Business logic based on user history
-        if (user.totalTransactions >= 10) {
-            // Give premium benefits
-            grantPremiumAccess(header.tvmCaller);
-        }
-    }
-}
+_sendMessageV1(outMsg, 0);
 ```
 
 ## Deployment
@@ -264,108 +185,6 @@ async function main() {
 main().catch(console.error);
 ```
 
-## Frontend Integration Basics
-
-Your proxy contract is only half the equation. TON users need to call your functions through their wallets. Here's how to encode arguments for your proxy functions:
-
-### Basic Argument Encoding
-
-```javascript
-// Using ethers.js to encode arguments
-import { ethers } from "ethers";
-
-// For simple parameters
-const simpleArgs = ethers.AbiCoder.defaultAbiCoder().encode(
-  ["address", "uint256"],
-  ["0x123...", "1000000000000000000"] // 1 token with 18 decimals
-);
-
-// For struct parameters
-const structArgs = ethers.AbiCoder.defaultAbiCoder().encode(
-  ["tuple(address,uint256,address)"],
-  [["0x123...", "1000000000000000000", "0x456..."]]
-);
-```
-
-### Complex Nested Structures
-
-```javascript
-// For complex parameters with arrays
-const complexArgs = ethers.AbiCoder.defaultAbiCoder().encode(
-  ["tuple(address[],uint256[],bytes,uint256)"],
-  [
-    [
-      ["0x123...", "0x456..."], // address[] tokens
-      ["1000000000000000000", "2000000000000000000"], // uint256[] amounts
-      "0x1234", // bytes swapData
-      1640995200, // uint256 deadline
-    ],
-  ]
-);
-```
-
-### TAC SDK Integration
-
-```javascript
-// Using tac-sdk to call your proxy function
-const myProxyFunctionName = "myProxyFunction(bytes,bytes)";
-
-const userMessage = {
-    target: MyProxyContractAddress,
-    method_name: myProxyFunctionName,  // Complete function signature required
-    arguments: myProxyFunctionArguments,  // encoded bytes from above
-    gasLimit?: 300000  // optional - if not specified, will be calculated using simulateEVMMessage
-};
-
-// Send through TAC SDK
-await tacSdk.sendMessage(userMessage);
-```
-
-## Basic Testing Setup
-
-Test your proxy contracts locally before deploying:
-
-```solidity
-// test/BasicProxy.test.sol
-pragma solidity ^0.8.28;
-
-import "../contracts/HelloProxy.sol";
-import { TacLocalTestSdk } from "@tonappchain/evm-ccl/contracts/test/TacLocalTestSdk.sol";
-import { TacHeaderV1 } from "@tonappchain/evm-ccl/contracts/core/Structs.sol";
-
-contract BasicProxyTest is Test {
-    HelloProxy proxy;
-    TacLocalTestSdk testSdk;
-    address crossChainLayer;
-
-    function setUp() public {
-        testSdk = new TacLocalTestSdk();
-        crossChainLayer = testSdk.create();
-        proxy = new HelloProxy(crossChainLayer);
-    }
-
-    function testSayHello() public {
-        // Create mock TAC header
-        TacHeaderV1 memory header = TacHeaderV1({
-            shardsKey: 1,
-            timestamp: block.timestamp,
-            operationId: keccak256("test-op"),
-            tvmCaller: "EQTestUser123456789...",
-            extraData: ""
-        });
-
-        bytes memory encodedHeader = abi.encode(header);
-        bytes memory encodedArgs = abi.encode("Hello from TON!");
-
-        // Simulate cross-chain call
-        vm.prank(crossChainLayer);
-        proxy.sayHello(encodedHeader, encodedArgs);
-
-        // Verify event was emitted
-        // Add event assertions here
-    }
-}
-```
 
 ## What's Next?
 
