@@ -122,8 +122,7 @@ interface ICrossChainLayer {
 }
 
 contract DirectMessageProxy is TacProxyV1 {
-    uint256 public constant PROTOCOL_FEE = 0.1e18;  // 0.1 wTON (DEMO - JUST FOR ILLUSTRATION)
-    uint256 public constant EXECUTOR_FEE = 0.05e18; // 0.05 wTON (DEMO - JUST FOR ILLUSTRATION)
+    // Note: These are example values - always get current fees dynamically
 
     IERC20 public immutable wTON;
 
@@ -178,8 +177,7 @@ When sending messages from within proxy functions, your contract pays the fees:
 
 ```solidity
 contract OneWayProxy is TacProxyV1 {
-    uint256 public constant PROTOCOL_FEE = 0.1e18;  // 0.1 wTON
-    uint256 public constant EXECUTOR_FEE = 0.05e18; // 0.05 wTON
+    // Note: Always get current fees dynamically - these are just examples
 
     IERC20 public immutable wTON;
 
@@ -203,23 +201,27 @@ contract OneWayProxy is TacProxyV1 {
         TokenAmount[] memory rewards = new TokenAmount[](1);
         rewards[0] = TokenAmount(params.rewardToken, rewardAmount);
 
+        // Get current fees dynamically
+        uint256 currentProtocolFee = getProtocolFee();
+        uint256 executorFee = estimateExecutorFee(); // Implement based on current network conditions
+
         // Approve tokens and fees for CrossChainLayer
         IERC20(params.rewardToken).approve(_getCrossChainLayerAddress(), rewardAmount);
-        wTON.approve(_getCrossChainLayerAddress(), PROTOCOL_FEE + EXECUTOR_FEE);
+        wTON.approve(_getCrossChainLayerAddress(), currentProtocolFee + executorFee);
 
         // Send with fees
         OutMessageV1 memory outMsg = OutMessageV1({
             shardsKey: generateNewShardsKey(),     // New operation
             tvmTarget: header.tvmCaller,           // Send to user
-            tvmPayload: abi.encode("REWARD_COMPLETED", params.taskId),
-            tvmProtocolFee: PROTOCOL_FEE,          // Contract pays protocol fee
-            tvmExecutorFee: EXECUTOR_FEE,          // Contract pays executor fee
+            tvmPayload: "",                        // Must be empty - not supported
+            tvmProtocolFee: currentProtocolFee,    // Contract pays current protocol fee
+            tvmExecutorFee: executorFee,           // Contract pays executor fee
             tvmValidExecutors: new string[](0),    // Use default executors
             toBridge: rewards,
             toBridgeNFT: new NFTAmount[](0)
         });
 
-        _sendMessageV1(outMsg, PROTOCOL_FEE + EXECUTOR_FEE);
+        _sendMessageV1(outMsg, currentProtocolFee + executorFee);
     }
 
     function generateNewShardsKey() internal view returns (uint64) {

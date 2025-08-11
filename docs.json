@@ -56,6 +56,13 @@
                   "build/proxy/usage/proxy-functions",
                   "build/proxy/usage/fee-management"
                 ]
+              },
+              {
+                "group": "Advanced Usage",
+                "pages": [
+                  "build/proxy/advanced-usage/nft-support",
+                  "build/proxy/advanced-usage/smart-accounts"
+                ]
               }
             ]
           },
@@ -183,7 +190,10 @@
           },
           {
             "group": "Multi-Sig Wallets",
-            "pages": ["ecosystem/multi-sig-wallets/safe", "ecosystem/multi-sig-wallets/ton-multisig"]
+            "pages": [
+              "ecosystem/multi-sig-wallets/safe",
+              "ecosystem/multi-sig-wallets/ton-multisig"
+            ]
           },
           {
             "group": "RPCs",

@@ -88,7 +88,7 @@ struct TacHeaderV1 {
 
 **operationId**: Unique identifier for this specific cross-chain operation. Use for logging and tracking.
 
-**tvmCaller**: The TON user's wallet address in base64 mainnet bounceable format, **always starting with "EQ"**. This is your authenticated user identity - treat it like `msg.sender` in regular Ethereum contracts.
+**tvmCaller**: The TON user's wallet address. **!!! Important !!!** It is always base64 mainnet bounceable format and **always starts with "EQ"**. This is your authenticated user identity - treat it like `msg.sender` in regular Ethereum contracts.
 
 **extraData**: For now it's always a zero-bytes array and not used.
 

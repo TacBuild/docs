@@ -1,0 +1,241 @@
+---
+title: Smart Accounts
+description: "Account abstraction for TAC enabling programmable wallets and advanced transaction patterns"
+---
+
+Smart accounts (account abstraction) enable programmable wallet logic on TAC, allowing developers to create accounts with custom execution rules, gas payment mechanisms, and transaction batching capabilities. This enables TON users to have sophisticated EVM accounts that can execute complex operations automatically.
+
+## Core Components
+
+Smart account implementation consists of two main components that work together to provide upgradeable account abstraction:
+
+<Tabs>
+  <Tab title="Smart Account Contract">
+
+    **Core account logic with execution capabilities:**
+
+    - Execute arbitrary transactions with custom validation
+    - Handle token approvals and transfers
+    - Receive and manage Ether
+    - Owner-based access control
+
+  </Tab>
+
+  <Tab title="Factory Contract">
+
+    **Deployment and upgrade management:**
+
+    - Deploy new smart accounts using Beacon Proxy pattern
+    - Enable logic upgrades for all deployed accounts
+    - Maintain upgrade authorization through ownership
+    - Event emission for account creation tracking
+
+  </Tab>
+</Tabs>
+
+## Smart Account Implementation
+
+The basic smart account provides fundamental account abstraction functionality:
+
+```solidity
+// SPDX-License-Identifier: GPL-3.0
+pragma solidity >=0.8.2 <0.9.0;
+
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+contract SmartAccount is Initializable {
+   address public owner;
+
+   event Executed(address indexed target, uint256 value, bytes data);
+
+   modifier onlyOwner() {
+       require(msg.sender == owner, "Not the owner");
+       _;
+   }
+
+   function initialize(address _owner) public initializer {
+       owner = _owner;
+   }
+
+   function execute(address target, uint256 value, bytes calldata data) external onlyOwner returns (bytes memory) {
+       (bool success, bytes memory result) = target.call{value: value}(data);
+       require(success, "Execution failed");
+       emit Executed(target, value, data);
+       return result;
+   }
+
+   function approve(address token, address spender, uint256 amount) external onlyOwner {
+       IERC20(token).approve(spender, amount);
+   }
+
+   receive() external payable {}
+}
+```
+
+## Key Features
+
+<AccordionGroup>
+  <Accordion title="Transaction Execution" icon="play">
+
+    The `execute` function allows the account to call any contract with
+    arbitrary data and value. This enables complex transaction patterns that
+    aren't possible with externally owned accounts.
+
+    - **Arbitrary Calls**: Execute any contract function with custom parameters
+    - **Value Transfer**: Send ETH/TAC along with contract calls
+    - **Return Data**: Capture and return execution results
+    - **Event Logging**: Track all executed transactions
+
+  </Accordion>
+
+<Accordion title="Token Management" icon="coins">
+
+Built-in token approval functionality simplifies DeFi interactions by allowing
+the account to approve token spending in advance or as part of complex
+transaction flows.
+
+- **ERC-20 Approvals**: Approve token spending for DeFi
+  protocols
+- **Batch Operations**: Combine approvals with other operations
+- **Gas Optimization**: Reduce transaction overhead for token operations
+
+</Accordion>
+
+  <Accordion title="Access Control" icon="shield-check">
+
+    Owner-based access control ensures that only authorized entities can execute
+    transactions, providing security while maintaining programmability.
+
+    - **Single Owner Model**: Simple ownership verification
+    - **Modifier Protection**: Consistent access control across functions
+    - **Initialization Security**: Secure setup during deployment
+
+  </Accordion>
+</AccordionGroup>
+
+## Factory Contract
+
+The factory manages smart account deployment and upgrades using the Beacon Proxy pattern:
+
+```solidity
+// SPDX-License-Identifier: GPL-3.0
+pragma solidity >=0.8.2 <0.9.0;
+
+import "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
+import "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {SmartAccount} from "./SmartAccount.sol";
+
+contract SmartAccountFactory is OwnableUpgradeable {
+    UpgradeableBeacon public beacon;
+
+    event SmartAccountCreated(address indexed accountAddress);
+
+    constructor(address _initBlueprint) {
+        beacon = new UpgradeableBeacon(_initBlueprint, msg.sender);
+        beacon.transferOwnership(msg.sender);
+    }
+
+    function createSmartAccount() external returns (address) {
+        BeaconProxy proxy =
+            new BeaconProxy(address(beacon), abi.encodeWithSelector(SmartAccount.initialize.selector, address(this)));
+        emit SmartAccountCreated(address(proxy));
+        return address(proxy);
+    }
+
+    function updateBlueprint(address _newBlueprint) external onlyOwner {
+        beacon.upgradeTo(_newBlueprint);
+    }
+}
+```
+
+## Upgrade Management
+
+<Warning>
+  Upgrading the blueprint affects all deployed smart accounts. Test thoroughly
+  before upgrading in production.
+</Warning>
+
+- **Beacon Pattern**: All accounts share the same implementation through the beacon
+- **Atomic Upgrades**: All accounts upgrade simultaneously when the beacon is updated
+- **Owner Control**: Only the factory owner can perform upgrades
+- **Version Consistency**: Ensures all accounts have the same feature set
+
+## Integration with TAC Proxy Contracts
+
+Smart accounts work seamlessly with TAC's cross-chain messaging system by providing deterministic account creation for TON users:
+
+### Account Discovery Pattern
+
+```solidity
+mapping(bytes32 => address) public smartAccounts;
+
+/// @dev tvmWallet is the address of the TON wallet
+function _getOrCreateSmartAccount(
+    string memory tvmWallet
+) internal returns (address) {
+    bytes32 id = keccak256(abi.encodePacked(tvmWallet));
+    if (smartAccounts[id] != address(0)) {
+        return smartAccounts[id];
+    }
+    address account = _createSmartAccount();
+    smartAccounts[id] = account;
+    return account;
+}
+
+function _createSmartAccount() internal returns (address) {
+    BeaconProxy proxy = new BeaconProxy(
+        address(beacon),
+        abi.encodeWithSelector(
+            ISmartAccount.initialize.selector,
+            address(this)
+        )
+    );
+    emit SmartAccountCreated(address(proxy));
+    return address(proxy);
+}
+```
+
+### TAC Proxy Integration
+
+Use smart accounts within your TAC proxy contracts to provide enhanced functionality:
+
+```solidity
+function executeWithSmartAccount(bytes calldata tacHeader, bytes calldata arguments)
+    external
+    _onlyCrossChainLayer
+{
+    TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
+
+    // Get or create smart account for the TON user
+    address smartAccount = _getOrCreateSmartAccount(header.tvmCaller);
+
+    // Decode operation parameters
+    (address target, bytes memory data, uint256 value) = abi.decode(arguments, (address, bytes, uint256));
+
+    // Execute through smart account
+    ISmartAccount(smartAccount).execute(target, value, data);
+}
+```
+
+## What's Next?
+
+Smart accounts provide the foundation for advanced account abstraction patterns on TAC. Explore related concepts to build more sophisticated wallet experiences.
+
+<CardGroup cols={2}>
+  <Card
+    title="TAC Proxy Development"
+    icon="arrow-left-right"
+    href="/build/smart-contracts/develop-tac-proxy"
+  >
+    Learn how to integrate smart accounts with cross-chain messaging
+  </Card>
+  <Card
+    title="Smart Contract Tools"
+    icon="hammer"
+    href="/build/smart-contracts/tools/hardhat"
+  >
+    Set up development tools for building and testing smart accounts
+  </Card>
+</CardGroup>

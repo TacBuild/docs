@@ -419,7 +419,7 @@ const { ethers, upgrades } = require("hardhat");
 async function main() {
   const [deployer] = await ethers.getSigners();
   
-  const crossChainLayerAddress = "0x4f3b05a601B7103CF8Fc0aBB56d042e04f222ceE";
+  const crossChainLayerAddress = process.env.CROSS_CHAIN_LAYER_ADDRESS;
   const lendingProtocolAddress = "0x..."; // Your lending protocol
   
   console.log("Deploying upgradeable proxy...");

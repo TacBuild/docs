@@ -10,6 +10,12 @@
     Every proxy function that handles cross-chain calls must follow this exact pattern:
 
     ```solidity
+    function <function_name>(bytes calldata, bytes calldata) external;
+    ```
+
+    You can name the function as you wish (e.g. `myProxyFunction`, `invokeWithCallback`, `swap`, etc.), but it must accept two bytes arguments:
+
+    ```solidity
     function yourFunctionName(bytes calldata tacHeader, bytes calldata arguments)
         external
         _onlyCrossChainLayer

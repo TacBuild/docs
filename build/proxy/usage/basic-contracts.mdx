@@ -111,7 +111,7 @@ TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
 
 The header tells you:
 
-- `header.tvmCaller` - TON user's address (like "EQAbc123...")
+- `header.tvmCaller` - TON user's address. **!!! Important !!!** It is always base64 mainnet bounceable format and starts with "EQ" (like "EQAbc123...")
 - `header.operationId` - Unique ID for this operation
 - `header.timestamp` - When the TON transaction happened
 
@@ -290,8 +290,8 @@ Deploy your basic proxy like any other contract:
 const { ethers } = require("hardhat");
 
 async function main() {
-  // CrossChainLayer address for TAC testnet
-  const crossChainLayerAddress = "0x4f3b05a601B7103CF8Fc0aBB56d042e04f222ceE";
+  // Get CrossChainLayer address from TAC documentation or contract addresses page
+  const crossChainLayerAddress = process.env.CROSS_CHAIN_LAYER_ADDRESS;
 
   const HelloProxy = await ethers.getContractFactory("HelloProxy");
   const proxy = await HelloProxy.deploy(crossChainLayerAddress);
@@ -351,9 +351,9 @@ const myProxyFunctionName = "myProxyFunction(bytes,bytes)";
 
 const userMessage = {
     target: MyProxyContractAddress,
-    method_name: myProxyFunctionName,
+    method_name: myProxyFunctionName,  // Complete function signature required
     arguments: myProxyFunctionArguments,  // encoded bytes from above
-    gasLimit?: 300000  // optional
+    gasLimit?: 300000  // optional - if not specified, will be calculated using simulateEVMMessage
 };
 
 // Send through TAC SDK
