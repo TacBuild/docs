@@ -7,6 +7,18 @@ Understanding how messages flow between TON and TAC EVM is crucial for building 
 
 ## RoundTrip Messages
 
+<Warning>
+
+If a TON → TAC call is reverted on the EVM side after tokens have been
+bridged, a rollback transaction is created to send the bridged assets back to
+the originating TON wallet.
+
+To guarantee this behavior, the call must be
+treated (and paid) as a RoundTrip. The SDK sets messages to RoundTrip by
+default, so on revert (e.g., slippage), funds will be returned automatically.
+
+</Warning>
+
 RoundTrip messages follow this flow:
 
 1. **TON user** sends transaction with assets and function call
@@ -14,6 +26,10 @@ RoundTrip messages follow this flow:
 3. **TAC proxy** sends result assets back to the same TON user
 
 With RoundTrip messages, the user pays all fees upfront on TON, so your proxy sets fees to 0 when responding.
+
+> If you expect the TAC-side transaction may revert and assets need to be bridged back to TON, you must pay fees as for a RoundTrip message.
+
+> By default, the SDK treats all messages as RoundTrip, so even if a revert occurs (e.g., due to slippage), the funds will be returned to the original TON user because the RoundTrip fee was already paid.
 
 ## Message Processing
 
