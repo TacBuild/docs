@@ -449,7 +449,7 @@ Simulate transactions before execution to estimate fees and validate parameters:
 ```javascript
 const simulateTransaction = async () => {
   try {
-    const simulation = await tacSdk.getTransactionSimulationInfo(
+    const simulation = await tacSdk.getSimulationInfo(
       evmProxyMsg,
       sender,
       assets
@@ -481,6 +481,29 @@ const simulateTransaction = async () => {
 };
 ```
 
+### Simulator Component
+
+The SDK uses an internal `Simulator` component for transaction simulation and fee estimation. The simulator is automatically created when you initialize the SDK:
+
+```javascript
+// Simulator is created automatically with SDK
+const sdk = await TacSdk.create({ network: Network.TESTNET });
+
+// SDK simulation methods (recommended)
+const simulationResult = await sdk.getSimulationInfo(evmProxyMsg, sender, assets, options);
+
+// Batch simulation
+const transactions = [
+  { evmProxyMsg: msg1, assets: [asset1] },
+  { evmProxyMsg: msg2, assets: [asset2] }
+];
+const batchResults = await sdk.simulateTransactions(sender, transactions);
+```
+
+<Note>
+  The Simulator performs TAC-side simulation to estimate gas costs, validate transaction logic, and calculate required fees. It's automatically configured when you create the SDK instance.
+</Note>
+
 ## Error Handling
 
 Implement comprehensive error handling for transaction failures:
@@ -502,7 +525,7 @@ const sendTransactionWithErrorHandling = async (
     }
 
     // Simulate first (optional but recommended)
-    const simulation = await tacSdk.getTransactionSimulationInfo(
+    const simulation = await tacSdk.getSimulationInfo(
       evmProxyMsg,
       sender,
       assets

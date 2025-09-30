@@ -91,6 +91,47 @@ const tacSdk = await TacSdk.create({
   </Tab>
 </Tabs>
 
+## SDK Logging
+
+The SDK provides logging functionality for debugging and monitoring. By default, SDK components are silent unless you provide a logger.
+
+### Logger Types
+
+```javascript
+import { TacSdk, ConsoleLogger, NoopLogger, Network } from "@tonappchain/sdk";
+
+// With console logging (for development)
+const sdk = await TacSdk.create({
+  network: Network.TESTNET
+}, new ConsoleLogger());
+
+// Silent operation (default, for production)
+const sdk = await TacSdk.create({
+  network: Network.TESTNET
+}, new NoopLogger());
+
+// Default (silent) - no logger parameter
+const sdk = await TacSdk.create({
+  network: Network.TESTNET
+});
+```
+
+### Logger Output
+
+**ConsoleLogger** outputs with prefixes:
+```
+[DEBUG] Aggregating tokens
+[INFO] Transaction prepared successfully
+[WARN] Gas estimation may be inaccurate
+[ERROR] Simulation failed: insufficient balance
+```
+
+**NoopLogger** produces no output (silent operation).
+
+<Note>
+  Use ConsoleLogger for development and debugging. Use NoopLogger or omit the logger parameter for production environments.
+</Note>
+
 ### Advanced Configuration
 
 #### TON Parameters

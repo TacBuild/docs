@@ -68,7 +68,6 @@ console.log("Transaction status:", status);
 
 // Get operation status with wait options for automatic waiting
 const statusWithWait = await tracker.getOperationStatus(operationId, {
-  maxAttempts: 30,     // Maximum 30 attempts
   timeout: 300000, // 5 minutes total timeout
   maxAttempts: 30, // Maximum 30 attempts
   delay: 10000, // 10 seconds between attempts
@@ -456,7 +455,7 @@ new TonTxFinalizer(
 
 ### Methods
 
-#### trackTransactionTree(hash: string, maxDepth?: number): Promise
+#### trackTransactionTree(hash: string, maxDepth?: number): Promise<void>
 
 Traverses the transaction tree starting from the given hash, following outgoing transactions up to maxDepth (default: 10). Throws an error if any transaction in the tree is not successful.
 
