@@ -45,6 +45,23 @@ const transactionLinker = await tacSdk.sendCrossChainTransaction(
 );
 
 console.log("Transaction ID:", transactionLinker.operationId);
+
+// Execute cross-chain transaction with automatic waiting for completion
+const transactionLinkerWithWait = await tacSdk.sendCrossChainTransaction(
+  evmProxyMsg,
+  sender,
+  assets,
+  undefined, // options (can be omitted)
+  {
+    timeout: 600000,    // 10 minutes timeout
+    maxAttempts: 60,    // Up to 60 polling attempts
+    delay: 10000,       // 10 seconds between status checks
+    successCheck: (result) => result.success === true,
+    onSuccess: (result) => console.log("Transaction completed successfully!", result)
+  }
+);
+
+console.log("Transaction completed:", transactionLinkerWithWait.operationId);
 ```
 
 ## EVM Proxy Message Structure
@@ -257,6 +274,119 @@ const transactionLinker = await tacSdk.sendCrossChainTransaction(
   values unless you have specific requirements for execution control.
 </Note>
 
+## Wait Options for Automatic Completion
+
+Both `sendCrossChainTransaction` and `sendCrossChainTransactions` support optional `waitOptions` parameter that automatically waits for transaction completion instead of requiring manual status polling:
+
+```typescript
+interface WaitOptions<T = unknown, TContext = unknown> {
+  timeout?: number;           // Timeout in milliseconds (default: 300000)
+  maxAttempts?: number;       // Maximum number of attempts (default: 30)
+  delay?: number;             // Delay between attempts in milliseconds (default: 10000)
+  logger?: ILogger;           // Logger instance
+  context?: TContext;         // Optional context object for additional parameters
+  successCheck?: (result: T, context?: TContext) => boolean;  // Custom success validation
+  onSuccess?: (result: T, context?: TContext) => Promise<void> | void;  // Success callback
+}
+```
+
+### Common Wait Option Patterns
+
+```javascript
+// Basic waiting with defaults
+const result = await tacSdk.sendCrossChainTransaction(
+  evmProxyMsg,
+  sender,
+  assets,
+  undefined, // transaction options
+  {} // use default wait options
+);
+
+// Custom timeout and polling interval
+const result = await tacSdk.sendCrossChainTransaction(
+  evmProxyMsg,
+  sender,
+  assets,
+  undefined,
+  {
+    timeout: 600000,  // 10 minutes
+    delay: 5000       // Check every 5 seconds
+  }
+);
+
+// With custom success validation and callback
+const result = await tacSdk.sendCrossChainTransaction(
+  evmProxyMsg,
+  sender,
+  assets,
+  undefined,
+  {
+    successCheck: (result) => result.success && result.confirmations >= 2,
+    onSuccess: (result) => {
+      console.log("Transaction confirmed with sufficient confirmations");
+      // Send notification, update UI, etc.
+    }
+  }
+);
+
+// With context for additional data
+const result = await tacSdk.sendCrossChainTransaction(
+  evmProxyMsg,
+  sender,
+  assets,
+  undefined,
+  {
+    context: { userId: "user123", transactionType: "swap" },
+    onSuccess: (result, context) => {
+      console.log(`${context.transactionType} completed for user ${context.userId}`);
+    }
+  }
+);
+
+// Advanced example: Automatic profiling data retrieval with context
+const resultWithProfiling = await tacSdk.sendCrossChainTransaction(
+  evmProxyMsg,
+  sender,
+  assets,
+  undefined,
+  {
+    context: {
+      operationTracker: tacSdk.operationTracker,
+      enableProfiling: true
+    },
+    onSuccess: async (operationId, context) => {
+      if (context?.enableProfiling && context.operationTracker) {
+        console.log('📊 Retrieving profiling data...');
+
+        // Get detailed profiling information
+        const profilingData = await context.operationTracker.getStageProfiling(operationId);
+
+        console.log('📈 OPERATION PROFILING COMPLETE');
+        console.log(`🔹 Operation ID: ${operationId}`);
+        console.log(`🔹 Profiling stages: ${Object.keys(profilingData).length}`);
+
+        // Show stage completion summary
+        for (const [stageName, stageInfo] of Object.entries(profilingData)) {
+          if (stageName !== 'operationType' && stageName !== 'metaInfo') {
+            console.log(`   • ${stageName}: ${stageInfo.exists ? '✅ Completed' : '⏸️ Not executed'}`);
+          }
+        }
+
+        return profilingData;
+      }
+    }
+  }
+);
+```
+
+<Note>
+  Using waitOptions eliminates the need for manual polling but will block the calling thread until completion or timeout. For applications that need non-blocking behavior, use the standard approach without waitOptions and implement manual tracking.
+</Note>
+
+<Tip>
+  **Advanced Usage**: You can access the SDK's internal `OperationTracker` via `tacSdk.operationTracker` and pass it through the context parameter to avoid creating new tracker instances in your callbacks. This is especially useful for profiling and advanced monitoring scenarios.
+</Tip>
+
 ## Batch Transactions
 
 Send multiple cross-chain transactions simultaneously:
@@ -293,6 +423,19 @@ const batchTransactions = async () => {
   const transactionLinkers = await tacSdk.sendCrossChainTransactions(
     sender,
     crosschainTxs
+  );
+
+  // Send batch with wait options for automatic completion waiting
+  const transactionLinkersWithWait = await tacSdk.sendCrossChainTransactions(
+    sender,
+    crosschainTxs,
+    {
+      timeout: 900000,    // 15 minutes for batch operations
+      maxAttempts: 90,    // More attempts for batch
+      delay: 10000,       // 10 seconds between checks
+      successCheck: (results) => results.every(r => r.success === true),
+      onSuccess: (results) => console.log(`Batch of ${results.length} transactions completed`)
+    }
   );
 
   return transactionLinkers.map((linker) => linker.operationId);

@@ -65,6 +65,16 @@ const tracker = new OperationTracker(Network.TESTNET);
 // Get operation status
 const status = await tracker.getOperationStatus(operationId);
 console.log("Transaction status:", status);
+
+// Get operation status with wait options for automatic waiting
+const statusWithWait = await tracker.getOperationStatus(operationId, {
+  timeout: 300000,     // 5 minutes total timeout
+  maxAttempts: 30,     // Maximum 30 attempts
+  delay: 10000,        // 10 seconds between attempts
+  successCheck: (result) => result.success === true,
+  onSuccess: (result) => console.log("Operation completed:", result)
+});
+console.log("Final status:", statusWithWait);
 ```
 
 ### Simplified Status Tracking
@@ -94,6 +104,24 @@ const getSimpleStatus = async (transactionLinker) => {
 
   return status;
 };
+
+const getSimpleStatusWithWaiting = async (transactionLinker) => {
+  const tracker = new OperationTracker(Network.TESTNET);
+
+  // Wait for final status with custom wait options
+  const finalStatus = await tracker.getSimplifiedOperationStatus(
+    transactionLinker,
+    {
+      timeout: 600000,    // 10 minutes timeout
+      maxAttempts: 60,    // Up to 60 attempts
+      delay: 10000,       // 10 seconds between checks
+      successCheck: (status) => status !== "PENDING" && status !== "OPERATION_ID_NOT_FOUND",
+      onSuccess: (status) => console.log(`Transaction reached final status: ${status}`)
+    }
+  );
+
+  return finalStatus;
+};
 ```
 
 ### Detailed Status Information
@@ -112,6 +140,57 @@ const getDetailedStatus = async (operationId) => {
   console.log("- Success:", statusInfo.success);
   console.log("- Timestamp:", statusInfo.timestamp);
   console.log("- Transactions:", statusInfo.transactions);
+
+  return statusInfo;
+};
+```
+
+### Advanced Tracking with Custom Success Callbacks
+
+For complex applications that need automatic profiling and finalization tracking:
+
+```javascript
+const getDetailedStatusWithCallback = async (operationId) => {
+  const tracker = new OperationTracker(Network.TESTNET);
+
+  // Advanced tracking with onSuccess callback for profiling
+  const statusInfo = await tracker.getOperationStatus(operationId, {
+    timeout: 300000,
+    maxAttempts: 30,
+    delay: 10000,
+    context: {
+      operationTracker: tracker,
+      enableProfiling: true
+    },
+    successCheck: (result) => result.success === true,
+    onSuccess: async (result, context) => {
+      if (context?.enableProfiling && context.operationTracker) {
+        console.log('📊 Retrieving detailed profiling data...');
+
+        // Get comprehensive profiling information
+        const profilingData = await context.operationTracker.getStageProfiling(operationId);
+
+        console.log('\n📈 OPERATION TRACKING COMPLETE');
+        console.log(`🔹 Operation ID: ${operationId}`);
+        console.log(`🔹 Final Status: ${result.success ? '✅ Success' : '❌ Failed'}`);
+        console.log(`🔹 Profiling Stages: ${Object.keys(profilingData).length}`);
+
+        // Display stage-by-stage breakdown
+        for (const [stageName, stageInfo] of Object.entries(profilingData)) {
+          if (stageName !== 'operationType' && stageName !== 'metaInfo') {
+            const status = stageInfo.exists ? '✅ Completed' : '⏸️ Not executed';
+            const timestamp = stageInfo.timestamp ? new Date(stageInfo.timestamp).toISOString() : 'N/A';
+            console.log(`   • ${stageName}: ${status} (${timestamp})`);
+          }
+        }
+
+        // Send notifications, update database, trigger workflows, etc.
+        console.log('🔔 Triggering post-completion workflows...');
+
+        return profilingData;
+      }
+    }
+  });
 
   return statusInfo;
 };
@@ -300,6 +379,20 @@ Understanding transaction states helps with proper status handling:
       evmExecutionStarted?: number;    // EVM execution begins
       evmExecutionCompleted?: number;  // EVM execution ends
       finalConfirmation?: number;      // Final confirmation
+    }
+    ```
+  </Tab>
+
+  <Tab title="Wait Options">
+    ```typescript
+    interface WaitOptions<T = unknown, TContext = unknown> {
+      timeout?: number;           // Timeout in milliseconds (default: 300000)
+      maxAttempts?: number;       // Maximum number of attempts (default: 30)
+      delay?: number;             // Delay between attempts in milliseconds (default: 10000)
+      logger?: ILogger;           // Logger instance
+      context?: TContext;         // Optional context object for additional parameters
+      successCheck?: (result: T, context?: TContext) => boolean;  // Custom success validation
+      onSuccess?: (result: T, context?: TContext) => Promise<void> | void;  // Success callback
     }
     ```
   </Tab>
