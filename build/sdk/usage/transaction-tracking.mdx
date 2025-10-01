@@ -65,6 +65,16 @@ const tracker = new OperationTracker(Network.TESTNET);
 // Get operation status
 const status = await tracker.getOperationStatus(operationId);
 console.log("Transaction status:", status);
+
+// Get operation status with wait options for automatic waiting
+const statusWithWait = await tracker.getOperationStatus(operationId, {
+  timeout: 300000, // 5 minutes total timeout
+  maxAttempts: 30, // Maximum 30 attempts
+  delay: 10000, // 10 seconds between attempts
+  successCheck: (result) => result.success === true,
+  onSuccess: (result) => console.log("Operation completed:", result),
+});
+console.log("Final status:", statusWithWait);
 ```
 
 ### Simplified Status Tracking
@@ -94,6 +104,26 @@ const getSimpleStatus = async (transactionLinker) => {
 
   return status;
 };
+
+const getSimpleStatusWithWaiting = async (transactionLinker) => {
+  const tracker = new OperationTracker(Network.TESTNET);
+
+  // Wait for final status with custom wait options
+  const finalStatus = await tracker.getSimplifiedOperationStatus(
+    transactionLinker,
+    {
+      timeout: 600000, // 10 minutes timeout
+      maxAttempts: 60, // Up to 60 attempts
+      delay: 10000, // 10 seconds between checks
+      successCheck: (status) =>
+        status !== "PENDING" && status !== "OPERATION_ID_NOT_FOUND",
+      onSuccess: (status) =>
+        console.log(`Transaction reached final status: ${status}`),
+    }
+  );
+
+  return finalStatus;
+};
 ```
 
 ### Detailed Status Information
@@ -112,6 +142,67 @@ const getDetailedStatus = async (operationId) => {
   console.log("- Success:", statusInfo.success);
   console.log("- Timestamp:", statusInfo.timestamp);
   console.log("- Transactions:", statusInfo.transactions);
+
+  return statusInfo;
+};
+```
+
+### Advanced Tracking with Custom Success Callbacks
+
+For complex applications that need automatic profiling and finalization tracking:
+
+```javascript
+const getDetailedStatusWithCallback = async (operationId) => {
+  const tracker = new OperationTracker(Network.TESTNET);
+
+  // Advanced tracking with onSuccess callback for profiling
+  const statusInfo = await tracker.getOperationStatus(operationId, {
+    timeout: 300000,
+    maxAttempts: 30,
+    delay: 10000,
+    context: {
+      operationTracker: tracker,
+      enableProfiling: true,
+    },
+    successCheck: (result) => result.success === true,
+    onSuccess: async (result, context) => {
+      if (context?.enableProfiling && context.operationTracker) {
+        console.log("📊 Retrieving detailed profiling data...");
+
+        // Get comprehensive profiling information
+        const profilingData = await context.operationTracker.getStageProfiling(
+          operationId
+        );
+
+        console.log("\n📈 OPERATION TRACKING COMPLETE");
+        console.log(`🔹 Operation ID: ${operationId}`);
+        console.log(
+          `🔹 Final Status: ${result.success ? "✅ Success" : "❌ Failed"}`
+        );
+        console.log(
+          `🔹 Profiling Stages: ${Object.keys(profilingData).length}`
+        );
+
+        // Display stage-by-stage breakdown
+        for (const [stageName, stageInfo] of Object.entries(profilingData)) {
+          if (stageName !== "operationType" && stageName !== "metaInfo") {
+            const status = stageInfo.exists
+              ? "✅ Completed"
+              : "⏸️ Not executed";
+            const timestamp = stageInfo.timestamp
+              ? new Date(stageInfo.timestamp).toISOString()
+              : "N/A";
+            console.log(`   • ${stageName}: ${status} (${timestamp})`);
+          }
+        }
+
+        // Send notifications, update database, trigger workflows, etc.
+        console.log("🔔 Triggering post-completion workflows...");
+
+        return profilingData;
+      }
+    },
+  });
 
   return statusInfo;
 };
@@ -303,4 +394,122 @@ Understanding transaction states helps with proper status handling:
     }
     ```
   </Tab>
+
+  <Tab title="Wait Options">
+    ```typescript
+    interface WaitOptions<T = unknown, TContext = unknown> {
+      timeout?: number;           // Timeout in milliseconds (default: 300000)
+      maxAttempts?: number;       // Maximum number of attempts (default: 30)
+      delay?: number;             // Delay between attempts in milliseconds (default: 10000)
+      logger?: ILogger;           // Logger instance
+      context?: TContext;         // Optional context object for additional parameters
+      successCheck?: (result: T, context?: TContext) => boolean;  // Custom success validation
+      onSuccess?: (result: T, context?: TContext) => Promise<void> | void;  // Success callback
+    }
+    ```
+  </Tab>
 </Tabs>
+
+## TON Transaction Finalization
+
+For applications that need to verify the complete success of TON transaction trees, the `TonTxFinalizer` utility provides comprehensive transaction finality verification by traversing the entire transaction tree.
+
+```typescript
+import { TonTxFinalizer, ConsoleLogger } from "@tonappchain/sdk";
+
+// Initialize TonTxFinalizer with TON Center API configuration
+const finalizer = new TonTxFinalizer(
+  {
+    urlBuilder: (hash) =>
+      `https://testnet.toncenter.com/api/v3/adjacentTransactions?hash=${encodeURIComponent(
+        hash
+      )}&direction=out`,
+    authorization: { header: "X-API-Key", value: "your-api-key" },
+  },
+  new ConsoleLogger()
+);
+
+// Track transaction tree for complete verification
+await finalizer.trackTransactionTree("TON_TX_HASH");
+```
+
+### Constructor Options
+
+```typescript
+new TonTxFinalizer(
+  apiConfig: {
+    urlBuilder: (hash: string) => string;
+    authorization: { header: string; value: string };
+  },
+  logger?: ILogger,
+  httpClient?: IHttpClient
+)
+```
+
+**Parameters:**
+
+- `apiConfig.urlBuilder`: Function to build the API URL for fetching adjacent transactions by hash
+- `apiConfig.authorization`: Object specifying the header and value for API authorization
+- `logger`: Optional logger implementing ILogger. Pass a ConsoleLogger to enable verbose output; defaults to NoopLogger
+- `httpClient`: Optional HTTP client for making API requests; defaults to AxiosHttpClient
+
+### Methods
+
+#### trackTransactionTree(hash: string, maxDepth?: number): Promise<void>
+
+Traverses the transaction tree starting from the given hash, following outgoing transactions up to maxDepth (default: 10). Throws an error if any transaction in the tree is not successful.
+
+### Usage Examples
+
+```javascript
+// Basic transaction tree verification
+const verifyTransactionSuccess = async (tonTxHash) => {
+  const finalizer = new TonTxFinalizer(
+    {
+      urlBuilder: (hash) =>
+        `https://testnet.toncenter.com/api/v3/adjacentTransactions?hash=${encodeURIComponent(
+          hash
+        )}&direction=out`,
+      authorization: { header: "X-API-Key", value: process.env.TON_API_KEY },
+    },
+    new ConsoleLogger()
+  );
+
+  try {
+    await finalizer.trackTransactionTree(tonTxHash);
+    console.log("✅ Transaction tree verified successfully");
+    return true;
+  } catch (error) {
+    console.error("❌ Transaction tree verification failed:", error);
+    return false;
+  }
+};
+
+// Custom depth verification for complex transactions
+const verifyDeepTransactionTree = async (tonTxHash) => {
+  const finalizer = new TonTxFinalizer({
+    urlBuilder: (hash) =>
+      `https://mainnet.toncenter.com/api/v3/adjacentTransactions?hash=${encodeURIComponent(
+        hash
+      )}&direction=out`,
+    authorization: { header: "X-API-Key", value: process.env.TON_API_KEY },
+  });
+
+  try {
+    // Verify up to 15 levels deep for complex transaction trees
+    await finalizer.trackTransactionTree(tonTxHash, 15);
+    console.log("✅ Deep transaction tree verification completed");
+    return true;
+  } catch (error) {
+    console.error("❌ Deep verification failed:", error);
+    return false;
+  }
+};
+```
+
+<Note>
+  TonTxFinalizer is particularly useful for verifying the success of complex
+  multi-step transactions that generate multiple outgoing transactions. It
+  ensures that the entire transaction tree completed successfully, not just the
+  initial transaction.
+</Note>

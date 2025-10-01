@@ -152,7 +152,7 @@ The SDK is designed to feel familiar to web developers while providing powerful 
     
     ```javascript
     // Simulate before executing
-    const simulation = await tacSdk.getTransactionSimulationInfo(
+    const simulation = await tacSdk.getSimulationInfo(
       evmProxyMsg,
       sender,
       assets
@@ -171,7 +171,7 @@ The SDK is designed to feel familiar to web developers while providing powerful 
 <Accordion title="TacSdk - Main Interface" icon="code">
 The primary class that handles all cross-chain operations. Initialize once and use throughout your application for sending transactions, querying balances, and managing SDK lifecycle.
 
-Key methods include `sendCrossChainTransaction()`, `getEVMTokenAddress()`, `getUserJettonBalance()`, and `getTransactionSimulationInfo()`.
+Key methods include `sendCrossChainTransaction()`, `getEVMTokenAddress()`, `getUserJettonBalance()`, and `getSimulationInfo()`.
 
 </Accordion>
 
@@ -193,6 +193,16 @@ Provides a unified interface regardless of the underlying wallet technology.
 Automatic token management across TON and EVM chains. Handles native TON, Jettons, NFTs, and their EVM equivalents seamlessly.
 
 Manages locking, minting, burning, and unlocking operations with built-in safety mechanisms.
+
+</Accordion>
+
+<Accordion title="Transaction Managers" icon="gear">
+Internal components that handle cross-chain transaction execution:
+
+- **TONTransactionManager**: Handles TON → TAC cross-chain transactions
+- **TACTransactionManager**: Handles TAC → TON bridging operations
+
+These are automatically managed by the SDK and provide the underlying functionality for `sendCrossChainTransaction` and `bridgeTokensToTON` methods.
 
 </Accordion>
 

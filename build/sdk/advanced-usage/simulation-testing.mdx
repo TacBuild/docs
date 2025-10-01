@@ -14,7 +14,7 @@ The SDK's simulation capabilities allow you to test operations before execution,
 ```javascript
 const simulateTransaction = async (evmProxyMsg, sender, assets) => {
   try {
-    const simulation = await tacSdk.getTransactionSimulationInfo(
+    const simulation = await tacSdk.getSimulationInfo(
       evmProxyMsg,
       sender,
       assets
@@ -222,7 +222,7 @@ describe("Cross-Chain Transaction Tests", () => {
 
       const assets = [{ amount: 1.0 }]; // 1 TON
 
-      const simulation = await testEnv.tacSdk.getTransactionSimulationInfo(
+      const simulation = await testEnv.tacSdk.getSimulationInfo(
         evmProxyMsg,
         sender,
         assets
@@ -246,7 +246,7 @@ describe("Cross-Chain Transaction Tests", () => {
       };
 
       await expect(
-        testEnv.tacSdk.getTransactionSimulationInfo(
+        testEnv.tacSdk.getSimulationInfo(
           evmProxyMsg,
           sender,
           largeAssets
@@ -315,7 +315,7 @@ describe("Cross-Chain Transaction Tests", () => {
         ),
       };
 
-      const simulation = await testEnv.tacSdk.getTransactionSimulationInfo(
+      const simulation = await testEnv.tacSdk.getSimulationInfo(
         evmProxyMsg,
         sender,
         assets
@@ -339,7 +339,7 @@ describe("Cross-Chain Transaction Tests", () => {
       };
 
       await expect(
-        testEnv.tacSdk.getTransactionSimulationInfo(
+        testEnv.tacSdk.getSimulationInfo(
           evmProxyMsg,
           sender,
           invalidAssets
@@ -356,7 +356,7 @@ describe("Cross-Chain Transaction Tests", () => {
         encodedParameters: "0x",
       };
 
-      const simulation = await testEnv.tacSdk.getTransactionSimulationInfo(
+      const simulation = await testEnv.tacSdk.getSimulationInfo(
         evmProxyMsg,
         sender,
         []
@@ -374,7 +374,7 @@ describe("Cross-Chain Transaction Tests", () => {
       };
 
       await expect(
-        testEnv.tacSdk.getTransactionSimulationInfo(evmProxyMsg, sender, [])
+        testEnv.tacSdk.getSimulationInfo(evmProxyMsg, sender, [])
       ).rejects.toThrow();
     });
   });
@@ -460,7 +460,7 @@ class CrossChainIntegrationTester {
   }
 
   async executeSimulationStep(step) {
-    const simulation = await this.tacSdk.getTransactionSimulationInfo(
+    const simulation = await this.tacSdk.getSimulationInfo(
       step.evmProxyMsg,
       step.sender,
       step.assets
@@ -909,7 +909,7 @@ class MockTACServices {
   }
 
   mockSimulationSuccess(gasEstimate = 250000n) {
-    this.setMockResponse("getTransactionSimulationInfo", {
+    this.setMockResponse("getSimulationInfo", {
       success: true,
       estimatedGas: gasEstimate,
       protocolFee: 10000000n,
@@ -919,7 +919,7 @@ class MockTACServices {
   }
 
   mockSimulationFailure(error = "Mock simulation failure") {
-    this.setMockResponse("getTransactionSimulationInfo", {
+    this.setMockResponse("getSimulationInfo", {
       success: false,
       error,
     });

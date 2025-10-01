@@ -5,6 +5,30 @@ description: "Track SDK updates, breaking changes, and new features across versi
 
 This changelog documents all notable changes to the TAC SDK, including new features, improvements, bug fixes, and breaking changes.
 
+<Update label="0.7.0" description="September 2025">
+
+### Added
+
+- **New Assets Module**: Added classes and utilities for working with FT, NFT, and TON assets, including AssetFactory and AssetCache
+- **Logger Components**: ConsoleLogger and NoopLogger for flexible logging configuration - SDK components are silent by default unless logger is provided
+- **Simulator Component**: Internal simulation component for TAC-side transaction simulation, gas estimation, and fee calculation
+- **Transaction Managers**: TONTransactionManager and TACTransactionManager for handling cross-chain transaction execution
+- **TonTxFinalizer**: Utility for verifying transaction tree success on TON blockchain using TON Center API
+- **RetryableContractOpener**: Enhanced contract opener for improved SDK stability and reliability
+- **Balance Verification**: Automatic balance checking before sending cross-chain transactions
+- **Batch Transaction Support**: RawSender can now send transactions in batches (254 for V5R1 wallets, 4 for other wallet versions)
+- **Wait Options**: Optional `waitOptions` parameter for OperationTracker methods and `sendCrossChainTransaction(s)` to automatically wait for operation completion
+- **AgnosticProxy SDK**: Experimental SDK for building complex DeFi operations with dynamic value replacement (testing only)
+
+### Changed
+
+- **Performance Optimizations**: Significantly improved SDK initialization speed by parallelizing blockchain queries and initialization steps
+- **Sender Architecture**: Refactored BatchSender, RawSender, and TonConnectSender with improved contractOpener and retryableContractOpener
+- **Core Infrastructure**: Updated error handling, structs, utilities, and OperationTracker components
+- **Method Signatures**: OperationTracker methods and `sendCrossChainTransaction(s)` now accept optional `waitOptions` for automatic completion waiting
+
+</Update>
+
 <Update label="v0.6.4" description="June 2025">
 
 ### Changed

@@ -1,0 +1,403 @@
+---
+title: AgnosticProxy SDK
+description: "Build complex DeFi operations with dynamic value replacement and efficient hook systems"
+---
+
+<Warning>
+  **⚠️ EXPERIMENTAL FEATURE**: This TAC functionality is not a release version
+  and will change in future versions. It is recommended to use this only for
+  testing purposes and not in production environments.
+</Warning>
+
+The AgnosticProxy SDK enables building complex DeFi operations with dynamic value replacement capabilities. It moves business logic from proxy contracts to your application code, making development more reactive and eliminating the need for custom proxy contract audits.
+
+## Overview
+
+The AgnosticProxy SDK allows you to:
+
+- **Chain multiple DeFi operations** with interdependent values
+- **Replace parameter values dynamically** with token balances at execution time
+- **Build complex strategies** without writing custom proxy contracts
+- **Visualize and debug** operation chains with built-in tools
+
+### Key Features
+
+- **Dynamic Value Replacement**: Automatically replace parameters with actual token balances
+- **Efficient Hook System**: Custom, FullBalanceApprove, and FullBalanceTransfer hooks
+- **Complex Operations**: Chain multiple DeFi operations seamlessly
+- **Visualization Tools**: Human-readable chain visualization and debugging
+- **Type Safety**: Full TypeScript support
+
+## Quick Start
+
+```javascript
+import { AgnosticProxySDK, Network } from "@tonappchain/sdk";
+import { ethers } from "ethers";
+
+// Create SDK instance
+const sdk = new AgnosticProxySDK(Network.TESTNET);
+
+// Add contract interfaces
+sdk.addContractInterface(ROUTER_ADDRESS, ROUTER_ABI);
+sdk.addContractInterface(STAKING_ADDRESS, STAKING_ABI);
+
+// Get agnostic call parameters
+const agnosticCallParams = sdk.getAgnosticCallParams();
+
+// Create hooks for your strategy
+const hooks = [
+  sdk.createFullBalanceApproveHook(TOKEN_IN, ROUTER_ADDRESS, true),
+  sdk.createCustomHook(ROUTER_ADDRESS, "swapExactTokensForTokens", [
+    ethers.parseEther("100"), // amount in
+    ethers.parseEther("90"), // min amount out
+    [TOKEN_IN, TOKEN_OUT],
+    SMART_ACCOUNT_ADDRESS,
+    Math.floor(Date.now() / 1000) + 3600,
+  ]),
+];
+
+// Build and encode the operation
+const zapCall = sdk.buildZapCall(hooks, [TOKEN_OUT], []);
+const encodedCall = sdk.encodeZapCall(zapCall);
+
+// Visualize the operation chain
+sdk.visualizeZapCall(zapCall);
+```
+
+## Core Concepts
+
+### Hook Types
+
+The SDK supports three types of hooks:
+
+#### 1. Custom Hook
+
+Execute arbitrary contract calls with optional dynamic value replacement:
+
+```javascript
+const hook = sdk.createCustomHook(
+  CONTRACT_ADDRESS,
+  "functionName",
+  [param1, param2, param3],
+  {
+    isFromSAPerspective: true, // Execute from Smart Account perspective
+    value: 0n, // ETH value to send
+    dynamicReplacements: [replacement], // Dynamic value replacements
+  }
+);
+```
+
+#### 2. FullBalanceApprove Hook
+
+Approve the full balance of a token to a spender:
+
+```javascript
+const approveHook = sdk.createFullBalanceApproveHook(
+  TOKEN_ADDRESS,
+  SPENDER_ADDRESS,
+  true // isFromSAPerspective
+);
+```
+
+#### 3. FullBalanceTransfer Hook
+
+Transfer the full balance of a token to a recipient:
+
+```javascript
+const transferHook = sdk.createFullBalanceTransferHook(
+  TOKEN_ADDRESS,
+  RECIPIENT_ADDRESS,
+  false // isFromSAPerspective
+);
+```
+
+### Dynamic Value Replacement
+
+Replace parameter values at execution time with actual token balances:
+
+```javascript
+// Create a dynamic amount replacement
+const replacement = sdk.createAmountReplacement(
+  0, // parameter index to replace
+  TOKEN_ADDRESS, // token to get balance of
+  BALANCE_ADDRESS // address to check balance for
+);
+
+// Use in a custom hook
+const hook = sdk.createCustomHook(
+  CONTRACT_ADDRESS,
+  "stake",
+  [0n], // This 0 will be replaced with actual balance
+  {
+    dynamicReplacements: [replacement],
+  }
+);
+```
+
+## Complete Example with TacSDK
+
+```javascript
+import {
+  TacSdk,
+  AgnosticProxySDK,
+  SenderFactory,
+  Network,
+} from "@tonappchain/sdk";
+import { TonConnectUI } from "@tonconnect/ui";
+import { ethers } from "ethers";
+
+async function executeCompleteStrategy() {
+  // Initialize TacSDK
+  const tacSdk = await TacSdk.create({ network: Network.TESTNET });
+
+  // Initialize sender
+  const tonConnectUI = new TonConnectUI({
+    manifestUrl: "https://example.com/tonconnect-manifest.json",
+  });
+  const sender = await SenderFactory.getSender({ tonConnect: tonConnectUI });
+  const tvmWalletAddress = sender.getSenderAddress();
+
+  // Initialize AgnosticProxy SDK
+  const agnosticSdk = new AgnosticProxySDK(Network.TESTNET);
+  const agnosticCallParams = agnosticSdk.getAgnosticCallParams();
+
+  // Register contract interfaces
+  agnosticSdk.addContractInterface(UNISWAP_ROUTER, UNISWAP_ROUTER_ABI);
+  agnosticSdk.addContractInterface(STAKING_CONTRACT, STAKING_ABI);
+
+  // Get smart account address
+  const smartAccountAddress = await tacSdk.getSmartAccountAddressForTvmWallet(
+    tvmWalletAddress,
+    agnosticCallParams.evmTargetAddress
+  );
+
+  // Build strategy: USDC → WETH → Stake
+  const hooks = [];
+
+  // Transfer incoming USDC to smart account
+  hooks.push(
+    agnosticSdk.createFullBalanceTransferHook(
+      TOKENS.USDC,
+      smartAccountAddress,
+      false
+    )
+  );
+
+  // Approve USDC for Uniswap
+  hooks.push(
+    agnosticSdk.createFullBalanceApproveHook(TOKENS.USDC, UNISWAP_ROUTER, true)
+  );
+
+  // Swap USDC to WETH
+  hooks.push(
+    agnosticSdk.createCustomHook(
+      UNISWAP_ROUTER,
+      "swapExactTokensForTokens",
+      [
+        ethers.parseUnits("2000", 6), // 2000 USDC
+        ethers.parseEther("1"), // min 1 WETH
+        [TOKENS.USDC, TOKENS.WETH],
+        smartAccountAddress,
+        Math.floor(Date.now() / 1000) + 3600,
+      ],
+      { isFromSAPerspective: true }
+    )
+  );
+
+  // Approve WETH for staking
+  hooks.push(
+    agnosticSdk.createFullBalanceApproveHook(
+      TOKENS.WETH,
+      STAKING_CONTRACT,
+      true
+    )
+  );
+
+  // Stake WETH with dynamic amount
+  const replacement = agnosticSdk.createAmountReplacement(
+    0,
+    TOKENS.WETH,
+    smartAccountAddress
+  );
+
+  hooks.push(
+    agnosticSdk.createCustomHook(
+      STAKING_CONTRACT,
+      "stake",
+      [0n], // Will be replaced with actual WETH balance
+      {
+        dynamicReplacements: [replacement],
+        isFromSAPerspective: true,
+      }
+    )
+  );
+
+  // Build ZapCall
+  const zapCall = agnosticSdk.buildZapCall(
+    hooks,
+    [TOKENS.STAKE_SHARE_TOKEN], // Bridge tokens after operation
+    [] // No NFTs to bridge
+  );
+
+  // Visualize the strategy
+  console.log("📋 Strategy Visualization:");
+  agnosticSdk.visualizeZapCall(zapCall);
+
+  // Get analytics
+  const breakdown = agnosticSdk.getZapCallBreakdown(zapCall);
+  console.log("\n📈 Strategy Analytics:");
+  console.log(`   Total Operations: ${breakdown.totalHooks}`);
+  console.log(`   Estimated Gas: ${breakdown.gasEstimate.toLocaleString()}`);
+  console.log(`   Encoded Size: ${breakdown.encodedSize} bytes`);
+
+  // Encode for transaction
+  const encodedCall = agnosticSdk.encodeZapCall(zapCall);
+
+  // Execute via TacSDK
+  const evmProxyMsg = {
+    evmTargetAddress: agnosticCallParams.evmTargetAddress,
+    methodName: agnosticCallParams.methodName,
+    encodedParameters: encodedCall,
+  };
+
+  const assets = [
+    {
+      address: USDCTvmAddress,
+      amount: 2000,
+      type: "FT",
+    },
+  ];
+
+  await tacSdk.sendCrossChainTransaction(evmProxyMsg, sender, assets);
+}
+```
+
+## ABI Support
+
+The SDK supports multiple ABI formats:
+
+### Human-Readable ABI
+
+```javascript
+const abi = [
+  "function swapExactTokensForTokens(uint256 amountIn, uint256 amountOutMin, address[] calldata path, address to, uint256 deadline) external returns (uint256[] memory amounts)",
+];
+
+sdk.addContractInterface(CONTRACT_ADDRESS, abi);
+```
+
+### JSON ABI
+
+```javascript
+const jsonAbi = [
+  {
+    inputs: [
+      { name: "amount", type: "uint256" },
+      { name: "recipient", type: "address" },
+    ],
+    name: "stake",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+];
+
+sdk.addContractInterface(CONTRACT_ADDRESS, jsonAbi);
+```
+
+## Advanced Features
+
+### Replacement Calculator Tools
+
+Automatically calculate dynamic value replacement positions:
+
+```javascript
+// Automatic calculation based on function signature
+const replacement = sdk.calculateReplacementData(
+  UNISWAP_ROUTER,
+  "swapExactTokensForTokens",
+  "amountIn", // parameter name
+  TOKENS.USDC,
+  userAddress
+);
+
+// Interactive replacement builder with validation
+const result = sdk.buildReplacementInteractive(
+  STAKING_CONTRACT,
+  "stake",
+  "amount",
+  TOKENS.COMP,
+  userAddress,
+  {
+    showCalculation: true,
+    validate: true,
+  }
+);
+```
+
+### Visualization and Debugging
+
+```javascript
+// Visualize operation chain
+sdk.visualizeZapCall(zapCall);
+
+// Get detailed breakdown
+const breakdown = sdk.getZapCallBreakdown(zapCall);
+
+// Compare strategies
+sdk.compareZapCalls(strategyA, strategyB, "Strategy A", "Strategy B");
+
+// Debug individual hooks
+zapCall.hooks.forEach((hook, i) => {
+  console.log(`Hook ${i}:`, sdk.decodeHookData(hook));
+});
+```
+
+## API Reference
+
+### Constructor
+
+```javascript
+new AgnosticProxySDK(network: Network, agnosticProxyAddress?: string)
+```
+
+### Core Methods
+
+- `addContractInterface(address: string, abi: any[]): this` - Add contract interface
+- `createCustomHook(contractAddress, functionName, params, options): Hook` - Create custom hook
+- `createFullBalanceApproveHook(token, to, isFromSAPerspective): Hook` - Create approve hook
+- `createFullBalanceTransferHook(token, to, isFromSAPerspective): Hook` - Create transfer hook
+- `buildZapCall(hooks, bridgeTokens?, bridgeNFTs?): ZapCall` - Build complete ZapCall
+- `encodeZapCall(zapCall): string` - Encode ZapCall for execution
+- `getAgnosticCallParams(): {evmTargetAddress: string, methodName: string}` - Get call parameters
+
+### Utility Methods
+
+- `visualizeZapCall(zapCall): void` - Display operation visualization
+- `getZapCallBreakdown(zapCall): object` - Get detailed breakdown
+- `createAmountReplacement(paramIndex, token, balanceAddress): AmountChange` - Create replacement
+- `calculateReplacementData(contractAddress, functionName, parameterName, token, balanceAddress): AmountChange` - Auto-calculate replacement
+
+## Error Handling
+
+```javascript
+try {
+  const zapCall = sdk.createCustomHook("0xinvalidaddress", "someFunction", []);
+} catch (error) {
+  console.error("Error:", error.message);
+  // Handle contract interface not found, invalid parameters, etc.
+}
+```
+
+## Best Practices
+
+1. **Always add contract interfaces** before creating hooks
+2. **Use dynamic replacements** for interdependent operations
+3. **Add appropriate approvals** before token operations
+4. **Visualize strategies** before execution to verify logic
+5. **Test with small amounts** first on testnet
+
+<Note>
+  The AgnosticProxy SDK is experimental and designed for advanced DeFi
+  strategies. Always test thoroughly on testnet before using with real assets.
+</Note>
