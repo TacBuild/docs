@@ -88,7 +88,7 @@
               {
                 "group": "Advanced Usage",
                 "pages": [
-                  "build/proxy/advanced-usage/agnostic-proxy",
+                  "build/sdk/advanced-usage/agnostic-proxy",
                   "build/sdk/advanced-usage/simulation-testing",
                   "build/sdk/advanced-usage/token-address-mapping"
                 ]

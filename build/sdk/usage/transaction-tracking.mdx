@@ -455,7 +455,7 @@ new TonTxFinalizer(
 
 ### Methods
 
-#### trackTransactionTree(hash: string, maxDepth?: number): Promise<void>
+#### trackTransactionTree(hash: string, maxDepth?: number): Promise
 
 Traverses the transaction tree starting from the given hash, following outgoing transactions up to maxDepth (default: 10). Throws an error if any transaction in the tree is not successful.
 
