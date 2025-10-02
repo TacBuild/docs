@@ -32,7 +32,6 @@ const evmProxyMsg = {
 // Define assets to bridge (optional)
 const assets = [
   {
-    type: AssetType.FT,
     amount: 1.0,
   }, // Bridge 1 TON
 ];
@@ -46,19 +45,21 @@ const transactionLinker = await tacSdk.sendCrossChainTransaction(
 
 console.log("Transaction ID:", transactionLinker.operationId);
 
+const waitOptions: WaitOptions = {
+  timeout: 600000, // 10 minutes timeout
+  maxAttempts: 60, // Up to 60 polling attempts
+  delay: 10000, // 10 seconds between status checks
+  successCheck: (result) => result.success === true,
+  onSuccess: (result) =>
+    console.log("Transaction completed successfully!", result),
+};
+
 // Execute cross-chain transaction with automatic waiting for completion
 const transactionLinkerWithWait = await tacSdk.sendCrossChainTransaction(
   evmProxyMsg,
   sender,
   assets,
-  undefined, // options (can be omitted)
-  {
-    timeout: 600000,    // 10 minutes timeout
-    maxAttempts: 60,    // Up to 60 polling attempts
-    delay: 10000,       // 10 seconds between status checks
-    successCheck: (result) => result.success === true,
-    onSuccess: (result) => console.log("Transaction completed successfully!", result)
-  }
+  waitOptions
 );
 
 console.log("Transaction completed:", transactionLinkerWithWait.operationId);
@@ -72,10 +73,10 @@ The `EvmProxyMsg` object defines what contract call to execute on the TAC EVM si
 
 ```javascript
 const evmProxyMsg = {
-  evmTargetAddress: "0x742d35Cc647332...", // Target contract address (required)
-  methodName: "methodName(bytes,bytes)", // Method signature (optional)
-  encodedParameters: "0x00000000000000...", // ABI-encoded params (optional)
-  gasLimit: 500000n, // Gas limit (optional)
+  evmTargetAddress: "0x742d35Cc647332...",
+  methodName: "methodName(bytes,bytes)",
+  encodedParameters: "0x00000000000000...",
+  gasLimit: 500000n,
 };
 ```
 
@@ -169,7 +170,6 @@ Assets are automatically bridged from TON to TAC EVM as part of the cross-chain 
     ```javascript
     const assets = [
       { 
-        type: AssetType.FT,
         amount: 1.5 
       } // Bridge 1.5 TON
     ];
@@ -180,7 +180,6 @@ Assets are automatically bridged from TON to TAC EVM as part of the cross-chain 
     ```javascript
     const assets = [
       {
-        type: AssetType.FT,
         address: "EQJettonMasterAddress...",
         amount: 1000.0 // Bridge 1000 jetton tokens
       }
@@ -192,7 +191,6 @@ Assets are automatically bridged from TON to TAC EVM as part of the cross-chain 
     ```javascript
     const assets = [
       {
-        type: AssetType.NFT,
         address: "EQNFTItemAddress..." // Direct NFT item address
       }
     ];
@@ -203,16 +201,13 @@ Assets are automatically bridged from TON to TAC EVM as part of the cross-chain 
     ```javascript
     const assets = [
       { 
-        type: AssetType.FT,
         amount: 2.0 
       }, // Native TON
       { 
-        type: AssetType.FT,
         address: "EQJettonAddress...", 
         amount: 500.0 
       }, // Jetton
       {
-        type: AssetType.NFT,
         address: "EQNFTItemAddress..."
       } // NFT
     ];
@@ -227,12 +222,11 @@ For precise control, use raw asset format:
 ```javascript
 const rawAssets = [
   {
-    type: AssetType.FT, // Fungible Token
+    // Fungible Token
     address: "EQJettonMasterAddress...",
     rawAmount: 1000000000n, // Raw amount (with decimals)
   },
   {
-    type: AssetType.NFT,
     address: "EQNFTItemAddress...", // Direct NFT item address
   },
 ];
@@ -280,13 +274,13 @@ Both `sendCrossChainTransaction` and `sendCrossChainTransactions` support option
 
 ```typescript
 interface WaitOptions<T = unknown, TContext = unknown> {
-  timeout?: number;           // Timeout in milliseconds (default: 300000)
-  maxAttempts?: number;       // Maximum number of attempts (default: 30)
-  delay?: number;             // Delay between attempts in milliseconds (default: 10000)
-  logger?: ILogger;           // Logger instance
-  context?: TContext;         // Optional context object for additional parameters
-  successCheck?: (result: T, context?: TContext) => boolean;  // Custom success validation
-  onSuccess?: (result: T, context?: TContext) => Promise<void> | void;  // Success callback
+  timeout?: number; // Timeout in milliseconds (default: 300000)
+  maxAttempts?: number; // Maximum number of attempts (default: 30)
+  delay?: number; // Delay between attempts in milliseconds (default: 10000)
+  logger?: ILogger; // Logger instance
+  context?: TContext; // Optional context object for additional parameters
+  successCheck?: (result: T, context?: TContext) => boolean; // Custom success validation
+  onSuccess?: (result: T, context?: TContext) => Promise<void> | void; // Success callback
 }
 ```
 
@@ -294,97 +288,117 @@ interface WaitOptions<T = unknown, TContext = unknown> {
 
 ```javascript
 // Basic waiting with defaults
+const defaultWaitOptions = {};
 const result = await tacSdk.sendCrossChainTransaction(
   evmProxyMsg,
   sender,
   assets,
   undefined, // transaction options
-  {} // use default wait options
+  defaultWaitOptions // use default wait options
 );
 
 // Custom timeout and polling interval
-const result = await tacSdk.sendCrossChainTransaction(
+const customTimeoutWaitOptions = {
+  timeout: 600000, // 10 minutes
+  delay: 5000, // Check every 5 seconds
+};
+const resultWithCustomTiming = await tacSdk.sendCrossChainTransaction(
   evmProxyMsg,
   sender,
   assets,
   undefined,
-  {
-    timeout: 600000,  // 10 minutes
-    delay: 5000       // Check every 5 seconds
-  }
+  customTimeoutWaitOptions
 );
 
 // With custom success validation and callback
-const result = await tacSdk.sendCrossChainTransaction(
+const validatedWaitOptions = {
+  successCheck: (result) => result.success && result.confirmations >= 2,
+  onSuccess: (result) => {
+    console.log("Transaction confirmed with sufficient confirmations");
+    // Send notification, update UI, etc.
+  },
+};
+const resultWithValidation = await tacSdk.sendCrossChainTransaction(
   evmProxyMsg,
   sender,
   assets,
   undefined,
-  {
-    successCheck: (result) => result.success && result.confirmations >= 2,
-    onSuccess: (result) => {
-      console.log("Transaction confirmed with sufficient confirmations");
-      // Send notification, update UI, etc.
-    }
-  }
+  validatedWaitOptions
 );
 
 // With context for additional data
-const result = await tacSdk.sendCrossChainTransaction(
+const contextualWaitOptions = {
+  context: { userId: "user123", transactionType: "swap" },
+  onSuccess: (result, context) => {
+    console.log(
+      `${context.transactionType} completed for user ${context.userId}`
+    );
+  },
+};
+const resultWithContext = await tacSdk.sendCrossChainTransaction(
   evmProxyMsg,
   sender,
   assets,
   undefined,
-  {
-    context: { userId: "user123", transactionType: "swap" },
-    onSuccess: (result, context) => {
-      console.log(`${context.transactionType} completed for user ${context.userId}`);
-    }
-  }
+  contextualWaitOptions
 );
 
 // Advanced example: Automatic profiling data retrieval with context
+const profilingWaitOptions = {
+  context: {
+    operationTracker: tacSdk.operationTracker,
+    enableProfiling: true,
+  },
+  onSuccess: async (result, context) => {
+    const operationId = result;
+    if (context?.enableProfiling && context.operationTracker) {
+      console.log("📊 Retrieving profiling data...");
+
+      // Get detailed profiling information
+      const profilingData = await context.operationTracker.getStageProfiling(
+        operationId
+      );
+
+      console.log("📈 OPERATION PROFILING COMPLETE");
+      console.log(`🔹 Operation ID: ${operationId}`);
+      console.log(`🔹 Profiling stages: ${Object.keys(profilingData).length}`);
+
+      // Show stage completion summary
+      for (const [stageName, stageInfo] of Object.entries(profilingData)) {
+        if (stageName !== "operationType" && stageName !== "metaInfo") {
+          console.log(
+            `   • ${stageName}: ${
+              stageInfo.exists ? "✅ Completed" : "⏸️ Not executed"
+            }`
+          );
+        }
+      }
+
+      return profilingData;
+    }
+  },
+};
 const resultWithProfiling = await tacSdk.sendCrossChainTransaction(
   evmProxyMsg,
   sender,
   assets,
   undefined,
-  {
-    context: {
-      operationTracker: tacSdk.operationTracker,
-      enableProfiling: true
-    },
-    onSuccess: async (operationId, context) => {
-      if (context?.enableProfiling && context.operationTracker) {
-        console.log('📊 Retrieving profiling data...');
-
-        // Get detailed profiling information
-        const profilingData = await context.operationTracker.getStageProfiling(operationId);
-
-        console.log('📈 OPERATION PROFILING COMPLETE');
-        console.log(`🔹 Operation ID: ${operationId}`);
-        console.log(`🔹 Profiling stages: ${Object.keys(profilingData).length}`);
-
-        // Show stage completion summary
-        for (const [stageName, stageInfo] of Object.entries(profilingData)) {
-          if (stageName !== 'operationType' && stageName !== 'metaInfo') {
-            console.log(`   • ${stageName}: ${stageInfo.exists ? '✅ Completed' : '⏸️ Not executed'}`);
-          }
-        }
-
-        return profilingData;
-      }
-    }
-  }
+  profilingWaitOptions
 );
 ```
 
 <Note>
-  Using waitOptions eliminates the need for manual polling but will block the calling thread until completion or timeout. For applications that need non-blocking behavior, use the standard approach without waitOptions and implement manual tracking.
+  Using waitOptions eliminates the need for manual polling but will block the
+  calling thread until completion or timeout. For applications that need
+  non-blocking behavior, use the standard approach without waitOptions and
+  implement manual tracking.
 </Note>
 
 <Tip>
-  **Advanced Usage**: You can access the SDK's internal `OperationTracker` via `tacSdk.operationTracker` and pass it through the context parameter to avoid creating new tracker instances in your callbacks. This is especially useful for profiling and advanced monitoring scenarios.
+  **Advanced Usage**: You can access the SDK's internal `OperationTracker` via
+  `tacSdk.operationTracker` and pass it through the context parameter to avoid
+  creating new tracker instances in your callbacks. This is especially useful
+  for profiling and advanced monitoring scenarios.
 </Tip>
 
 ## Batch Transactions
@@ -430,11 +444,12 @@ const batchTransactions = async () => {
     sender,
     crosschainTxs,
     {
-      timeout: 900000,    // 15 minutes for batch operations
-      maxAttempts: 90,    // More attempts for batch
-      delay: 10000,       // 10 seconds between checks
-      successCheck: (results) => results.every(r => r.success === true),
-      onSuccess: (results) => console.log(`Batch of ${results.length} transactions completed`)
+      timeout: 900000, // 15 minutes for batch operations
+      maxAttempts: 90, // More attempts for batch
+      delay: 10000, // 10 seconds between checks
+      successCheck: (results) => results.every((r) => r.success === true),
+      onSuccess: (results) =>
+        console.log(`Batch of ${results.length} transactions completed`),
     }
   );
 
@@ -490,18 +505,25 @@ The SDK uses an internal `Simulator` component for transaction simulation and fe
 const sdk = await TacSdk.create({ network: Network.TESTNET });
 
 // SDK simulation methods (recommended)
-const simulationResult = await sdk.getSimulationInfo(evmProxyMsg, sender, assets, options);
+const simulationResult = await sdk.getSimulationInfo(
+  evmProxyMsg,
+  sender,
+  assets,
+  options
+);
 
 // Batch simulation
 const transactions = [
   { evmProxyMsg: msg1, assets: [asset1] },
-  { evmProxyMsg: msg2, assets: [asset2] }
+  { evmProxyMsg: msg2, assets: [asset2] },
 ];
 const batchResults = await sdk.simulateTransactions(sender, transactions);
 ```
 
 <Note>
-  The Simulator performs TAC-side simulation to estimate gas costs, validate transaction logic, and calculate required fees. It's automatically configured when you create the SDK instance.
+  The Simulator performs TAC-side simulation to estimate gas costs, validate
+  transaction logic, and calculate required fees. It's automatically configured
+  when you create the SDK instance.
 </Note>
 
 ## Error Handling

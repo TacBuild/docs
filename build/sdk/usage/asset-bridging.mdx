@@ -56,7 +56,6 @@ The TAC SDK supports comprehensive asset bridging across multiple token standard
     // Bridge native TON to TAC
     const assets = [
       { 
-        type: AssetType.FT,
         amount: 5.0 
       } // Bridge 5 TON
     ];
@@ -103,7 +102,6 @@ The TAC SDK supports comprehensive asset bridging across multiple token standard
 // Bridge jetton tokens to TAC
 const jettonAssets = [
   {
-    type: AssetType.FT,
     address: "EQJettonMasterContractAddress...", // Jetton master contract
     amount: 1000.0, // Human-readable amount
     decimals: 9, // Optional: specify decimals
@@ -113,7 +111,7 @@ const jettonAssets = [
 // Advanced jetton bridging with raw amounts
 const rawJettonAssets = [
   {
-    type: AssetType.FT, // Fungible Token
+    // Fungible Token
     address: "EQJettonMasterContractAddress...",
     rawAmount: 1000000000000n, // Raw amount (1000 tokens with 9 decimals)
   },
@@ -126,7 +124,6 @@ const rawJettonAssets = [
 // Bridge NFT by collection and item index
 const nftCollectionAssets = [
   {
-    type: AssetType.NFT,
     collectionAddress: "EQNFTCollectionContractAddress...",
     itemIndex: 123n, // Specific NFT item index
   },
@@ -135,7 +132,6 @@ const nftCollectionAssets = [
 // Bridge specific NFT item by direct address
 const specificNftAssets = [
   {
-    type: AssetType.NFT,
     address: "EQSpecificNFTItemAddress...", // Direct NFT item address
   },
 ];
@@ -151,7 +147,6 @@ The SDK provides flexible approaches to handle token decimals and precision:
 // Automatic decimal detection (recommended)
 const autoAssets = [
   {
-    type: AssetType.FT,
     address: "EQJettonMasterAddress...",
     amount: 100.5, // SDK automatically handles decimals
   },
@@ -160,7 +155,6 @@ const autoAssets = [
 // Manual decimal specification for precision control
 const preciseAssets = [
   {
-    type: AssetType.FT,
     address: "EQJettonMasterAddress...",
     amount: 100.123456789, // High precision amount
     decimals: 9, // Explicit decimal specification
@@ -170,7 +164,6 @@ const preciseAssets = [
 // Raw amount for maximum control
 const rawAssets = [
   {
-    type: AssetType.FT,
     address: "EQJettonMasterAddress...",
     rawAmount: 100123456789n, // Exact raw amount
   },
@@ -185,25 +178,22 @@ Bridge multiple asset types in a single transaction:
 const multiAssetBridging = async () => {
   const complexAssets = [
     // Native TON for gas and value
-    { type: AssetType.FT, amount: 2.0 },
+    { amount: 2.0 },
 
     // Jetton token for DeFi operations
     {
-      type: AssetType.FT,
       address: "EQStablecoinMasterAddress...",
       amount: 1000.0,
     },
 
     // Another jetton for multi-token operations
     {
-      type: AssetType.FT,
       address: "EQLiquidityTokenAddress...",
       amount: 50.0,
     },
 
     // NFT for gaming or collectibles
     {
-      type: AssetType.NFT,
       address: "EQGameNFTItemAddress...", // Direct NFT item address
     },
   ];

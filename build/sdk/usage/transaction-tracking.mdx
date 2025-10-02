@@ -110,16 +110,7 @@ const getSimpleStatusWithWaiting = async (transactionLinker) => {
 
   // Wait for final status with custom wait options
   const finalStatus = await tracker.getSimplifiedOperationStatus(
-    transactionLinker,
-    {
-      timeout: 600000, // 10 minutes timeout
-      maxAttempts: 60, // Up to 60 attempts
-      delay: 10000, // 10 seconds between checks
-      successCheck: (status) =>
-        status !== "PENDING" && status !== "OPERATION_ID_NOT_FOUND",
-      onSuccess: (status) =>
-        console.log(`Transaction reached final status: ${status}`),
-    }
+    transactionLinker
   );
 
   return finalStatus;

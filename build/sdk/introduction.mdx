@@ -52,16 +52,15 @@ Bridge TON, Jettons, and NFTs to EVM seamlessly. The SDK manages locking, mintin
 
 ```javascript
 // Bridge multiple assets in a single transaction
-const assets = [
+const assets: AssetLike[] = [
   {
-    type: AssetType.FT,
-    amount: 10.5,
-  }, // Native TON
+    address: TVMtokenAAddress,
+    amount: tokenAAmount,
+  },
   {
-    type: AssetType.FT,
-    address: "EQJettonMasterAddress...",
-    amount: 1000,
-  }, // Jetton tokens
+    address: TVMtokenBAddress,
+    amount: tokenBAmount,
+  },
 ];
 ```
 
@@ -75,6 +74,8 @@ const tracker = new OperationTracker(Network.TESTNET);
 const operationId = await tracker.getOperationId(transactionLinker);
 const status = await tracker.getOperationStatus(operationId);
 ```
+
+<Note>You can import OperationTracker from `@tonappchain/sdk`</Note>
 
 ## How It Works
 

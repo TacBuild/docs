@@ -201,7 +201,7 @@ export const WalletConnector = () => {
         encodedParameters: "0x000000000000000000000000...",
       };
 
-      const assets = [{ type: AssetType.FT, amount: 1.0 }]; // 1 TON
+      const assets = [{ amount: 1.0 }]; // 1 TON
 
       const result = await tacSdk.sendCrossChainTransaction(
         evmProxyMsg,
@@ -299,7 +299,11 @@ const highloadSender = await SenderFactory.getSender({
 </Note>
 
 <Note>
-  **Batch Transaction Limits**: Different wallet versions support different batch sizes when sending multiple transactions. V5R1 wallets can send up to 254 transactions per batch, while V4 and other standard wallets support up to 4 transactions per batch. Highload V3 wallets are optimized for large batch operations.
+  **Batch Transaction Limits**: Different wallet versions support different
+  batch sizes when sending multiple transactions. V5R1 wallets can send up to
+  254 transactions per batch, while V4 and other standard wallets support up to
+  4 transactions per batch. Highload V3 wallets are optimized for large batch
+  operations.
 </Note>
 
 ### Environment Configuration
