@@ -306,12 +306,10 @@ const tacSdk = await TacSdk.create({
   TONParams: {
     // TON-specific configuration
     contractOpener: tonClient, // Custom TonClient instance
-    settingsAddress: "custom-address", // Custom settings contract address
   },
   TACParams: {
     // TAC-specific configuration
     provider: customProvider, // Custom provider
-    settingsAddress: "custom-address", // Custom settings contract address
   },
 });
 ```
@@ -330,12 +328,10 @@ const tacSdk = await TacSdk.create({
 **TON Parameters:**
 
 - `contractOpener` - Custom TonClient instance for TON operations
-- `settingsAddress` - Custom settings contract address
 
 **TAC Parameters:**
 
 - `provider` - Custom provider for TAC operations
-- `settingsAddress` - Custom settings contract address
 
 </Accordion>
 
@@ -415,8 +411,10 @@ If you experience network connection issues:
    ```javascript
    const tacSdk = await TacSdk.create({
      network: Network.TESTNET,
-     tonParams: {
-       endpoint: "https://testnet.toncenter.com/api/v2/jsonRPC",
+     TONParams: {
+       contractOpener: TonClient({
+         endpoint: "https://testnet.toncenter.com/api/v2/jsonRPC",
+       }),
      },
    });
    ```

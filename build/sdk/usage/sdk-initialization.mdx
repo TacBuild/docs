@@ -39,18 +39,11 @@ const tacSdk = await TacSdk.create({
   TONParams: {
     // TON blockchain configuration
     contractOpener: tonClient, // Custom TonClient instance
-    settingsAddress: "custom-settings-address",
   },
   TACParams: {
     // TAC blockchain configuration
     provider: customProvider, // Custom provider
-    settingsAddress: "custom-settings-address",
   },
-  customLiteSequencerEndpoints: [
-    // Custom sequencer endpoints
-    "https://custom-sequencer-1.com",
-    "https://custom-sequencer-2.com",
-  ],
 });
 ```
 
@@ -101,24 +94,31 @@ The SDK provides logging functionality for debugging and monitoring. By default,
 import { TacSdk, ConsoleLogger, NoopLogger, Network } from "@tonappchain/sdk";
 
 // With console logging (for development)
-const sdk = await TacSdk.create({
-  network: Network.TESTNET
-}, new ConsoleLogger());
+const sdk = await TacSdk.create(
+  {
+    network: Network.TESTNET,
+  },
+  new ConsoleLogger()
+);
 
 // Silent operation (default, for production)
-const sdk = await TacSdk.create({
-  network: Network.TESTNET
-}, new NoopLogger());
+const sdk = await TacSdk.create(
+  {
+    network: Network.TESTNET,
+  },
+  new NoopLogger()
+);
 
 // Default (silent) - no logger parameter
 const sdk = await TacSdk.create({
-  network: Network.TESTNET
+  network: Network.TESTNET,
 });
 ```
 
 ### Logger Output
 
 **ConsoleLogger** outputs with prefixes:
+
 ```
 [DEBUG] Aggregating tokens
 [INFO] Transaction prepared successfully
@@ -129,7 +129,8 @@ const sdk = await TacSdk.create({
 **NoopLogger** produces no output (silent operation).
 
 <Note>
-  Use ConsoleLogger for development and debugging. Use NoopLogger or omit the logger parameter for production environments.
+  Use ConsoleLogger for development and debugging. Use NoopLogger or omit the
+  logger parameter for production environments.
 </Note>
 
 ### Advanced Configuration
@@ -150,7 +151,6 @@ const tacSdk = await TacSdk.create({
   network: Network.TESTNET,
   TONParams: {
     contractOpener: tonClient, // Custom TonClient instance
-    settingsAddress: "custom-address", // Custom settings contract address
   },
 });
 ```
@@ -162,11 +162,6 @@ Provide fallback sequencer endpoints for enhanced reliability:
 ```javascript
 const tacSdk = await TacSdk.create({
   network: Network.TESTNET,
-  customLiteSequencerEndpoints: [
-    "https://sequencer-1.tacchain.network",
-    "https://sequencer-2.tacchain.network",
-    "https://backup-sequencer.tacchain.network",
-  ],
 });
 ```
 
@@ -187,9 +182,6 @@ const tacSdk = await TacSdk.create({
   network:
     process.env.TAC_NETWORK === "mainnet" ? Network.MAINNET : Network.TESTNET,
   delay: parseInt(process.env.TAC_DELAY) || 1000,
-  tonParams: {
-    apiKey: process.env.TON_API_KEY,
-  },
 });
 ```
 
@@ -209,13 +201,6 @@ CUSTOM_SEQUENCER_2=https://sequencer-2.tacchain.network
 const tacSdk = await TacSdk.create({
   network: Network.MAINNET,
   delay: 500,
-  tonParams: {
-    apiKey: process.env.TON_API_KEY
-  },
-  customLiteSequencerEndpoints: [
-    process.env.CUSTOM_SEQUENCER_1,
-    process.env.CUSTOM_SEQUENCER_2
-  ]
 });
 ```
 
@@ -248,9 +233,6 @@ export const TacSdkProvider = ({ children }) => {
               ? Network.MAINNET
               : Network.TESTNET,
           delay: process.env.NODE_ENV === "production" ? 500 : 1000,
-          tonParams: {
-            apiKey: process.env.REACT_APP_TON_API_KEY,
-          },
         });
 
         setTacSdk(sdk);
@@ -383,9 +365,6 @@ export function useTacSdk() {
       tacSdk.value = await TacSdk.create({
         network: import.meta.env.PROD ? Network.MAINNET : Network.TESTNET,
         delay: import.meta.env.PROD ? 500 : 1000,
-        tonParams: {
-          apiKey: import.meta.env.VITE_TON_API_KEY,
-        },
       });
     } catch (err) {
       console.error("TAC SDK initialization failed:", err);
@@ -543,56 +522,6 @@ setInterval(async () => {
     // Reinitialize SDK or show connection error
   }
 }, 30000); // Check every 30 seconds
-```
-
-## Configuration Validation
-
-Validate your configuration before initialization:
-
-```javascript
-function validateSdkConfig(config) {
-  // Network validation
-  if (!Object.values(Network).includes(config.network)) {
-    throw new Error(`Invalid network: ${config.network}`);
-  }
-
-  // Delay validation
-  if (config.delay && (config.delay < 0 || config.delay > 10000)) {
-    throw new Error(
-      `Invalid delay: ${config.delay}. Must be between 0-10000ms`
-    );
-  }
-
-  // TON params validation
-  if (
-    config.tonParams?.endpoint &&
-    !config.tonParams.endpoint.startsWith("https://")
-  ) {
-    throw new Error("TON endpoint must use HTTPS");
-  }
-
-  // TAC params validation
-  if (
-    config.tacParams?.rpcUrl &&
-    !config.tacParams.rpcUrl.startsWith("https://")
-  ) {
-    throw new Error("TAC RPC URL must use HTTPS");
-  }
-
-  return true;
-}
-
-// Usage
-const config = {
-  network: Network.TESTNET,
-  delay: 1000,
-  tonParams: {
-    apiKey: process.env.TON_API_KEY,
-  },
-};
-
-validateSdkConfig(config);
-const tacSdk = await TacSdk.create(config);
 ```
 
 ## What's Next?
