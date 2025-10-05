@@ -71,8 +71,8 @@ const statusWithWait = await tracker.getOperationStatus(operationId, {
   timeout: 300000, // 5 minutes total timeout
   maxAttempts: 30, // Maximum 30 attempts
   delay: 10000, // 10 seconds between attempts
-  successCheck: (result) => result.success === true,
-  onSuccess: (result) => console.log("Operation completed:", result),
+  successCheck: (opId) => !opId,
+  onSuccess: (opId) => console.log("Transaction completed successfully!", opId),
 });
 console.log("Final status:", statusWithWait);
 ```
@@ -155,7 +155,7 @@ const getDetailedStatusWithCallback = async (operationId) => {
       operationTracker: tracker,
       enableProfiling: true,
     },
-    successCheck: (result) => result.success === true,
+    successCheck: (opId) => !opId,
     onSuccess: async (result, context) => {
       if (context?.enableProfiling && context.operationTracker) {
         console.log("📊 Retrieving detailed profiling data...");

@@ -542,35 +542,6 @@ const bridgeAssetsBackToTon = async (evmSigner, tonRecipient) => {
   console.log("Bridge transaction hash:", txHash);
   return txHash;
 };
-
-// Bridge multiple assets back to TON
-const bridgeMultipleAssetsToTon = async (evmSigner, tonRecipient) => {
-  const tacAmount = ethers.utils.parseEther("0.5");
-
-  // Include additional bridged assets
-  const additionalAssets = [
-    {
-      type: "FT",
-      address: evmJettonEquivalentAddress,
-      amount: ethers.utils.parseUnits("100", 9), // 100 tokens with 9 decimals
-    },
-    {
-      type: "NFT",
-      address: evmNftContractAddress,
-      amount: 1n,
-      nftItemAddress: specificNftItemAddress,
-    },
-  ];
-
-  const txHash = await tacSdk.bridgeTokensToTON(
-    evmSigner,
-    tacAmount,
-    tonRecipient,
-    additionalAssets
-  );
-
-  return txHash;
-};
 ```
 
 ## What's Next?

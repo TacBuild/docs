@@ -49,9 +49,8 @@ const waitOptions: WaitOptions = {
   timeout: 600000, // 10 minutes timeout
   maxAttempts: 60, // Up to 60 polling attempts
   delay: 10000, // 10 seconds between status checks
-  successCheck: (result) => result.success === true,
-  onSuccess: (result) =>
-    console.log("Transaction completed successfully!", result),
+  successCheck: (opId) => !opId,
+  onSuccess: (opId) => console.log("Transaction completed successfully!", opId),
 };
 
 // Execute cross-chain transaction with automatic waiting for completion
@@ -59,7 +58,7 @@ const transactionLinkerWithWait = await tacSdk.sendCrossChainTransaction(
   evmProxyMsg,
   sender,
   assets,
-  waitOptions
+  { waitOptions: waitOptions }
 );
 
 console.log("Transaction completed:", transactionLinkerWithWait.operationId);
@@ -238,21 +237,26 @@ Customize transaction behavior with advanced options:
 
 ```javascript
 const options = {
-  forceSend: false, // Force send even if simulation fails
-  isRoundTrip: false, // Whether to return assets to TON
+  allowSimulationError: false, // Allow sending even if simulation fails
+  isRoundTrip: false, // Whether to return assets to TON after execution
   protocolFee: 10000000n, // Custom protocol fee (nanotons)
   evmValidExecutors: [
-    // Trusted EVM executors
+    // List of trusted EVM executor addresses
     "0xExecutor1Address...",
     "0xExecutor2Address...",
   ],
   evmExecutorFee: 50000000n, // EVM executor fee (wei)
   tvmValidExecutors: [
-    // Trusted TON executors
+    // List of trusted TON executor addresses
     "EQExecutor1Address...",
     "EQExecutor2Address...",
   ],
   tvmExecutorFee: 100000000n, // TON executor fee (nanotons)
+  calculateRollbackFee: false, // Calculate and include rollback fee if needed
+  withoutSimulation: false, // Skip simulation step before sending
+  validateAssetsBalance: true, // Validate sender's asset balance before sending
+  waitOperationId: false, // Wait for operationId to be available before returning
+  waitOptions: undefined, // Optional: pass WaitOptions object
 };
 
 const transactionLinker = await tacSdk.sendCrossChainTransaction(
@@ -294,7 +298,7 @@ const result = await tacSdk.sendCrossChainTransaction(
   sender,
   assets,
   undefined, // transaction options
-  defaultWaitOptions // use default wait options
+  { waitOptions: defaultWaitOptions } // use default wait options
 );
 
 // Custom timeout and polling interval
@@ -307,7 +311,7 @@ const resultWithCustomTiming = await tacSdk.sendCrossChainTransaction(
   sender,
   assets,
   undefined,
-  customTimeoutWaitOptions
+  { waitOptions: customTimeoutWaitOptions }
 );
 
 // With custom success validation and callback
@@ -323,7 +327,7 @@ const resultWithValidation = await tacSdk.sendCrossChainTransaction(
   sender,
   assets,
   undefined,
-  validatedWaitOptions
+  { waitOptions: validatedWaitOptions }
 );
 
 // With context for additional data
@@ -340,7 +344,7 @@ const resultWithContext = await tacSdk.sendCrossChainTransaction(
   sender,
   assets,
   undefined,
-  contextualWaitOptions
+  { waitOptions: contextualWaitOptions }
 );
 
 // Advanced example: Automatic profiling data retrieval with context
@@ -383,7 +387,7 @@ const resultWithProfiling = await tacSdk.sendCrossChainTransaction(
   sender,
   assets,
   undefined,
-  profilingWaitOptions
+  { waitOptions: profilingWaitOptions }
 );
 ```
 
@@ -440,17 +444,9 @@ const batchTransactions = async () => {
   );
 
   // Send batch with wait options for automatic completion waiting
-  const transactionLinkersWithWait = await tacSdk.sendCrossChainTransactions(
+  const transactionLinkers = await tacSdk.sendCrossChainTransactions(
     sender,
-    crosschainTxs,
-    {
-      timeout: 900000, // 15 minutes for batch operations
-      maxAttempts: 90, // More attempts for batch
-      delay: 10000, // 10 seconds between checks
-      successCheck: (results) => results.every((r) => r.success === true),
-      onSuccess: (results) =>
-        console.log(`Batch of ${results.length} transactions completed`),
-    }
+    crosschainTxs
   );
 
   return transactionLinkers.map((linker) => linker.operationId);
