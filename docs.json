@@ -167,7 +167,7 @@
             "pages": [
               "ecosystem/oracles/redstone",
               "ecosystem/oracles/stork",
-              "ecosystem/oracles/EO",
+              "ecosystem/oracles/eo",
               "ecosystem/oracles/apro"
             ]
           },
