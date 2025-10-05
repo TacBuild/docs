@@ -149,13 +149,11 @@ class TACTestEnvironment {
     // Prepare test jettons and assets
     this.testAssets.set("testJetton1", {
       address: "EQTestJettonMaster1...",
-      decimals: 9,
       symbol: "TST1",
     });
 
     this.testAssets.set("testJetton2", {
       address: "EQTestJettonMaster2...",
-      decimals: 6,
       symbol: "TST2",
     });
   }
@@ -246,11 +244,7 @@ describe("Cross-Chain Transaction Tests", () => {
       };
 
       await expect(
-        testEnv.tacSdk.getSimulationInfo(
-          evmProxyMsg,
-          sender,
-          largeAssets
-        )
+        testEnv.tacSdk.getSimulationInfo(evmProxyMsg, sender, largeAssets)
       ).rejects.toThrow(/insufficient balance/i);
     });
 
@@ -339,11 +333,7 @@ describe("Cross-Chain Transaction Tests", () => {
       };
 
       await expect(
-        testEnv.tacSdk.getSimulationInfo(
-          evmProxyMsg,
-          sender,
-          invalidAssets
-        )
+        testEnv.tacSdk.getSimulationInfo(evmProxyMsg, sender, invalidAssets)
       ).rejects.toThrow();
     });
   });
@@ -793,7 +783,6 @@ class TestAssetFactory {
     const jettonConfig = {
       name: config.name || "Test Jetton",
       symbol: config.symbol || "TEST",
-      decimals: config.decimals || 9,
       totalSupply: config.totalSupply || 1000000,
       description: config.description || "Test jetton for SDK testing",
     };

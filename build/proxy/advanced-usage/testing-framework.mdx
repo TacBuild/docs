@@ -194,7 +194,6 @@ describe("TestProxy with @tonappchain/evm-ccl", () => {
       tvmAddress: "JettonMinterAddress",
       name: "TestJetton",
       symbol: "TJT",
-      decimals: 9n,
     };
 
     const tokenMintInfo: TokenMintInfo = {
@@ -340,7 +339,6 @@ const jettonInfo: JettonInfo = {
   tvmAddress: "JettonMinterAddress", // TON jetton address
   name: "TestJetton",
   symbol: "TJT",
-  decimals: 9n,
 };
 ```
 
@@ -389,21 +387,22 @@ const { receipt, deployedTokens, outMessages } = await testSdk.sendMessage(
 For testing NFT operations, use the specialized NFT testing method:
 
 ```typescript
-const { receipt, deployedTokens, outMessages } = await testSdk.sendMessageWithNFT(
-  shardsKey,
-  target,
-  methodName,
-  encodedArguments,
-  tvmWalletCaller,
-  [tokenMintInfo],     // TokenMintInfo[] - Regular tokens to mint
-  [tokenUnlockInfo],   // TokenUnlockInfo[] - Regular tokens to unlock
-  [nftMintInfo],       // NFTMintInfo[] - NFTs to mint
-  [nftUnlockInfo],     // NFTUnlockInfo[] - NFTs to unlock
-  tacAmountToBridge,
-  extraData,
-  operationId,
-  timestamp
-);
+const { receipt, deployedTokens, outMessages } =
+  await testSdk.sendMessageWithNFT(
+    shardsKey,
+    target,
+    methodName,
+    encodedArguments,
+    tvmWalletCaller,
+    [tokenMintInfo], // TokenMintInfo[] - Regular tokens to mint
+    [tokenUnlockInfo], // TokenUnlockInfo[] - Regular tokens to unlock
+    [nftMintInfo], // NFTMintInfo[] - NFTs to mint
+    [nftUnlockInfo], // NFTUnlockInfo[] - NFTs to unlock
+    tacAmountToBridge,
+    extraData,
+    operationId,
+    timestamp
+  );
 ```
 
 ### Return Values

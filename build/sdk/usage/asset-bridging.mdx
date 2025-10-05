@@ -104,7 +104,6 @@ const jettonAssets = [
   {
     address: "EQJettonMasterContractAddress...", // Jetton master contract
     amount: 1000.0, // Human-readable amount
-    decimals: 9, // Optional: specify decimals
   },
 ];
 
@@ -157,7 +156,6 @@ const preciseAssets = [
   {
     address: "EQJettonMasterAddress...",
     amount: 100.123456789, // High precision amount
-    decimals: 9, // Explicit decimal specification
   },
 ];
 
@@ -555,7 +553,6 @@ const bridgeMultipleAssetsToTon = async (evmSigner, tonRecipient) => {
       type: "FT",
       address: evmJettonEquivalentAddress,
       amount: ethers.utils.parseUnits("100", 9), // 100 tokens with 9 decimals
-      decimals: 9,
     },
     {
       type: "NFT",
