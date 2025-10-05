@@ -8,10 +8,10 @@ TAC offers full EVM compatibility through its Layer 1 blockchain. For reliable d
 
 As our main RPC provider, Ankr delivers high-availability infrastructure specifically optimized for TAC Network:
 
-| Type     | Network       | Endpoint                     |
-| -------- | ------------- | ---------------------------- |
-| JSON-RPC | Mainnet       | https://rpc.ankr.com/tac     |
-| JSON-RPC | Turin Testnet | https://rpc.ankr.com/tac_spb |
+| Type     | Network     | Endpoint                     |
+| -------- | ----------- | ---------------------------- |
+| JSON-RPC | Mainnet     | https://rpc.ankr.com/tac     |
+| JSON-RPC | SPB Testnet | https://rpc.ankr.com/tac_spb |
 
 ## Integration Steps
 
@@ -35,7 +35,7 @@ For EVM application integration using Ankr's RPC services:
 import { ethers } from 'ethers';
 
 // Connect via Ankr's RPC endpoint
-const provider = new ethers.providers.JsonRpcProvider('https://turin.rpc.tac.build');
+const provider = new ethers.providers.JsonRpcProvider('https://spb.rpc.tac.build');
 
 // Test connection
 async function checkConnection() {
@@ -47,28 +47,17 @@ async function checkConnection() {
 Or for deployment on TAC L1 using Foundry
 
 ```
-forge create --rpc-url https://turin.rpc.tac.build --private-key YOUR_PRIVATE_KEY_HERE YOUR_CONTRACT --legacy --broadcast
+forge create --rpc-url https://spb.rpc.tac.build --private-key YOUR_PRIVATE_KEY_HERE YOUR_CONTRACT --legacy --broadcast
 ```
 
 </Step>
 </Steps>
 
-## Network Parameters
-
-TAC Network uses the following parameters:
-
-- Chain ID: 2390 (Turin Testnet)
-- RPC URL: https://turin.rpc.tac.build
-- FeeSchema: EIP-1559
-- Explorer URL: https://turin.explorer.tac.build
-- Currency Symbol: TAC
-- Blocktime: 3 seconds
-
 ## Testing Your Integration
 
 Before production deployment:
 
-- Get testnet tokens from the [TAC Faucet](https://turin.faucet.tac.build)
+- Get testnet tokens from the [TAC Faucet](https://spb.faucet.tac.build)
 - Test transactions through Ankr's RPC endpoints
 - Monitor performance via the Explorer
 
