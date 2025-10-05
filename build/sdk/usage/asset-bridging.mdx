@@ -123,7 +123,7 @@ const rawJettonAssets = [
 // Bridge NFT by collection and item index
 const nftCollectionAssets = [
   {
-    collectionAddress: "EQNFTCollectionContractAddress...",
+    collectionAddress: "0x00728334ad7b0e40968EA09F11cF154302476864...",
     itemIndex: 123n, // Specific NFT item index
   },
 ];
@@ -571,133 +571,6 @@ const bridgeMultipleAssetsToTon = async (evmSigner, tonRecipient) => {
 
   return txHash;
 };
-```
-
-## Monitoring Asset States
-
-Track asset movements across the bridging lifecycle:
-
-```javascript
-class AssetStateMonitor {
-  constructor(tacSdk) {
-    this.tacSdk = tacSdk;
-    this.tracker = new OperationTracker(tacSdk.network);
-  }
-
-  async monitorAssetJourney(transactionLinker, originalAssets) {
-    const journey = {
-      originalAssets,
-      stages: [],
-      currentStage: "INITIATED",
-      bridgedAmounts: {},
-      errors: [],
-    };
-
-    try {
-      // Monitor the bridging process
-      const stages = await this.tracker.getStageProfiling(
-        transactionLinker.operationId
-      );
-
-      journey.stages = this.interpretStages(stages);
-      journey.currentStage = this.getCurrentStage(stages);
-
-      // Check final asset states
-      if (journey.currentStage === "COMPLETED") {
-        journey.bridgedAmounts = await this.verifyBridgedAmounts(
-          originalAssets,
-          transactionLinker
-        );
-      }
-    } catch (error) {
-      journey.errors.push(error.message);
-    }
-
-    return journey;
-  }
-
-  interpretStages(stages) {
-    const interpretedStages = [];
-
-    if (stages.tonTransactionSent) {
-      interpretedStages.push({
-        stage: "TON_TRANSACTION_SENT",
-        timestamp: stages.tonTransactionSent,
-        description: "Transaction submitted to TON network",
-      });
-    }
-
-    if (stages.assetsLocked) {
-      interpretedStages.push({
-        stage: "ASSETS_LOCKED",
-        timestamp: stages.assetsLocked,
-        description: "Assets locked in bridging contracts",
-      });
-    }
-
-    if (stages.crossChainRouted) {
-      interpretedStages.push({
-        stage: "CROSS_CHAIN_ROUTED",
-        timestamp: stages.crossChainRouted,
-        description: "Message routed to TAC network",
-      });
-    }
-
-    if (stages.evmExecutionCompleted) {
-      interpretedStages.push({
-        stage: "ASSETS_MINTED",
-        timestamp: stages.evmExecutionCompleted,
-        description: "Assets minted on TAC and available for use",
-      });
-    }
-
-    return interpretedStages;
-  }
-
-  getCurrentStage(stages) {
-    if (stages.evmExecutionCompleted) return "COMPLETED";
-    if (stages.crossChainRouted) return "ROUTING";
-    if (stages.assetsLocked) return "LOCKED";
-    if (stages.tonTransactionSent) return "PROCESSING";
-    return "INITIATED";
-  }
-
-  async verifyBridgedAmounts(originalAssets, transactionLinker) {
-    const bridgedAmounts = {};
-
-    for (const asset of originalAssets) {
-      try {
-        if (asset.address) {
-          // Get EVM equivalent address
-          const evmAddress = await this.tacSdk.getEVMTokenAddress(
-            asset.address
-          );
-          bridgedAmounts[asset.address] = {
-            originalAmount: asset.amount,
-            evmAddress,
-            bridged: true, // In production, would verify actual EVM balance
-          };
-        } else {
-          // Native TON
-          const tacAddress = await this.tacSdk.nativeTACAddress();
-          bridgedAmounts["NATIVE_TON"] = {
-            originalAmount: asset.amount,
-            evmAddress: tacAddress,
-            bridged: true,
-          };
-        }
-      } catch (error) {
-        bridgedAmounts[asset.address || "NATIVE_TON"] = {
-          originalAmount: asset.amount,
-          error: error.message,
-          bridged: false,
-        };
-      }
-    }
-
-    return bridgedAmounts;
-  }
-}
 ```
 
 ## What's Next?

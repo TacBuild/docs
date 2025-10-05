@@ -252,21 +252,18 @@ const getExecutionProfiling = async (operationId) => {
   const stages = await tracker.getStageProfiling(operationId);
 
   console.log("Execution Timeline:");
-  console.log("- TON Transaction Sent:", stages.tonTransactionSent);
-  console.log("- Message Validated:", stages.messageValidated);
-  console.log("- Assets Locked:", stages.assetsLocked);
-  console.log("- Cross-Chain Routed:", stages.crossChainRouted);
-  console.log("- EVM Execution Started:", stages.evmExecutionStarted);
-  console.log("- EVM Execution Completed:", stages.evmExecutionCompleted);
-  console.log("- Final Confirmation:", stages.finalConfirmation);
-
-  // Calculate durations
-  const totalTime = stages.finalConfirmation - stages.tonTransactionSent;
-  const evmExecutionTime =
-    stages.evmExecutionCompleted - stages.evmExecutionStarted;
-
-  console.log(`Total execution time: ${totalTime / 1000} seconds`);
-  console.log(`EVM execution time: ${evmExecutionTime / 1000} seconds`);
+  console.log("- Collected in TAC:", stages.collectedInTAC.stageData?.success);
+  console.log(
+    "- Included in TAC Consensus:",
+    stages.includedInTACConsensus.stageData?.success
+  );
+  console.log("- Executed in TAC:", stages.executedInTAC.stageData?.success);
+  console.log("- Collected in TON:", stages.collectedInTON.stageData?.success);
+  console.log(
+    "- Included in TON Consensus:",
+    stages.includedInTONConsensus.stageData?.success
+  );
+  console.log("- Executed in TON:", stages.executedInTON.stageData?.success);
 
   return stages;
 };
