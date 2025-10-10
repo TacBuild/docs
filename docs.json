@@ -242,6 +242,10 @@
     {
       "source": "/ecosystem/oracles/eoracle",
       "destination": "/ecosystem/oracles/eo"
+    },
+    {
+      "source": "/build/get-started/introduction",
+      "destination": "/build/quickstart"
     }
   ],
   "logo": {
