@@ -229,9 +229,7 @@
             "group": "Release Notes",
             "pages": [
               "release-notes/overview",
-              "release-notes/sdk",
-              "release-notes/ton-adapter",
-              "release-notes/evm"
+              "release-notes/sdk"
             ]
           }
         ]
