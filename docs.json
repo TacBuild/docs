@@ -17,17 +17,52 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Get Started",
+        "tab": "Intro",
         "pages": ["index"]
       },
       {
-        "tab": "Build with TAC",
+        "tab": "Why TAC",
         "groups": [
           {
-            "group": "Getting Started",
-            "icon": "rocket",
-            "pages": ["build/quickstart"]
+            "group": "Overview",
+            "icon": "info",
+            "pages": [
+              "core-concepts/overview/what-is-tac",
+              "core-concepts/overview/architecture",
+              "core-concepts/overview/hybrid-dapps",
+              "core-concepts/overview/security"
+            ]
           },
+          {
+            "group": " Components",
+            "icon": "blocks",
+            "pages": [
+              "core-concepts/components/tac-evm-layer",
+              "core-concepts/components/ton-adapter",
+              "core-concepts/components/proxy-apps",
+              "core-concepts/components/sequencer-network",
+              "core-concepts/components/tac-sdk"
+            ]
+          },
+          {
+            "group": "Cross-Chain Operations",
+            "icon": "arrow-left-right",
+            "pages": [
+              "core-concepts/cross-chain-operations/cross-chain-messaging",
+              "core-concepts/cross-chain-operations/asset-bridging",
+              "core-concepts/cross-chain-operations/transaction-lifecycle",
+              "core-concepts/cross-chain-operations/message-validation"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Quickstart",
+        "pages": ["/quickstart/overview"]
+      },
+      {
+        "tab": "Build",
+        "groups": [
           {
             "group": "Smart Contracts",
             "icon": "code",
@@ -113,56 +148,32 @@
         ]
       },
       {
-        "tab": "Core Concepts",
-        "groups": [
-          {
-            "group": "Overview",
-            "icon": "info",
-            "pages": [
-              "core-concepts/overview/what-is-tac",
-              "core-concepts/overview/architecture",
-              "core-concepts/overview/hybrid-dapps",
-              "core-concepts/overview/security"
-            ]
-          },
-          {
-            "group": " Components",
-            "icon": "blocks",
-            "pages": [
-              "core-concepts/components/tac-evm-layer",
-              "core-concepts/components/ton-adapter",
-              "core-concepts/components/proxy-apps",
-              "core-concepts/components/sequencer-network",
-              "core-concepts/components/tac-sdk"
-            ]
-          },
-          {
-            "group": "Cross-Chain Operations",
-            "icon": "arrow-left-right",
-            "pages": [
-              "core-concepts/cross-chain-operations/cross-chain-messaging",
-              "core-concepts/cross-chain-operations/asset-bridging",
-              "core-concepts/cross-chain-operations/transaction-lifecycle",
-              "core-concepts/cross-chain-operations/message-validation"
-            ]
-          },
-
-          {
-            "group": "Token Economics",
-            "icon": "coins",
-            "pages": ["core-concepts/token-economics/token-operations"]
-          }
+        "tab": "Explorer",
+        "pages": ["explorer/overview"]
+      },
+      {
+        "tab": "SDK",
+        "pages": [
+          "sdk/overview",
+          "sdk/ts-sdk",
+          "sdk/python-sdk"
         ]
+      },
+      {
+        "tab": "API",
+        "pages": ["api/overview"]
       },
       {
         "tab": "Ecosystem",
         "groups": [
           {
             "group": "Overview",
+            "icon": "info",
             "pages": ["ecosystem/index", "ecosystem/token-list"]
           },
           {
             "group": "Oracles",
+            "icon": "database",
             "pages": [
               "ecosystem/oracles/redstone",
               "ecosystem/oracles/stork",
@@ -172,6 +183,7 @@
           },
           {
             "group": "Interoperability",
+            "icon": "arrow-left-right",
             "pages": [
               "ecosystem/interoperability/layerzero",
               "ecosystem/interoperability/hyperlane"
@@ -179,6 +191,7 @@
           },
           {
             "group": "Data and Indexers",
+            "icon": "chart-line",
             "pages": [
               "ecosystem/data-indexers/goldsky",
               "ecosystem/data-indexers/dune"
@@ -186,13 +199,15 @@
           },
           {
             "group": "Development Tools",
+            "icon": "code",
             "pages": [
               "ecosystem/development-tools/thirdweb",
               "ecosystem/development-tools/tenderly"
             ]
           },
           {
-            "group": "Multi-Sig Wallets",
+            "group": "Multisig Wallets",
+            "icon": "shield",
             "pages": [
               "ecosystem/multi-sig-wallets/safe",
               "ecosystem/multi-sig-wallets/ton-multisig"
@@ -200,43 +215,17 @@
           },
           {
             "group": "RPCs",
+            "icon": "globe",
             "pages": ["ecosystem/rpcs/ankr"]
           }
         ]
       },
-
       {
-        "tab": "API Reference",
-
-        "groups": [
-          {
-            "group": "Overview",
-            "pages": ["api-reference/get-started"]
-          },
-          {
-            "group": "TON Adapter APIs",
-            "openapi": {
-              "source": "api-reference/ton-adapter/openapi.yaml",
-              "directory": "api-reference/ton-adapter"
-            }
-          }
-        ]
+        "tab": "Apps",
+        "pages": ["apps/overview"]
       },
       {
-        "tab": "Release Notes",
-        "groups": [
-          {
-            "group": "Release Notes",
-            "pages": [
-              "release-notes/overview",
-              "release-notes/ts-sdk",
-              "release-notes/python-sdk"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "Audit Reports",
+        "tab": "Audit",
         "pages": [
           "audit-reports/audit"
         ]
@@ -251,6 +240,14 @@
     {
       "source": "/build/get-started/introduction",
       "destination": "/build/quickstart"
+    },
+    {
+      "source": "/home/get-started/introduction",
+      "destination": "/build/quickstart"
+    },
+    {
+      "source": "/home/core-concepts/cross-chain-messaging",
+      "destination": "/core-concepts/cross-chain-operations/cross-chain-messaging"
     }
   ],
   "logo": {

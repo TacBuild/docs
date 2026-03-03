@@ -8,33 +8,29 @@ RedStone delivers frequently updated, reliable, and diverse data feeds for your 
 - Unique price feeds (including LSTs, LRTs, RWAs and TAC-native assets)
 - Modular Oracle Design allows for flexibility towards user needs
 
-RedStone operates in two models Push and Pull both available on TAC.
+RedStone operates in two models **Push** and **Pull** both available on TAC.
 
 ## Available Price Feeds
 
-| Feed Name | Network | Address                                                                                                                     |
-| --------- | ------- | --------------------------------------------------------------------------------------------------------------------------- |
-| ETH/USD   | Mainnet | [0xc555c100DB24dF36D406243642C169CC5A937f09](https://explorer.tac.build/address/0xc555c100DB24dF36D406243642C169CC5A937f09) |
-| BTC/USD   | Mainnet | [0xf0DEbDAE819b354D076b0D162e399BE013A856d3](https://explorer.tac.build/address/0xf0DEbDAE819b354D076b0D162e399BE013A856d3) |
-| USDC/USD  | Mainnet | [0x4aF6b78d92432D32E3a635E824d3A541866f7a78](https://explorer.tac.build/address/0x4aF6b78d92432D32E3a635E824d3A541866f7a78) |
-| TON/USD   | Mainnet | [0x26FB59e5562405F42f55661f790fA1Bd2F410A3d](https://explorer.tac.build/address/0x26FB59e5562405F42f55661f790fA1Bd2F410A3d) |
-| USDT/USD  | Mainnet | [0xb67047eDF6204F4C81333248dA71F8387050790C](https://explorer.tac.build/address/0xb67047eDF6204F4C81333248dA71F8387050790C) |
-| tsTON/TON | Mainnet | [0xb9D0073aCb296719C26a8BF156e4b599174fe1d5](https://explorer.tac.build/address/0xb9D0073aCb296719C26a8BF156e4b599174fe1d5) |
+Up to date TAC price feeds from the official docs:
+
+<CardGroup cols={1}>
+    <Card
+        title="Redstone price feeds for TAC"
+        href="https://app.redstone.finance/app/feeds/?page=1&sortBy=popularity&sortDesc=false&perPage=32&networks=239,2391"
+        icon="database"
+    >
+    </Card>
+</CardGroup>
 
 ## How to integrate [RedStone Push](https://docs.redstone.finance/docs/dapps/redstone-push/)?
 
 The RedStone Push model ensures that data is pushed into onchain storage via a relayer. Dedicated to protocols designed for the traditional Push Oracles model, that want to have full control of the data source and update conditions (heartbeat and deviation threshold).
+Push model is available on both TAC Testnet & Mainnet.
 
-The onchain contracts in Push enable storing prices and getting them through a familiar interface (e.g. the Chainlink Aggregator). Push model is available on both TAC testnet & coming to mainnet in the future. You can find a list of available price feeds [here](https://app.redstone.finance/app/feeds/).
-
-## How to integrate RedStone [Pull](https://docs.redstone.finance/docs/dapps/redstone-pull/)?
+## How to integrate [RedStone Pull](https://docs.redstone.finance/docs/dapps/redstone-pull/)?
 
 The RedStone Pull model allows your dApp to utilize data feeds delivered “on-demand”, only when the data is needed. Thanks to the implementation of the EVM-connector library and extending your Ethers.js, your dApp will be able to attach signed data packages with timestamps to call data of your users’ transactions.
-
-In order to implement the Pull model you will need to do two things:
-
-1. Adjust the Javascript code of your dApp to inject the additional payload with signed data feeds to call data of your users’ transactions (otherwise you will get smart contract errors).
-2. Adjust your smart contracts to include the libraries responsible for data extraction from call data and signature verification.
 
 Please see the specific steps and ready code samples in the [Docs](https://docs.redstone.finance/docs/introduction).
 If you need help with integration join RedStone [Discord](https://discord.com/invite/PVxBZKFr46) and ask their team for help.

@@ -114,44 +114,51 @@ When a TON user interacts with an EVM app, proxy contracts handle all the comple
 
 ## Transaction Flow Example
 
-Here's what happens when a TON user swaps tokens on an EVM DEX through TAC's hybrid dApp system:
+Here's what happens when a TON user swaps tokens on an EVM DEX through TAC's hybrid dApp system (like [Curve](https://t.me/CurveAppBot)):
 
 <Steps>
-  <Step title="User Action" icon="user">
-    User opens a DEX interface and connects their TON wallet. They select tokens
-    to swap and approve the transaction.
-  </Step>
+    <Step title="User Intent" icon="user">
+        User opens a DEX interface, connects his/her TON wallet, and selects tokens to swap.
+    </Step>
 
-<Step title="Proxy Processing" icon="network">
-  The TON proxy locks user assets and creates a formatted message containing
-  swap parameters and destination details.
-</Step>
+    <Step title="TAC SDK encoding" icon="file-code">
+        The TAC SDK implemented within DEX frontend conveniently encodes required EVM calldata for the upcoming swap on the TAC blockchain
+        and brings up the prepared transaction for user to approve.
+    </Step>
 
-<Step title="Sequencer Validation" icon="shield-check">
-  Sequencer network validates the transaction, forms Merkle trees, and reaches
-  consensus across multiple groups.
-</Step>
+    <Step title="User Action" icon="user">
+        User approves the transaction.
+    </Step>
 
-<Step title="Executor Selection & EVM Execution" icon="play">
-  A designated executor submits Merkle proofs to TAC EVM Layer, triggers asset
-  minting/unlocking, and executes the swap on the target DEX contract via proxy.
-</Step>
+    <Step title="TON Adapter Locking" icon="shield-check">
+        The TON adapter receives user's assets and safely locks them on TON.
+    </Step>
 
-  <Step title="Result Delivery" icon="check">
-    Swap completes and new tokens are sent back to the user's TON wallet through
-    the same secure process.
-  </Step>
+    <Step title="Sequencer Validation & Consensus" icon="shield-check">
+        Sequencer network finds and validates the transaction, forms Merkle trees, reaches
+        consensus across multiple groups, and selects the executor. The final decision in set within the TAC blockchain.
+    </Step>
+
+    <Step title="EVM Execution" icon="play">
+        A designated executor scans and finds the transaction to execute, validates its Merkle proof, triggers asset
+        minting/unlocking, and calls the swap on the target DEX contract on TAC.
+    </Step>
+
+    <Step title="Result Delivery" icon="check">
+        Swap completes and new tokens are sent back to the user's TON wallet through
+        the similar secure process.
+    </Step>
 </Steps>
 
 ## What Makes TAC Different
 
 <Warning>
-  TAC is not a cross-chain workaround—it is a native execution path between
+  TAC is not a cross-chain workaround — it is a native execution path between
   two ecosystems that were never meant to connect. By removing barriers instead
   of building over them, TAC aligns UX, liquidity, and developer incentives.
 </Warning>
 
-Unlike traditional bridges that move assets between existing chains, TAC creates **hybrid applications** that natively serve both ecosystems. Users don't "bridge to another chain"—they use applications that happen to run on EVM but feel completely native to TON.
+Unlike traditional bridges that move assets between existing chains, TAC creates **hybrid applications** that natively serve both ecosystems. Users don't "bridge to another chain" — they use applications that happen to run on EVM but feel completely native to TON.
 
 This fundamental difference enables:
 
@@ -159,22 +166,3 @@ This fundamental difference enables:
 - **Unified liquidity**: Assets flow where they're needed most
 - **Developer efficiency**: Build once, serve both ecosystems
 - **Network effects**: Growth in one ecosystem benefits the other
-
-## Ready to Explore?
-
-<CardGroup cols={2}>
-  <Card
-    title="Architecture Deep Dive"
-    icon="chart-gantt"
-    href="/core-concepts/overview/architecture"
-  >
-    Understand how TAC's components work together
-  </Card>
-  <Card
-    title="Hybrid dApps"
-    icon="blocks"
-    href="/core-concepts/overview/hybrid-dapps"
-  >
-    Learn what makes applications "hybrid" and why it matters
-  </Card>
-</CardGroup>

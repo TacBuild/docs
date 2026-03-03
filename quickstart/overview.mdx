@@ -1,5 +1,5 @@
 ---
-title: Quickstart
+title: Overview
 description: "Get started with TAC development in minutes, building hybrid dApps that connect TON and EVM ecosystems"
 ---
 
@@ -39,8 +39,9 @@ Get up and running with TAC development quickly by building your first hybrid dA
     - Blockchain Accounts:
       - Ethereum wallet with testnet TAC tokens for deployment
       - TON wallet for testing (Tonkeeper or TON Space recommended)
-    - Get Testnet Tokens:
-      - TAC tokens: [TAC Testnet Faucet](https://spb.faucet.tac.build)
+    - Getting Testnet Tokens:
+      - Get `TAC` on [TAC Testnet Faucet](https://spb.faucet.tac.build)
+      - Get `TON` on [TON Testnet Faucet](https://t.me/testgiver_ton_bot)
 
   </Step>
 
@@ -93,6 +94,10 @@ Get up and running with TAC development quickly by building your first hybrid dA
 
   </Step>
 
+    <Step title="Get testnet TON" icon="coins">
+        Visit the [TON Faucet bot](https://t.me/testgiver_ton_bot) and drip your coins on your TON wallet
+    </Step>
+
   <Step title="Connect your TON wallet" icon="wallet">
     Open your application in the browser and:
     1. Click the "Connect Wallet" button
@@ -102,7 +107,6 @@ Get up and running with TAC development quickly by building your first hybrid dA
 
     The starter app includes a messaging example that demonstrates
     cross-chain communication from TON to your EVM smart contracts.
-
   </Step>
 
   <Step title="Test cross-chain functionality" icon="arrow-left-right">
@@ -112,7 +116,6 @@ Get up and running with TAC development quickly by building your first hybrid dA
     3. **View Results**: See the message stored on the EVM side
 
     This demonstrates the complete flow of hybrid dApp interaction.
-
   </Step>
 
   <Step title="Build your dApp" icon="code">
@@ -132,40 +135,41 @@ Get up and running with TAC development quickly by building your first hybrid dA
     - Asset bridging between TON and EVM
     - Multi-step cross-chain workflows
     - Advanced transaction tracking
-
   </Step>
+
 </Steps>
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card
+    <Card
     title="Deploy Smart Contracts"
     icon="rocket"
     href="/build/smart-contracts"
-  >
-    Learn how to deploy and verify Solidity contracts on TAC EVM
-  </Card>
+    >
+        Learn how to deploy and verify Solidity contracts on TAC EVM
+    </Card>
 
-<Card
-  title="Build TAC Proxy"
-  icon="settings"
-  href="/build/smart-contracts/develop-tac-proxy"
->
-  Create custom proxy contracts for advanced cross-chain operations
-</Card>
+    <Card
+      title="Build TAC Proxy"
+      icon="settings"
+      href="/build/smart-contracts/develop-tac-proxy"
+    >
+        Create custom proxy contracts for advanced cross-chain operations
+    </Card>
 
-<Card title="TAC SDK Deep Dive" icon="blocks" href="/build/sdk/introduction">
-  Master the TAC SDK for powerful frontend integrations
-</Card>
+    <Card title="TAC SDK Deep Dive" icon="blocks" href="/build/sdk/introduction">
+        Master the TAC SDK for powerful frontend integrations
+    </Card>
 
-  <Card
+    <Card
     title="Development Tools"
     icon="inbox"
     href="/build/smart-contracts/tools/hardhat"
-  >
-    Set up Hardhat, Foundry, and other development tools
-  </Card>
+    >
+        Set up Hardhat, Foundry, and other development tools
+    </Card>
+
 </CardGroup>
 
 ## Common Issues & Solutions
@@ -173,7 +177,7 @@ Get up and running with TAC development quickly by building your first hybrid dA
 <AccordionGroup>
   <Accordion title="Contract deployment fails" icon="triangle-alert">
     **Check your setup:**
-    - Verify you have testnet TAC tokens in your deployment wallet
+    - Verify you have testnet TAC tokens in your deployment wallet (get them in the [Faucet](https://spb.faucet.tac.build))
     - Ensure your private key is correctly set in `.env`
     - Confirm you're using the correct network configuration
 

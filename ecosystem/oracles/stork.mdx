@@ -2,15 +2,16 @@
 title: Stork
 ---
 
-Stork is an oracle protocol that enables sub-second data feeds onchain. The core technical principles of Stork are:
+Stork is an oracle protocol that enables sub-second data feeds onchain. Stork's full documentation is available [here](https://docs.stork.network).
 
-- **Modularity**
-- **Low Latency**
-- **Cost efficiency**
-- **Arbitrary Data Support**
-- **Transparency, Verifiability, and Security**
-
-Stork's full documentation is available [here](https://docs.stork.network).
+<CardGroup cols={1}>
+    <Card
+        title="Stork price feeds for TAC"
+        href="https://docs.stork.network/resources/contract-addresses/evm#tac"
+        icon="database"
+    >
+    </Card>
+</CardGroup>
 
 ## How does it work?
 
@@ -37,7 +38,3 @@ For more information on how to use the Stork Chain Pusher, please refer to [Putt
 Reading from the Stork contract is as simple as calling its `getTemporalNumericValueV1(bytes32 id)` function from your contract. This function takes an encoded asset ID of the relevant asset and returns the latest value for that asset in the form of a `TemporalNumericValue` struct, which contains an integer value (multiplied by 10^18 for precision) and a UNIX nanosecond timestamp.
 
 For more information on how to read data from the Stork contract, please refer to the [EVM Contract API](https://docs.stork.network/api-reference/contract-apis/evm).
-
-## Asset IDs
-
-Stork supports a wide range of assets and asset classes. For a full list of supported assets and their encoded asset IDs, please refer to [Supported Assets](https://docs.stork.network/resources/asset-id-registry).
