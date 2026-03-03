@@ -229,9 +229,16 @@
             "group": "Release Notes",
             "pages": [
               "release-notes/overview",
-              "release-notes/sdk"
+              "release-notes/ts-sdk",
+              "release-notes/python-sdk"
             ]
           }
+        ]
+      },
+      {
+        "tab": "Audit Reports",
+        "pages": [
+          "audit-reports/audit"
         ]
       }
     ]
