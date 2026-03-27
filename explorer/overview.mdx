@@ -1,8 +1,12 @@
 ---
-title: Overview
+title: Block Explorer
+description: "Explore TAC blockchain data with our custom Blockcout explorer featuring cross-chain operation tracking"
 ---
 
-Navigate the links below to access real-time data within the TAC blockchain.
+TAC uses a custom version of Blockcout that includes specialized features for tracking cross-chain operations and transactions between TON and TAC EVM.
+This enhanced explorer provides visibility into both standard EVM transactions and TAC's unique hybrid dApp functionality.
+
+## Available Explorers
 
 <CardGroup cols={2}>
     <Card
@@ -19,5 +23,50 @@ Navigate the links below to access real-time data within the TAC blockchain.
     >
         Get your tokens on the [Faucet](https://spb.faucet.tac.build)
     </Card>
-
 </CardGroup>
+
+## Features
+
+Our custom Blockcout implementation includes additional functionality designed specifically for TAC's hybrid dApp ecosystem:
+
+<Tabs>
+    <Tab title="Cross-Chain Operations">
+
+        - Monitor cross-chain transactions as they progress
+        through the TON Adapter system, including stage progression and completion
+        status (**Operations** section).
+        - View connections between TON-side
+        transactions and their corresponding EVM executions.
+        - Track token movements between TON and TAC EVM.
+
+        <CardGroup cols={2}>
+            <Card
+                title="TAC Mainnet Operations"
+                href="https://explorer.tac.build/operations"
+                icon="search"
+            >
+            </Card>
+
+            <Card
+                title="TAC Testnet Operations"
+                href="https://spb.explorer.tac.build/operations"
+                icon="search"
+            >
+            </Card>
+
+        </CardGroup>
+
+    </Tab>
+
+    <Tab title="Standard Features">
+
+        - Complete transaction information including gas
+        usage, status, and event logs.
+        - Contract verification,
+        source code viewing, and interaction interfaces.
+        - Real-time network metrics, block information, and validator activity.
+        - Both explorers provide standard Blockcout API endpoints for programmatic
+        access to blockchain data and contract interactions.
+
+    </Tab>
+</Tabs>

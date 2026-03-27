@@ -1,0 +1,124 @@
+---
+title: Fee Management
+description: "Understand how to handle protocol fees and executor payments in cross-chain messages"
+---
+
+TAC's cross-chain messaging system has different fee structures depending on message direction and type. Understanding these fees is crucial for implementing cost-effective proxy contracts.
+
+## OutMessageV1 Structure
+
+The `OutMessageV1` structure contains all the fields needed for cross-chain messages:
+
+```solidity
+struct OutMessageV1 {
+    uint64 shardsKey;           // Developer ID for linking messages
+    string tvmTarget;           // The recipient address on TON network
+    string tvmPayload;          // Custom payload (currently not supported - must be empty)
+    uint256 tvmProtocolFee;     // Protocol fee you pay (0 for RoundTrip messages)
+    uint256 tvmExecutorFee;     // Executor fee you pay (0 for RoundTrip messages)
+    string[] tvmValidExecutors; // List of valid executors (empty array for RoundTrip)
+    TokenAmount[] toBridge;     // ERC20 tokens to bridge to TON
+    NFTAmount[] toBridgeNFT;    // NFTs to bridge to TON
+}
+```
+
+### Field Usage Guide
+
+**shardsKey**: Developer ID. It is recommended to set it from the tacHeader.
+
+**tvmTarget**: The recipient address on the TON network in base64 format starting with "EQ".
+
+**tvmPayload**: A custom payload to be executed on the TON side. Currently not supported — must be empty.
+
+**tvmProtocolFee**: The protocol fee you must pay. For roundTrip messages, this fee is already covered on the TON side, so set this field to 0.
+
+**tvmExecutorFee**: The fee you offer to the executor on the TON side (in TAC tokens). For roundTrip messages, the fee is already locked on TON, so set this field to 0.
+
+**tvmValidExecutors**: A list of executors you trust to execute the message on the TON side. For roundTrip messages, this must be an empty array; the trusted executors are already defined in the initial TON message. For direct messages, you can get trusted executors using `settings.getTrustedTVMExecutors()` or use an empty array for default executors.
+
+**toBridge**: List of ERC20 tokens you want to bridge to the TON network and transfer to tvmTarget.
+
+**toBridgeNFT**: List of NFTs you want to bridge to the TON network and transfer to tvmTarget.
+
+## Round-Trip Messages (TON → TAC → TON)
+
+For messages responding back to TON users, fees are paid upfront on TON:
+
+```solidity
+function respondToTON(bytes calldata tacHeader, bytes calldata arguments)
+    external
+    _onlyCrossChainLayer
+{
+    TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
+
+    // Process your logic here
+
+    // Send result back to TON - NO FEES REQUIRED
+    OutMessageV1 memory outMsg = OutMessageV1({
+        shardsKey: header.shardsKey,        // Links to original operation
+        tvmTarget: header.tvmCaller,        // Send back to original user
+        tvmPayload: "",                     // Must be empty
+        tvmProtocolFee: 0,                  // Set to 0 for RoundTrip - already paid on TON
+        tvmExecutorFee: 0,                  // Set to 0 for RoundTrip - already paid on TON
+        tvmValidExecutors: new string[](0), // Empty for RoundTrip - already defined on TON or you can use getTrustedTVMExecutors(),
+        toBridge: tokensToSend,
+        toBridgeNFT: new NFTAmount[](0)
+    });
+
+    _sendMessageV1(outMsg, 0);
+}
+```
+
+> You can retrieve the list of default trusted executors by calling settings.getTrustedTVMExecutors() on the Settings contract.
+
+**Key Points**:
+
+- User pays all fees upfront on TON
+- RoundTrip response messages must set `tvmProtocolFee: 0` and `tvmExecutorFee: 0`
+- Use same `shardsKey` from incoming header
+- Set `tvmValidExecutors` to empty array - executors already defined in original TON message
+
+## Direct TAC → TON Messages
+
+For messages initiated directly from TAC (not in response), your contract pays the fees:
+
+```solidity
+interface ICrossChainLayer {
+    function getProtocolFee() external view returns (uint256);
+}
+
+function sendDirectMessage() external payable {
+    // Get current protocol fee dynamically (example usage)
+    uint256 protocolFee = ICrossChainLayer(_getCrossChainLayerAddress()).getProtocolFee();
+
+    // Note: Currently there is no official library to calculate the exact executor fee
+    // It is recommended to:
+    // - Overestimate slightly, or
+    // - Use tacSDK for better fee estimation
+    uint256 executorFee = msg.value - protocolFee; // Simple example - use tacSDK for production
+
+    OutMessageV1 memory outMsg = OutMessageV1({
+        shardsKey: generateNewShardsKey(),     // New operation
+        tvmTarget: "EQUserAddress...",         // TON recipient
+        tvmPayload: "",                        // Must be empty - not supported
+        tvmProtocolFee: protocolFee,           // Contract pays current protocol fee
+        tvmExecutorFee: executorFee,           // Contract pays executor fee
+        tvmValidExecutors: new string[](0),    // Use default executors
+        toBridge: tokensToSend,
+        toBridgeNFT: new NFTAmount[](0)
+    });
+
+    _sendMessageV1(outMsg, msg.value);
+}
+```
+
+<Warning>
+
+**Fee Estimation Challenge**: Currently, there is no official library to calculate the exact executor fee, so it is recommended to:
+
+- Overestimate slightly, or
+- Use tacSDK for better fee estimation
+
+Executor fees are market-determined based on network conditions and can vary significantly.
+
+</Warning>

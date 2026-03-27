@@ -1,0 +1,166 @@
+---
+title: TAC Proxies
+description: Proxy smart contracts are the important middleman between the **TON Adapter** and a **Hybrid dApp**
+---
+
+Proxies are the Solidity contracts that implement the unified interface to access dApp and its methods.
+They also ensure integrity and security while cross-chaining anything with the help of the **TON Adapter**.
+
+<Note>
+    Think of TAC Proxies as API endpoints for TON users. Instead of HTTP requests,
+    TON users send blockchain transactions that trigger your EVM functions and get
+    processed results back automatically.
+</Note>
+
+## One Transaction Experience
+What used to require multiple transactions across different chains now happens in a single TON transaction:
+
+**Without TAC Proxies:**
+1. Bridge tokens TON → EVM
+2. Switch to MetaMask
+3. Interact with your dApp
+4. Bridge tokens back EVM → TON
+
+**With TAC Proxies:**
+1. Call your function from TON wallet ✨
+
+## How Proxies Work
+
+<Tabs>
+    <Tab title="TAC EVM Side">
+        - **Custom TAC Proxies:**
+            On the EVM side, developers write custom Solidity contracts that are designed to interact with the TON Adapter.
+            These contracts receive validated cross-chain messages from the TON Adapter,
+            decode the transaction parameters and user intent.
+            After processing the transaction, the contract executes the required methods on the target contract.
+            If needed, the contract can also send assets back to TON.
+
+            A typical entry point for these operations is a function such as `processMessage(bytes calldata tacHeader, bytes calldata args) external onlyTONAdapter`,
+            which ensures that only the TON Adapter can invoke cross-chain actions.
+
+        - **[Agnostic Proxy](/sdk/advanced-custom-proxy/agnostic-proxy) usage:**
+            This beta feature allows for skipping the writing of Custom TAC Proxies entirely.
+            Step-by-step EVM execution flow can be directly configured within TAC SDK.
+    </Tab>
+
+    <Tab title="TON Side">
+        <Note>
+            Developers don't need to write TON-side proxy contracts - the TAC SDK
+            handles everything
+        </Note>
+
+        **Handled automatically by TAC SDK:**
+        When a user initiates a transaction using their TON wallet,
+        the TAC SDK takes care of formatting the request for cross-chain delivery
+        and continuously monitors and reports the transaction status.
+    </Tab>
+</Tabs>
+
+### Proxy Generation
+
+Proxies are arguibly the most complex topic for Hybrid dApp developers but there are several ways to approach them:
+
+<AccordionGroup>
+    <Accordion title="Custom Proxy" icon="code">
+        For complex applications, developers should create custom proxies:
+
+        - Handle application-specific logic
+        - Integrate with multiple contracts
+
+        Custom proxies provide maximum flexibility for unique use cases.
+        Check out already existing and audited ones [here](/audit/overview#ton-tac-proxies).
+    </Accordion>
+    <Accordion title="Agnostic Proxy" icon="bot">
+        Latest TAC SDK is equipped with Agnostic Proxy beta feature.
+        Leverage it to encode the full pipeline of calls and asset flow on the EVM side.
+        Execution simulation is also available!
+        Check out the [docs](https://github.com/TacBuild/tac-sdk/blob/main/docs/sdks/agnostic_proxy_sdk.md).
+    </Accordion>
+
+    <Accordion title="Vibe" icon="wand-sparkles">
+        We are working on a publicly available AI agent which can assist you in developing Custom Proxy for your EVM contracts.
+        Until then you can check out the [existing](/apps/overview) EVM dApps and their related proxy implementations.
+    </Accordion>
+</AccordionGroup>
+
+## How Custom Proxies Work
+
+On the TAC EVM side, developers create custom proxy contracts that receive and process cross-chain messages from the TON Adapter.
+
+- **Message Reception**: EVM proxy contracts implement specific function signatures that the TON Adapter calls when delivering cross-chain messages. These functions must accept exactly two `bytes` parameters: the **TAC header** and the **application parameters**.
+
+- **TAC Header**: The first parameter contains encoded metadata about the cross-chain operation, including the original TON user's address, timestamp information, and unique operation identifiers.
+
+- **Application Parameters**: The second parameter contains application-specific data encoded by the frontend. Proxy contracts decode these parameters to understand what operation the user wants to perform.
+
+- **Target Application Interaction**: After processing the cross-chain message, proxy contracts interact with the actual target applications - DEXes, lending protocols, NFT contracts, or any other EVM smart contracts.
+
+<Tip>Writing Custom Proxy seems tricky? Check out the [Agnostic Proxy](https://github.com/TacBuild/tac-sdk/blob/main/docs/sdks/agnostic_proxy_sdk.md) approach</Tip>
+
+## Real-World Use Cases
+
+### DeFi Protocols
+```solidity
+// TON user supplies collateral and borrows in one transaction
+function supplyAndBorrow(bytes calldata tacHeader, bytes calldata arguments)
+    external
+    _onlyCrossChainLayer
+{
+    // Supply collateral to lending protocol
+    // Borrow against it
+    // Send borrowed tokens back to TON user
+}
+```
+
+### NFT Marketplaces
+```solidity
+// TON user buys NFT with their TON assets
+function buyNFT(bytes calldata tacHeader, bytes calldata arguments)
+    external
+    _onlyCrossChainLayer
+{
+    // Process payment
+    // Transfer NFT to TON user
+}
+```
+
+### Gaming & Rewards
+```solidity
+// Player completes quest, receives tokens
+function completeQuest(bytes calldata tacHeader, bytes calldata arguments)
+    external
+    _onlyCrossChainLayer
+{
+    // Verify quest completion
+    // Mint and send reward tokens back to player
+}
+```
+
+## Asset Handling
+
+Proxy contracts must carefully manage assets as they flow between chains and interact with target applications.
+
+Let's take a look at asset handling on the most popular **TON->TAC->TON** transaction type:
+
+1. Initial Transfer (**TON->TAC**->TON)
+
+    - **Pre-Function Execution**: Before calling proxy functions, the TON Adapter automatically transfers bridged assets to the proxy contract. This includes both newly minted tokens and unlocked tokens.
+
+    - **Asset Availability**: Proxy contracts can immediately use these assets without additional transfer operations. The amounts are guaranteed to match what was specified in the original cross-chain message.
+
+    - **Asset Validation**: While the TON Adapter validates assets during message processing, proxy contracts should implement additional checks to ensure received assets match expected parameters.
+
+When operations complete successfully, proxy contracts can send assets and data back to TON users through return messages:
+
+2. Return Transfer (TON->**TAC->TON**)
+
+
+    - **Asset Preparation**: Any tokens being returned must be approved for the CrossChainLayer contract to handle the bridging process.
+
+    - **Message Structure**: Return messages use the same `OutMessageV1` structure, specifying the target TON address, assets to bridge, and optional payload data.
+
+    - **Automatic Processing**: The TON Adapter handles return messages through the same consensus mechanism, ensuring secure delivery back to TON users.
+
+## Proxy Development
+
+Ready to build your proxy solution? Learn how in the [related section](/proxies/introduction).

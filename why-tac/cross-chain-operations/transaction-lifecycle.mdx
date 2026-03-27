@@ -1,0 +1,136 @@
+---
+title: Transaction Lifecycle
+description: "Complete journey of cross-chain transactions from user initiation to final execution and confirmation"
+---
+
+The transaction lifecycle in TAC represents the complete journey of a cross-chain operation from initial user action to final confirmation. Understanding this lifecycle helps developers build better applications, implement proper status tracking, and troubleshoot issues effectively.
+
+## Transaction Type
+
+Three transation types are supported:
+
+<Columns cols={3}>
+    <Card title="TON->TAC->TON" icon="circle-arrow-right">
+        Swaps, adding and removing liquidity,
+        withdrawing from dApp
+    </Card>
+
+    <Card title="TON->TAC" icon="circle-arrow-right">
+        Depositing to dApp, bridging assets
+    </Card>
+
+    <Card title="TAC->TON" icon="circle-arrow-right">
+        Bridging assets
+    </Card>
+</Columns>
+
+## Stage Progression
+
+Cross-chain transactions progress through specific stages that can be monitored and tracked for status updates.
+Below is an example for **TON->TAC** transaction type:
+
+<Steps>
+    <Step title="Collected in TAC" icon="scan-eye">
+        - **Detection**: Sequencers detect the cross-chain event and store transaction details in their local databases for validation.
+
+        - **Validation**: Each sequencer independently validates the transaction parameters, asset transfers, and user authorization.
+    </Step>
+
+    <Step title="Included in TAC consensus" icon="handshake">
+        - **Merkle Tree Formation**: Sequencers compile validated transactions into Merkle trees at the end of each epoch period.
+
+        - **Consensus**: Sequencer groups work to achieve 3/5 internal agreement on their Merkle tree root hashes and executor selection.
+
+        - **Network Submission**: Successfully agreed-upon tree is submitted to TAC EVM.
+    </Step>
+
+    <Step title="Executed in TAC" icon="circle-check">
+        - **Detection**: Selected executor detects the submitted on-chain Merkle Tree root.
+
+        - **Verification**: Selected executor verifies the root against the transaction info from its internal database.
+
+        - **Asset Operations**: Required token minting or unlocking operations are performed.
+
+        - **Proxy Call**: The EVM proxy contract is called with properly formatted parameters and bridged assets.
+
+        - **Execution**: Proxy forwards formatted parameters and bridged assets to the target EVM dApp contract.
+    </Step>
+</Steps>
+
+For the **TAC->TON** transaction type, the above stages are mirrored.
+
+For operations that send results back to TON (**TON->TAC->TON** transaction type) the flow continues:
+
+<Steps>
+    <Step title="Collected in TON" icon="scan-eye">
+        - **Return Message Creation**: dApp on EVM side creates return messages containing results or assets to send back to TON and sends them back to Proxy.
+
+        - **Proxy Call**: Proxy forwards the message and assets to the EVM Cross-Chain Layer contract.
+
+        - **Detection**: The same sequencer network detects return messages and begins validation for the reverse journey.
+    </Step>
+
+    <Step title="Included in TON consensus" icon="handshake">
+        - **Consensus**: Return messages go through the same consensus process as initial messages.
+
+        - **Network Submission**: Successfully agreed-upon tree is submitted to TON.
+    </Step>
+
+    <Step title="Executed in TON" icon="circle-check">
+        - **Detection**: Selected executor detects the submitted on-chain Merkle Tree root.
+
+        - **Verification**: Selected executor verifies the root against the transaction info from its internal database.
+
+        - **Asset Operations**: Required token minting or unlocking operations are performed.
+
+        - **Execution**: Return messages are executed on TON, delivering results or assets back to the original user.
+    </Step>
+</Steps>
+
+## Simplified Operation Status
+
+You don’t need to know the exact flow an operation goes through.
+If you only want to know whether it is already executed or still being processed,
+use the [simplified statuses](https://github.com/TacBuild/tac-sdk/blob/main/docs/sdks/operation_tracker.md#getsimplifiedoperationstatus) from the TAC SDK.
+
+<Tabs>
+  <Tab title="Operation ID Not Found">
+    The transaction has been sent and is being processed by the TON Adapter (sequencer network).
+  </Tab>
+  <Tab title="Pending">
+    The transaction is in progress.
+  </Tab>
+  <Tab title="Successful">
+    Everything is fine!
+  </Tab>
+  <Tab title="Failed">
+    The transaction on TAC EVM failed, and there were no attached assets to roll back.
+  </Tab>
+  <Tab title="Rollback">
+    The transaction on TAC EVM failed, and the assets locked on TON were refunded to the original owner.
+  </Tab>
+  <Tab title="Insufficient Fee">
+    This usually happens when manually customizing transaction fees using SDK. In most cases, the default fee is enough.
+  </Tab>
+</Tabs>
+
+## Monitoring and Debugging
+
+### Real-Time Monitoring
+
+Applications can implement real-time monitoring features from **TAC SDK** to provide users with live updates via [`startTracking`](https://github.com/TacBuild/tac-sdk/blob/main/docs/sdks/utilities.md#starttracking) feature:
+
+```javascript
+const transactionLinker = await tacSdk.sendCrossChainTransaction(
+  evmProxyMsg, // What to call on EVM
+  sender, // TON wallet
+  assets // Tokens to bridge
+);
+await tacSdk.startTracking(transactionLinker);
+```
+
+### Debugging Transactions
+
+- **Status**: Status info and error message if any. Learn more in SDK's docs [related section](https://github.com/TacBuild/tac-sdk/blob/main/docs/sdks/operation_tracker.md#getsimplifiedoperationstatus).
+
+- **Stage Profiling**: Detailed info about every stage. Learn more in SDK's docs [related section](https://github.com/TacBuild/tac-sdk/blob/main/docs/sdks/operation_tracker.md#getstageprofiling).

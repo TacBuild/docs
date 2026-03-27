@@ -1,0 +1,195 @@
+---
+title: Security
+---
+
+TAC implements a comprehensive security framework with multiple layers of protection, professional audits, and continuous monitoring to ensure the safety of hybrid dApps and user assets.
+
+## Multi-Layer Security Architecture
+
+TAC's security model operates across multiple layers to provide comprehensive protection for users and applications.
+
+### TON Adapter Security
+
+The TON Adapter implements distributed architecture with multiple validation layers:
+
+<AccordionGroup>
+    <Accordion title="Distributed Architecture" icon="network">
+        **Current State**: TON Adapter operates with distributed sequencer groups
+        providing redundancy.
+
+        **Future Decentralization**: Architecture designed for progressive decentralization as the network matures.
+    </Accordion>
+
+    <Accordion title="Consensus" icon="handshake">
+        **Multi-Group Validation**: Cross-chain messages require consensus from
+        multiple independent sequencer groups.
+
+        **Economic Stakes**: Sequencers stake collateral to participate in validation, creating financial incentives for
+        honest behavior.
+
+        **Cryptographic Proofs**: All cross-chain operations protected by Merkle proofs and cryptographic verification.
+    </Accordion>
+
+    <Accordion title="Rollback" icon="undo-2">
+        **Asset refund**: Automatic refund of locked assets if cross-chain transaction fails for any reason.
+    </Accordion>
+</AccordionGroup>
+
+It also provides economic security:
+
+<Accordion title="Stake Requirements" icon="coins">
+    **Every sequencer group must stake collateral:**
+
+    - Minimum stake set by DAO governance
+    - Higher stakes earn proportionally higher rewards
+    - Stake must remain above threshold during participation
+    - Partial stake locking during proof submission
+
+</Accordion>
+
+<Accordion title="Reward Distribution" icon="chart-line">
+    **Performance-based incentives:**
+
+    - Rewards distributed proportionally to stake size
+    - Executor selection based on collateral weight
+    - Commission sharing within groups
+    - Penalty mechanisms for incorrect operations
+
+</Accordion>
+
+<Accordion title="Governance & Elections" icon="vote">
+    **Democratic group selection:**
+
+    - New groups approved through DAO voting
+    - Regular election cycles (DAO configurable)
+    - Performance monitoring and rating systems
+    - Penalty applications and network-wide voting
+
+</Accordion>
+
+### EVM Layer Security
+
+TAC EVM undergoes comprehensive security audits by industry-leading firms to ensure the highest security standards.
+You can review the completed ones on [this page](/audit/overview).
+New reports will appear as the protocol evolves and new features are added.
+
+<AccordionGroup>
+    <Accordion title="Cancun Network Foundation" icon="ethereum">
+        **Modern EVM Implementation**: TAC EVM is based on the Cancun upgrade,
+        incorporating the latest Ethereum security improvements and optimizations.
+
+        **Proven Technology**: Built on battle-tested EVM specifications with all
+        security features and protections of modern Ethereum networks.
+
+         **Standard Compliance**: Full compatibility with Ethereum security models ensures
+        familiar security guarantees for developers.
+    </Accordion>
+
+    <Accordion title="Delegated Proof of Stake (dPoS)" icon="coins">
+        **TAC Token Security**: Network consensus secured by delegated Proof of Stake
+        using $TAC tokens as the staking mechanism.
+
+        **Validator Incentives**: Economic incentives align validator behavior with network security through staking
+        rewards and slashing penalties.
+
+        **Distributed Validation**: Multiple independent validators secure the network through distributed consensus
+        mechanisms.
+    </Accordion>
+</AccordionGroup>
+
+## Continuous Monitoring
+
+TAC implements 24/7 security monitoring and incident response capabilities to detect and respond to potential threats.
+
+### Real-Time Threat Detection
+
+<AccordionGroup>
+  <Accordion title="Hypernative Monitoring" icon="radar">
+
+    **24/7 Security Monitoring**: Hypernative provides continuous monitoring of
+    TAC networks, detecting potential exploits and anomalous behavior.
+
+    **Mempool-Level Detection**: Advanced monitoring capabilities detect
+    suspicious transactions at the mempool level before they're executed.
+
+    **Real-Time Alerts**: Immediate notifications for potential security threats
+    enable rapid response and mitigation.
+
+  </Accordion>
+
+  <Accordion title="Dedicated SOC Team" icon="users">
+
+    **24/7 Security Operations**: Fully dedicated Security Operations Center
+    (SOC) team monitoring TAC infrastructure around the clock.
+
+    **Incident Response**: Trained security professionals ready to respond to any security
+    incidents or threats.
+
+    **Proactive Monitoring**: Continuous analysis of network activity and security metrics to identify potential issues before
+    they become problems.
+
+  </Accordion>
+</AccordionGroup>
+
+## Future Enhancements
+
+TAC has planned significant security upgrades that will provide additional layers of protection and decentralization.
+
+### 1. FROST Consensus Upgrade
+
+<Tip>Already live on TAC Testnet!</Tip>
+
+Planned migration to **FROST-Ed25519** threshold signatures with Distributed Key Generation (DKG).
+
+<Tabs>
+    <Tab title="Threshold Security">
+        **Enhanced Cryptographic Security:**
+
+        - Threshold signature creation requires `t+1` out of `n` participants
+        - Attackers controlling up to `t` participants cannot forge signatures
+        - **Ed25519** compatibility with existing verification systems
+        - Round-optimized design minimizes communication overhead
+    </Tab>
+
+    <Tab title="Distributed Key Generation">
+        **Decentralized Key Management:**
+
+        - Dealerless key generation - no single party knows complete secret
+        - High threshold support `(k > n/2)` for enhanced security
+        - Feldman VSS with verifiable encrypted shares
+        - Complaint handling without secret disclosure
+    </Tab>
+</Tabs>
+
+### 2. Babylon Bitcoin Restaking Integration
+
+TAC plans integration with Babylon's Bitcoin restaking protocol to add massive economic security:
+
+<AccordionGroup>
+  <Accordion title="Bitcoin as External Security Layer" icon="bitcoin">
+    **Leveraging Bitcoin's Economic Strength:**
+    
+    - Bitcoin holders delegate BTC stakes to Babylon validators
+    - Validators cryptographically verify TAC EVM blocks and Merkle roots
+    - Self-custodial delegation maintains decentralization without custody risk
+    - Exponentially increases attack costs through Bitcoin's security budget
+  </Accordion>
+  
+  <Accordion title="Slashing for Equivocation" icon="shield-alert">
+    **Economic Penalties for Malicious Behavior:**
+    
+    - Validators providing conflicting signatures face automatic slashing
+    - Double-signing detection through Babylon protocol mechanisms
+    - Direct economic penalties via Bitcoin blockchain enforcement
+    - Makes attacks economically irrational at Bitcoin-scale security
+  </Accordion>
+</AccordionGroup>
+
+## Bug Bounty Program
+
+<Check>Bug bounty program is live!</Check>
+
+**Reward Security Research**: We are ready to reward security researchers for discovering vulnerabilities.
+Reach out to our [Discord](https://discord.gg/tacbuild).
+
+**Responsible Disclosure**: Clear processes for responsible vulnerability disclosure and coordinated fixes.

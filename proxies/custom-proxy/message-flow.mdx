@@ -1,0 +1,135 @@
+---
+title: Message Flow
+description: "Learn how cross-chain messages work and what data they contain"
+---
+
+Understanding how messages flow between TON and TAC EVM is crucial for building effective proxy contracts. This guide explains the data structures and message patterns.
+
+## RoundTrip Messages
+
+<Warning>
+
+If a TON → TAC call is reverted on the EVM side after tokens have been
+bridged, a rollback transaction is created to send the bridged assets back to
+the originating TON wallet.
+
+To guarantee this behavior, the call must be
+treated (and paid) as a RoundTrip. The SDK sets messages to RoundTrip by
+default, so on revert (e.g., slippage), funds will be returned automatically.
+
+</Warning>
+
+RoundTrip messages follow this flow:
+
+1. **TON user** sends transaction with assets and function call
+2. **TAC proxy** receives the call and processes it
+3. **TAC proxy** sends result assets back to the same TON user
+
+With RoundTrip messages, the user pays all fees upfront on TON, so your proxy sets fees to 0 when responding.
+
+> If you expect the TAC-side transaction may revert and assets need to be bridged back to TON, you must pay fees as for a RoundTrip message.
+
+> By default, the SDK treats all messages as RoundTrip, so even if a revert occurs (e.g., due to slippage), the funds will be returned to the original TON user because the RoundTrip fee was already paid.
+
+## Message Processing
+
+When a TON user interacts with your EVM contract:
+
+1. User submits a transaction on TON with target contract, function name, and arguments
+2. Assets (if any) are bridged to TAC and transferred to your proxy contract
+3. CrossChainLayer calls your proxy function with TAC header and arguments
+4. Your contract can optionally send assets back to TON using `_sendMessageV1()`
+
+## TAC Header Structure
+
+Every cross-chain call includes a TAC header with verified information about the original TON transaction:
+
+```solidity
+struct TacHeaderV1 {
+    uint64 shardsKey;      // Developer/operation identifier
+    uint256 timestamp;     // Block timestamp from TON
+    bytes32 operationId;   // Unique operation ID
+    string tvmCaller;      // TON user's address (base64, starts with EQ)
+    bytes extraData;       // Additional data (currently unused)
+}
+```
+
+### Header Field Details
+
+**shardsKey**: Links related cross-chain operations together. Use this in your response messages to maintain the connection.
+
+**timestamp**: The block timestamp from the original TON transaction. Useful for time-based logic or debugging.
+
+**operationId**: Unique identifier for this specific cross-chain operation. Use for logging and tracking.
+
+**tvmCaller**: The TON user's wallet address. **!!! Important !!!** It is always base64 mainnet bounceable format and starts with "EQ". This is your authenticated user identity - treat it like `msg.sender` in regular Ethereum contracts.
+
+**extraData**: For now it's always a zero-bytes array and not used.
+
+### Decoding the Header
+
+```solidity
+function processMessage(bytes calldata tacHeader, bytes calldata arguments)
+    external
+    _onlyCrossChainLayer
+{
+    // Decode header using inherited function
+    TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
+
+    // Access user information
+    string memory tonUser = header.tvmCaller;
+    uint256 operationTime = header.timestamp;
+    bytes32 opId = header.operationId;
+
+    // Use header data in your logic
+    require(block.timestamp - operationTime < 3600, "Operation too old");
+
+    emit MessageProcessed(tonUser, opId, block.timestamp);
+}
+```
+
+## Asset Handling in Messages
+
+### Token Assets
+
+Tokens are automatically transferred to your contract before your function is called:
+
+```solidity
+function handleTokens(bytes calldata tacHeader, bytes calldata arguments)
+    external
+    _onlyCrossChainLayer
+{
+    // Decode the tokens you're expecting
+    TokenAmount[] memory expectedTokens = abi.decode(arguments, (TokenAmount[]));
+
+    // Tokens are already in your contract balance
+    for (uint i = 0; i < expectedTokens.length; i++) {
+        uint256 balance = IERC20(expectedTokens[i].evmAddress).balanceOf(address(this));
+        require(balance >= expectedTokens[i].amount, "Expected tokens not received");
+
+        // Process each token
+        processToken(expectedTokens[i].evmAddress, expectedTokens[i].amount);
+    }
+}
+```
+
+## What's Next?
+
+Now that you understand the message flow, learn how to implement the core proxy function logic:
+
+<CardGroup cols={2}>
+  <Card
+    title="Implementing Proxy Functions"
+    icon="code"
+    href="/proxies/custom-proxy/proxy-functions"
+  >
+    Build the core logic that processes cross-chain calls and arguments
+  </Card>
+  <Card
+    title="Fee Management"
+    icon="dollar-sign"
+    href="/proxies/custom-proxy/fee-management"
+  >
+    Understand how to handle protocol fees and executor payments
+  </Card>
+</CardGroup>

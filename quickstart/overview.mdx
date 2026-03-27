@@ -37,39 +37,46 @@ Get up and running with TAC development quickly by building your first hybrid dA
 
     - Node.js v18.0.0 or higher
     - Blockchain Accounts:
-      - Ethereum wallet with testnet TAC tokens for deployment
-      - TON wallet for testing (Tonkeeper or TON Space recommended)
-    - Getting Testnet Tokens:
-      - Get `TAC` on [TAC Testnet Faucet](https://spb.faucet.tac.build)
-      - Get `TON` on [TON Testnet Faucet](https://t.me/testgiver_ton_bot)
-
+      - TON wallet (like [Tonkeeper](https://tonkeeper.com/) or [Wallet](https://wallet.tg/))
+      - _(Optional)_ EVM wallet (like [Metamask](https://metamask.io/)) with TAC Testnet network added (Use button `Add TAC SPB` in upper right corner [over here](https://spb.explorer.tac.build/))
   </Step>
 
-  <Step title="Deploy smart contracts" icon="rocket">
-    Navigate to the contracts directory and deploy to TAC testnet:
+    <Step title="Get testnet tokens" icon="coins">
+        - Get `TON` on [TON Testnet Faucet](https://t.me/testgiver_ton_bot). For the sake of this demo `TON` tokens are enough.
+        - _(Optional)_ Get `TAC` on [TAC Testnet Faucet](https://spb.faucet.tac.build). If you choose to deploy your contracts to TAC Testnet.
+    </Step>
+
+  <Step title="(Optional) Deploy smart contracts" icon="rocket">
+    You can skip this step and use already deployed and pre-set contracts within `my-tac-project` or deploy fresh ones and yours truly.
+
+    Create `.env` file out of `.env.example`.
+
+    For the deployment navigate to the contracts directory and deploy to TAC Testnet:
 
     ```bash
     cd my-tac-project/contracts
     npm install
-    npx hardhat run scripts/deploy.js --network tacTestnet
+    npx hardhat compile
+    npx hardhat run scripts/deploy.ts --network tacTestnet
     ```
 
     **Take note of the deployed addresses:**
 
     - SimpleMessage contract address
     - MessageProxy contract address
+    - MockToken contract address
 
-    These will be displayed in your console after successful deployment.
+    These will be displayed in your console after successful deployment. Also saved to `addresses.json` file.
 
   </Step>
 
-  <Step title="Update frontend configuration" icon="settings">
-    Open `lib/contract_addresses.ts` and update with your deployed contract addresses:
+  <Step title="(Optional) Update frontend configuration" icon="settings">
+    To use the specific addresses from the previous step open `lib/contract_addresses.ts` and update with your deployed contract addresses:
     
     ```typescript
     export const CONTRACT_ADDRESSES = {
-      simpleMessage: "0xYourSimpleMessageAddress",
-      messageProxy: "0xYourMessageProxyAddress"
+      SIMPLE_MESSAGE: "0xYourSimpleMessageAddress",
+      MESSAGE_PROXY: "0xYourMessageProxyAddress"
     };
     ```
     
@@ -94,45 +101,53 @@ Get up and running with TAC development quickly by building your first hybrid dA
 
   </Step>
 
-    <Step title="Get testnet TON" icon="coins">
-        Visit the [TON Faucet bot](https://t.me/testgiver_ton_bot) and drip your coins on your TON wallet
-    </Step>
-
   <Step title="Connect your TON wallet" icon="wallet">
     Open your application in the browser and:
     1. Click the "Connect Wallet" button
-    2. Choose your TON wallet (Tonkeeper, TON Space, etc.)
+    2. Choose your TON wallet (Wallet, Tonkeeper, etc.)
     3. Approve the connection in your wallet
-    4. Verify your wallet address appears in the interface
+    4. Verify your wallet address appeared in the interface
 
     The starter app includes a messaging example that demonstrates
     cross-chain communication from TON to your EVM smart contracts.
   </Step>
 
-  <Step title="Test cross-chain functionality" icon="arrow-left-right">
+  <Step title="Test cross-chain functionality (TON->TAC)" icon="arrow-left-right">
     Try the example functionality:
-    1. **Send a Message**: Use the message form to send data from TON to your EVM contract
+    1. **Send a Message**: Click 'Send Cross-Chain Message' and approve it in you TON wallet to send a data from TON to your EVM contract
     2. **Track Status**: Watch the transaction progress through cross-chain stages
     3. **View Results**: See the message stored on the EVM side
 
-    This demonstrates the complete flow of hybrid dApp interaction.
+    This demonstrates the complete flow of hybrid dApp interaction the TON->TAC way. TON->TAC->TON and TAC->TON are also possible with different dApp architectures.
   </Step>
 
-  <Step title="Build your dApp" icon="code">
-    Now start customizing for your use case:
+    <Step title="(Optional) Test cross-chain functionality (TON->TAC->TON)" icon="arrow-left-right">
+        Select different `CONTRACT_ADDRESS.MESSAGE_PROXY` in `lib/contracts.ts`, you'll see the related comment.
+
+        Or do it in a more advanced way:
+        1. Navigate to `contracts/MessageProxy.sol` and uncomment the related code block.
+        2. Deploy a set of contracts with `npx hardhat run scripts/deploy.ts --network tacTestnet`
+        3. Update `lib/contracts.ts` with the new contract addresses.
+
+        Open the UI and repeat the previous step.
+    </Step>
+
+  <Step title="(Optional) Customize your dApp" icon="code">
+    Now you can start customizing dApp logic for your specific use case.
 
     **Smart Contracts** (`contracts/` directory):
     - Modify `SimpleMessage.sol` for your business logic
     - Update `MessageProxy.sol` for custom cross-chain handling
     - Add new contracts as needed
 
-    **Frontend** (`pages/` and `components/` directories):
+    **Frontend** (`components/` directory):
     - Customize the UI components
     - Add new pages and functionality
-    - Integrate additional TAC SDK features
 
     **Cross-Chain Features**:
-    - Asset bridging between TON and EVM
+
+    Integrate additional TAC SDK features like:
+    - Asset (FT, NFT) bridging between TON and EVM
     - Multi-step cross-chain workflows
     - Advanced transaction tracking
   </Step>
@@ -143,11 +158,11 @@ Get up and running with TAC development quickly by building your first hybrid dA
 
 <CardGroup cols={2}>
     <Card
-    title="Deploy Smart Contracts"
-    icon="rocket"
-    href="/build/smart-contracts"
+        title="More Use Cases"
+        icon="gamepad"
+        href="/apps/overview"
     >
-        Learn how to deploy and verify Solidity contracts on TAC EVM
+        Take a closer look into existing hybrid dApp implementations
     </Card>
 
     <Card
@@ -158,14 +173,14 @@ Get up and running with TAC development quickly by building your first hybrid dA
         Create custom proxy contracts for advanced cross-chain operations
     </Card>
 
-    <Card title="TAC SDK Deep Dive" icon="blocks" href="/build/sdk/introduction">
+    <Card title="TAC SDK Deep Dive" icon="blocks" href="/why-tac/components/tac-sdk">
         Master the TAC SDK for powerful frontend integrations
     </Card>
 
     <Card
     title="Development Tools"
     icon="inbox"
-    href="/build/smart-contracts/tools/hardhat"
+    href="/ecosystem#development-tools"
     >
         Set up Hardhat, Foundry, and other development tools
     </Card>
@@ -177,13 +192,10 @@ Get up and running with TAC development quickly by building your first hybrid dA
 <AccordionGroup>
   <Accordion title="Contract deployment fails" icon="triangle-alert">
     **Check your setup:**
-    - Verify you have testnet TAC tokens in your deployment wallet (get them in the [Faucet](https://spb.faucet.tac.build))
+    - Verify you have testnet TAC tokens in your deployment wallet
     - Ensure your private key is correctly set in `.env`
-    - Confirm you're using the correct network configuration
-
-    **Get help:**
-    - Check the Hardhat logs for specific error messages
-    - Verify contract addresses on the [TAC Explorer](https://spb.explorer.tac.build)
+    - Confirm you're using the [correct network configuration](/ecosystem/network-info#testnet)
+    - Verify contract addresses on the [TAC Testnet explorer](https://spb.explorer.tac.build)
 
   </Accordion>
 
@@ -191,10 +203,11 @@ Get up and running with TAC development quickly by building your first hybrid dA
 
 **Troubleshooting steps:**
 
-- Make sure you're using a supported TON wallet
-- Clear your browser cache and try again
+- Sometimes Tonconnect may not show you the send transaction popup. Try several times until success
+- Make sure you're using a supported TON wallet in the pop-up TON Connect menu in the UI
 - Check that your wallet is set to TON testnet
-- Verify the TON Connect manifest is accessible
+- Clear your browser cache and try again
+- Verify the my-tac-project TON Connect [manifest](https://raw.githubusercontent.com/TacBuild/starter-frontend/refs/heads/main/public/tonconnect-manifest.json) is accessible
 
 </Accordion>
 
