@@ -5,9 +5,18 @@ description: "TAC Proxy contracts receive cross-chain calls and assets from TON 
 
 Learn more about TAC Proxies role on [this page](/why-tac/components/proxy-contracts).
 
-## Proxy Development
+## Proxy Solutions
 
-When creating your proxy solution, you currently have two options - **Custom** or **Agnostic**:
+When choosing a proxy solution, you currently have two options:
+
+- **Custom**: Build and deploy a proxy for your EVM dApp using Solidity.
+Test locally using `TacLocalTestSdk` library or our joint [TON + TAC Testnet](/sdk/overview#testnet).
+This option supports any level of complexity.
+
+- **Agnostic**: Implement calls to your EVM dApp directly in your frontend or JS-based backend using our SDK.
+No deployment needed.
+Test on our joint [TON + TAC Testnet](/sdk/overview#testnet).
+Has limitations, preferred for relatively simple use cases.
 
 <CardGroup cols={2}>
     <Card
@@ -15,7 +24,7 @@ When creating your proxy solution, you currently have two options - **Custom** o
         href="/proxies/custom-proxy/develop"
         icon="git-commit-horizontal"
     >
-        Step-by-step development guide using Solidity
+        Development guide using Solidity
     </Card>
 
     <Card

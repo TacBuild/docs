@@ -68,9 +68,9 @@ contract MyUpgradeableProxy is
 }
 ```
 
-## Key Differences from Basic Contracts
+## Key Difference from Basic Contracts
 
-### 1. Multiple Inheritance (Order Matters!)
+The **inheritance order** is critical and must follow OpenZeppelin's recommended pattern.
 
 ```solidity
 contract MyUpgradeableProxy is
@@ -80,50 +80,42 @@ contract MyUpgradeableProxy is
     TacProxyV1Upgradeable    // TAC functionality (last)
 ```
 
-The inheritance order is critical and must follow OpenZeppelin's recommended pattern.
+## Deployment
 
-### 2. Constructor vs Initialize
+Deployment differs from the basic example. UUPS pattern is used in the example below:
 
-```solidity
-// ❌ DON'T use constructor for setup
-constructor(address crossChainLayer) {
-    // This won't work properly with upgradeable contracts!
+```javascript
+import { Signer } from "ethers";
+import { MyUpgradeableProxy } from "../../typechain-types";
+import { deployUpgradable } from '@tonappchain/evm-ccl'
+import { DeployProxyOptions } from "@openzeppelin/hardhat-upgrades/dist/utils";
+import hre from 'hardhat';
+
+const proxyOptsUUPS: DeployProxyOptions = {
+    kind: "uups",
+    unsafeAllow: ["constructor"]
+};
+
+export async function deployMyUpgradeableProxy(
+    deployer: Signer,
+    crossChainLayerAddress: string,
+    owner?: string,
+): Promise<MyUpgradeableProxy> {
+    const myUpgradeableProxy = await deployUpgradable<MyUpgradeableProxy>(
+        deployer,
+        hre.artifacts.readArtifactSync('MyUpgradeableProxy'),
+        [owner || await deployer.getAddress(), crossChainLayerAddress],
+        proxyOptsUUPS,
+        undefined,
+        true // verbose
+    );
+
+    await myUpgradeableProxy.waitForDeployment();
+    return myUpgradeableProxy;
 }
 
-// ✅ DO use initializer function
-function initialize(address owner, address crossChainLayer)
-    public
-    initializer
-{
-    __UUPSUpgradeable_init();
-    __Ownable_init(owner);
-    __TacProxyV1Upgradeable_init(crossChainLayer);
-}
+main().catch(console.error);
 ```
-
-### 3. Constructor Disabling
-
-```solidity
-/// @custom:oz-upgrades-unsafe-allow constructor
-constructor() {
-    _disableInitializers(); // Prevents initialization of implementation
-}
-```
-
-This prevents the implementation contract from being initialized, which could be a security risk.
-
-### 4. Upgrade Authorization
-
-```solidity
-function _authorizeUpgrade(address newImplementation)
-    internal
-    override
-    onlyOwner
-{}
-```
-
-This function controls who can upgrade the contract. Only the owner can upgrade in this example.
-
 
 ## What's Next?
 

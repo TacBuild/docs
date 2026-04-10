@@ -1,17 +1,22 @@
 ---
 title: Local Testing
-description: "Testing setup for TAC proxy contracts using the `TacLocalTestSdk` library"
+description: "Testing setup for **TAC Proxy** contracts using the `TacLocalTestSdk` library"
 ---
 
-The `@tonappchain/evm-ccl` package includes a local test SDK that helps emulate bridging logic and cross-chain operations, ensuring your proxy behaves as expected without deploying a full cross-chain setup.
+<Note>
+    This page is all about testing using cross-chain _simulation_.
+    You can also test directly in our [TON + TAC Testnet](/sdk/overview#testnet) setup using SDK.
+</Note>
 
-<Tip>
-    This page is all about testing using cross-chain simulation.
-    You can also test directly in our [TON + TAC Testnet setup](/sdk/overview#testnet) using SDK.
-</Tip>
+The `@tonappchain/evm-ccl` package includes a `TacLocalTestSdk` package that helps emulate full bridging logic and cross-chain operations locally,
+ensuring your proxy behaves as expected without deploying a full cross-chain setup.
 
 The `TacLocalTestSdk` provides a complete testing environment that simulates
 cross-chain message flows, token bridging, and NFT operations locally.
+
+<Tip>
+    Full cross-chain emulation available within `TacLocalTestSdk`
+</Tip>
 
 ## Installation and Setup
 

@@ -10,8 +10,10 @@ Proxy functions are the heart of your TAC contracts - they receive cross-chain c
 Every proxy function that handles cross-chain calls must follow this exact pattern:
 
 ```solidity
-function <function_name>(bytes calldata, bytes calldata) external;
+function <function_name>(bytes calldata, bytes calldata) external _onlyCrossChainLayer;
 ```
+
+The function above also can be `payable`.
 
 You can name the function as you wish (e.g. `myProxyFunction`, `invokeWithCallback`, `swap`, etc.), but it must accept two bytes arguments:
 
@@ -93,7 +95,8 @@ function handleComplexParams(bytes calldata tacHeader, bytes calldata arguments)
 
 ## Complete Implementation Walkthrough
 
-Let's build a complete proxy function step-by-step, showing external Dapp integration - the most common real-world pattern:
+Let's build a complete proxy function step-by-step,
+showing external dApp integration - the most common real-world pattern implementing TON->TAC->TON transaction type:
 
 ```solidity
 // SPDX-License-Identifier: MIT
@@ -104,7 +107,7 @@ import { TacProxyV1 } from "@tonappchain/evm-ccl/contracts/proxies/TacProxyV1.so
 import { TokenAmount, OutMessageV1, TacHeaderV1, NFTAmount } from "@tonappchain/evm-ccl/contracts/core/Structs.sol";
 
 interface IDappContract {
-    function doSomething(address tokenFrom, address tokenTo, uint256 amount)
+    function doSomething(address tokenA, address tokenB, uint256 amount)
         external returns (uint256);
 }
 
@@ -112,8 +115,8 @@ contract MyProxy is TacProxyV1 {
     IDappContract public dappContract;
 
     struct MyProxyFunctionArguments {
-        address tokenFrom;
-        address tokenTo;
+        address tokenA;
+        address tokenB;
         uint256 amount;
     }
 
@@ -131,18 +134,18 @@ contract MyProxy is TacProxyV1 {
         MyProxyFunctionArguments memory args = abi.decode(arguments, (MyProxyFunctionArguments));
 
         // 2. Approve tokens to your Dapp contract for some action
-        IERC20(args.tokenFrom).approve(address(dappContract), args.amount);
+        IERC20(args.tokenA).approve(address(dappContract), args.amount);
 
         // 3. Call the Dapp contract
-        uint256 tokenToAmount = dappContract.doSomething(
-            args.tokenFrom,
-            args.tokenTo,
+        uint256 tokenBAmount = dappContract.doSomething(
+            args.tokenA,
+            args.tokenB,
             args.amount
         );
 
         // 4. Prepare tokens to send back to TON
         TokenAmount[] memory tokensToBridge = new TokenAmount[](1);
-        tokensToBridge[0] = TokenAmount(args.tokenTo, tokenToAmount);
+        tokensToBridge[0] = TokenAmount(args.tokenB, tokenBAmount);
 
         // 5. Approve the CrossChainLayer to pull them
         IERC20(tokensToBridge[0].evmAddress).approve(
@@ -166,7 +169,7 @@ contract MyProxy is TacProxyV1 {
         });
 
         // 8. Send message back through CrossChainLayer with zero native
-        _sendMessageV1(outMsg, 0);
+        _sendMessageV1(outMsg, 0); // 0 TACs to send back
     }
 }
 ```
@@ -180,7 +183,6 @@ contract MyProxy is TacProxyV1 {
 
 **Important Notes:**
 - Use `_sendMessageV1` for ERC20 token bridging only
-- Use `_sendMessageV2` if you need to bridge both NFTs and ERC20 tokens back to TON
 - The CCL automatically handles token transfers to your proxy before calling your function
 - Always include the `NFTAmount` import when using OutMessageV1
 

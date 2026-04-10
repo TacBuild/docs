@@ -95,19 +95,24 @@ function processMessage(bytes calldata tacHeader, bytes calldata arguments)
 Tokens are automatically transferred to your contract before your function is called:
 
 ```solidity
+struct MyTokenStruct {
+    address evmAddress;
+    uint256 amount;
+}
+
 function handleTokens(bytes calldata tacHeader, bytes calldata arguments)
     external
     _onlyCrossChainLayer
 {
     // Decode the tokens you're expecting
-    TokenAmount[] memory expectedTokens = abi.decode(arguments, (TokenAmount[]));
+    MyTokenStruct[] memory expectedTokens = abi.decode(arguments, (MyTokenStruct[]));
 
     // Tokens are already in your contract balance
     for (uint i = 0; i < expectedTokens.length; i++) {
         uint256 balance = IERC20(expectedTokens[i].evmAddress).balanceOf(address(this));
         require(balance >= expectedTokens[i].amount, "Expected tokens not received");
 
-        // Process each token
+        // Your implementation how to process the tokens
         processToken(expectedTokens[i].evmAddress, expectedTokens[i].amount);
     }
 }

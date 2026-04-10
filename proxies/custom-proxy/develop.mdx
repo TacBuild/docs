@@ -48,7 +48,6 @@ Ensure your Hardhat project includes the necessary dependencies:
 {
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
-    "@nomicfoundation/hardhat-verify": "^2.0.0",
     "hardhat": "^2.22.5",
     "ethers": "^6.13.2",
     "chai": "^4.3.7",
@@ -63,7 +62,6 @@ Configure your `hardhat.config.js` for TAC networks:
 
 ```javascript hardhat.config.js
 require("@nomicfoundation/hardhat-toolbox");
-require("@nomicfoundation/hardhat-verify");
 
 module.exports = {
   solidity: {
@@ -73,7 +71,6 @@ module.exports = {
         enabled: true,
         runs: 200,
       },
-      viaIR: true,
     },
   },
   networks: {

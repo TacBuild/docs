@@ -10,7 +10,7 @@ description: "This guide walks you through creating your first basic proxy contr
 
 ## Your First Proxy Contract
 
-Let's start with the absolute minimum proxy contract:
+Let's start with the absolute minimum proxy contract that can handle TON->TAC transaction:
 
 ```solidity
 // SPDX-License-Identifier: MIT
@@ -85,6 +85,7 @@ function sayHello(bytes calldata tacHeader, bytes calldata arguments)
 - `bytes calldata arguments` - Your custom ABI-encoded parameters
 - `external` - Must be externally callable
 - `_onlyCrossChainLayer` - Security modifier that ensures only CrossChainLayer can call this function
+(required only for TON->TAC and TON->TAC->TON types)
 
 ## Step-by-Step Walkthrough
 
@@ -128,48 +129,44 @@ This is where you do whatever your contract is supposed to do. In this example, 
 
 ## Sending Responses Back to TON
 
-Sometimes you want to send tokens back to the TON user. Use the `OutMessageV1` structure:
-
-```solidity
-import { TokenAmount, OutMessageV1 } from "@tonappchain/evm-ccl/contracts/core/Structs.sol";
-
-// Send back to TON user (no fees for RoundTrip messages)
-OutMessageV1 memory outMsg = OutMessageV1({
-    shardsKey: header.shardsKey,        // Link to original operation
-    tvmTarget: header.tvmCaller,        // Send back to caller
-    tvmPayload: "",                     // Must be empty - not supported
-    tvmProtocolFee: 0,                  // 0 for RoundTrip - already paid on TON
-    tvmExecutorFee: 0,                  // 0 for RoundTrip - already paid on TON
-    tvmValidExecutors: new string[](0), // Empty for RoundTrip - already defined on TON
-    toBridge: tokensToSend,             // Tokens to send
-    toBridgeNFT: new NFTAmount[](0)     // No NFTs
-});
-
-_sendMessageV1(outMsg, 0);
-```
+You may also want to send arbitrary tokens back to the TON user after an EVM execution (TON->TAC->TON transaction type).
+Learn how in the [more advanced example](/proxies/custom-proxy/proxy-functions#complete-implementation-walkthrough).
 
 ## Deployment
 
-Deploy your basic proxy like any other contract:
+Deploy your basic proxy just like any other contract. You can also use `deploy` from `@tonappchain/evm-ccl` as helper:
 
 ```javascript
-// scripts/deploy-basic-proxy.js
-const { ethers } = require("hardhat");
+import { Signer } from "ethers";
+import { HelloProxy } from "../../typechain-types";
+import { deploy } from '@tonappchain/evm-ccl';
+import hre from 'hardhat';
+
+export async function deployHelloProxy(
+    deployer: Signer,
+    crossChainLayer: string,
+): Promise<HelloProxy> {
+    const helloProxy = await deploy<HelloProxy>(
+        deployer,
+        hre.artifacts.readArtifactSync('HelloProxy'),
+        [crossChainLayer],
+        undefined,
+        true // verbose
+    );
+
+    await helloProxy.waitForDeployment();
+    return helloProxy;
+}
 
 async function main() {
-  // Get CrossChainLayer address from TAC documentation or contract addresses page
-  const crossChainLayerAddress = process.env.CROSS_CHAIN_LAYER_ADDRESS;
-
-  const HelloProxy = await ethers.getContractFactory("HelloProxy");
-  const proxy = await HelloProxy.deploy(crossChainLayerAddress);
-  await proxy.deployed();
-
-  console.log("HelloProxy deployed to:", proxy.address);
+    const [deployer] = await hre.ethers.getSigners();
+    const crossChainLayer = process.env.CROSS_CHAIN_LAYER_ADDRESS;
+    const helloProxy = await deployHelloProxy(deployer, crossChainLayer);
+    console.log("HelloProxy deployed to:", helloProxy.target);
 }
 
 main().catch(console.error);
 ```
-
 
 ## What's Next?
 

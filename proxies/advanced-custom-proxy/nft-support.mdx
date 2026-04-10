@@ -65,7 +65,7 @@ contract TestNFTProxy is TacProxyV1, IERC721Receiver {
             new TokenAmount[](0), // No ERC20 tokens bridged
             nfts            // NFTs to bridge (the 'amount' field is ignored for ERC721)
         );
-        _sendMessageV1(outMessage, 0);
+        _sendMessageV1(outMessage, 0); // 0 TACs to send back
     }
 }
 ```

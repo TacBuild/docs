@@ -3,7 +3,10 @@ title: Smart Accounts
 description: "Smart accounts for TAC enabling programmable wallets and advanced transaction patterns"
 ---
 
-Smart accounts (also known as _Account abstraction_) enable programmable wallet logic on TAC, allowing developers to create accounts with custom execution rules, gas payment mechanisms, and transaction batching capabilities. TAC provides a **shared factory** that all developers can use, creating **one smart account per user per proxy** for seamless cross-chain interactions.
+Smart accounts (also known as _Account abstraction_) are used on TAC to solve two key problems:
+
+1. **User separation** — without smart accounts, a dApp message sender on the proxy side is effectively always the proxy itself, so it’s hard to distinguish one user from another.
+2. **Separate asset storage** — user assets are kept in a dedicated smart account, so funds don’t mix into one proxy balance and can wait there until they’re needed.
 
 <Info>
   **Contract Addresses**: Find the latest _Smart Account Factory_ and _Smart Account Blueprint_
@@ -48,8 +51,9 @@ TAC uses a **shared factory approach** where:
   </Tab>
 </Tabs>
 
-## _Smart Account Blueprint_ Implementation Example
+## _Smart Account Blueprint_ Implementation
 
+The contract is already deployed on TAC Mainnet and Testnet.
 <Note>
     _Smart Account Blueprint_ is addressed as `TacSmartAccount` in provided code snippets
 </Note>
@@ -201,7 +205,9 @@ contract TacSmartAccount is Initializable, IERC721Receiver {
   </Accordion>
 </AccordionGroup>
 
-## _Smart Account Factory_ Implementation Example
+## _Smart Account Factory_ Implementation
+
+The contract is already deployed on TAC Mainnet and Testnet.
 
 <Note>
     _Smart Account Factory_ is addressed as `TacSAFactory` in provided code snippets
@@ -364,11 +370,12 @@ contract MyProxy is TacProxyV1 {
         // Decode operation parameters
         (address target, bytes memory data, uint256 value) = abi.decode(arguments, (address, bytes, uint256));
 
-        // Create one-time ticket for the smart account to execute
-        ITacSmartAccount(smartAccount).createOneTimeTicket(address(this));
-
         // Execute through smart account
-        ITacSmartAccount(smartAccount).execute(target, value, data);
+        bytes memory returnData =
+            ITacSmartAccount(smartAccount).execute(target, value, data);
+
+        // Parse returnData
+        uint256 tokenId = abi.decode(returnData, (uint256));
     }
 }
 ```
