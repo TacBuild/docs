@@ -136,9 +136,7 @@
               "sdk/overview",
               "sdk/transaction-tracking",
               "sdk/frameworks",
-              "sdk/ton-connect",
-              "sdk/ts-sdk",
-              "sdk/python-sdk"
+              "sdk/ton-connect"
             ]
           },
           {
@@ -146,6 +144,13 @@
             "pages": [
               "sdk/advanced-usage/agnostic-proxy",
               "sdk/advanced-usage/batch-send"
+            ]
+          },
+          {
+            "group": "Changelog",
+            "pages": [
+              "sdk/changelog/ts-sdk",
+              "sdk/changelog/python-sdk"
             ]
           }
         ]
