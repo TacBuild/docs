@@ -160,12 +160,12 @@
               {
                 "group": "Custom Proxy",
                 "pages": [
-                  "proxies/custom-proxy/develop",
-                  "proxies/custom-proxy/basic-proxy",
-                  "proxies/custom-proxy/upgradeable-proxy",
                   "proxies/custom-proxy/message-flow",
                   "proxies/custom-proxy/proxy-functions",
-                  "proxies/custom-proxy/fee-management"
+                  "proxies/custom-proxy/fee-management",
+                  "proxies/custom-proxy/develop",
+                  "proxies/custom-proxy/basic-proxy",
+                  "proxies/custom-proxy/upgradeable-proxy"
                 ]
               },
               {

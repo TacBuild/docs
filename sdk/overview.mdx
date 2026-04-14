@@ -315,8 +315,9 @@ const evmProxyMsg = {
 };
 ```
 
-Use `ethers.js` or similar libraries to encode contract parameters and
+Use `ethers` or similar libraries to encode contract parameters and
 make sure the encoded parameters are valid tuples.
+Learn more about parameter encoding and decoding [here](/proxies/advanced-custom-proxy/argument-encoding).
 
 ### Method Name Formatting
 
@@ -401,7 +402,7 @@ The SDK provides comprehensive error handling that protects user assets and prov
     </Tab>
 
     <Tab title="Network Resilience">
-        Built-in retry mechanisms and fallback endpoints ensure operations continue
+        Built-in [retry mechanisms](/sdk/overview#wait-options) and fallback endpoints ensure operations continue
         even when individual network components experience issues.
     </Tab>
 

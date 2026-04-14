@@ -387,7 +387,7 @@ Calculate smart account addresses before transactions for encoding in arguments:
 ```javascript
 // Get the smart account address for a specific user and proxy
 const smartAccountAddress = await tacSAFactory.getSmartAccountForApplication(
-  tvmWalletCaller, // TON wallet address in EQ format (e.g., "EQAbc123...")
+  tvmWalletCaller, // TON wallet address in any format
   proxyAddress // Address of your proxy contract
 );
 
@@ -397,69 +397,3 @@ const encodedArguments = ethers.AbiCoder.defaultAbiCoder().encode(
   [smartAccountAddress, callData, value]
 );
 ```
-
-## SaHelper Library for Advanced Hooks
-
-TAC provides a powerful hooks system for complex smart account operations:
-
-```solidity
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.28;
-
-import { IHooks } from "../interfaces/IHooks.sol";
-import { ITacSmartAccount } from "../interfaces/ITacSmartAccount.sol";
-import { TokenAmount, NFTAmount } from "../../core/Structs.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
-library SaHelper {
-    function executePreHooks(address sa, IHooks.SaHooks memory hooks) internal returns(bytes[] memory) {
-        IHooks.PreHook[] memory preHooks = hooks.preHooks;
-        bytes[] memory results = new bytes[](preHooks.length);
-        for (uint256 i = 0; i < preHooks.length; i++) {
-            if (preHooks[i].isFromSAPerspective) {
-                results[i] = ITacSmartAccount(sa).execute(preHooks[i].contractAddress, preHooks[i].value, preHooks[i].data);
-            } else {
-                results[i] = _selfCall(preHooks[i].contractAddress, preHooks[i].value, preHooks[i].data);
-            }
-        }
-        return results;
-    }
-
-    function executePostHooks(address sa, IHooks.SaHooks memory hooks) internal returns(bytes[] memory) {
-        IHooks.PostHook[] memory postHooks = hooks.postHooks;
-        bytes[] memory results = new bytes[](postHooks.length);
-        for (uint256 i = 0; i < postHooks.length; i++) {
-            if (postHooks[i].isFromSAPerspective) {
-                results[i] = ITacSmartAccount(sa).execute(postHooks[i].contractAddress, postHooks[i].value, postHooks[i].data);
-            } else {
-                results[i] = _selfCall(postHooks[i].contractAddress, postHooks[i].value, postHooks[i].data);
-            }
-        }
-        return results;
-    }
-
-    function executeMainCall(address sa, IHooks.SaHooks memory hooks) internal returns(bytes memory) {
-        IHooks.MainCallHook memory mainCallHook = hooks.mainCallHook;
-        if (mainCallHook.isFromSAPerspective) {
-            return ITacSmartAccount(sa).execute(mainCallHook.contractAddress, mainCallHook.value, mainCallHook.data);
-        } else {
-            return _selfCall(mainCallHook.contractAddress, mainCallHook.value, mainCallHook.data);
-        }
-    }
-
-    function _selfCall(address to, uint256 value, bytes memory data) internal returns(bytes memory) {
-        (bool success, bytes memory returnData) = to.call{value: value}(data);
-        require(success, "Self call failed");
-        return returnData;
-    }
-}
-```
-
-### Hook System Usage
-
-The hooks system allows you to define:
-
-- **Pre-hooks**: Operations before main execution
-- **Main call**: Primary operation
-- **Post-hooks**: Operations after main execution
-- **Perspective**: Whether calls are from smart account or proxy contract

@@ -96,7 +96,7 @@ function sendDirectMessage() external payable {
     // Note: Currently there is no official library to calculate the exact executor fee
     // It is recommended to:
     // - Overestimate slightly, or
-    // - Use tacSDK for better fee estimation
+    // - Use TAC SDK for better fee estimation
     uint256 executorFee = msg.value - protocolFee; // Rough example - use tacSDK for production
 
     OutMessageV1 memory outMsg = OutMessageV1({
@@ -124,3 +124,17 @@ function sendDirectMessage() external payable {
 Executor fees are market-determined based on network conditions and can vary significantly.
 
 </Warning>
+
+## What's Next?
+
+Now that you understand the theory, let's dive into the implementation:
+
+<CardGroup cols={1}>
+    <Card
+        title="Develop Custom Proxy"
+        icon="code"
+        href="/proxies/custom-proxy/develop"
+    >
+        Build the core logic that processes cross-chain calls and arguments
+    </Card>
+</CardGroup>

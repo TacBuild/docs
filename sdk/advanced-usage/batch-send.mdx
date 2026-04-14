@@ -39,12 +39,6 @@ const batchTransactions = async () => {
     crosschainTxs
   );
 
-  // Send batch
-  const transactionLinkers = await tacSdk.sendCrossChainTransactions(
-    sender,
-    crosschainTxs
-  );
-
   return transactionLinkers.map((linker) => linker.operationId);
 };
 ```

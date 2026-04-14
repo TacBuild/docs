@@ -3,6 +3,13 @@ title: Message Flow
 description: "Learn how cross-chain messages work and what data they contain"
 ---
 
+<Info>
+    Before diving into the TAC Proxy development itself,
+    we recommend getting familiar with concepts such as **Message Flow** (this page),
+    [Proxy Functions](/proxies/custom-proxy/proxy-functions),
+    and [Fee Management](/proxies/custom-proxy/fee-management).
+</Info>
+
 Understanding how messages flow between TON and TAC EVM is crucial for building effective proxy contracts. This guide explains the data structures and message patterns.
 
 ## RoundTrip Messages
@@ -122,19 +129,12 @@ function handleTokens(bytes calldata tacHeader, bytes calldata arguments)
 
 Now that you understand the message flow, learn how to implement the core proxy function logic:
 
-<CardGroup cols={2}>
+<CardGroup cols={1}>
   <Card
-    title="Implementing Proxy Functions"
-    icon="code"
+    title="Proxy Functions"
+    icon="book-open"
     href="/proxies/custom-proxy/proxy-functions"
   >
     Build the core logic that processes cross-chain calls and arguments
-  </Card>
-  <Card
-    title="Fee Management"
-    icon="dollar-sign"
-    href="/proxies/custom-proxy/fee-management"
-  >
-    Understand how to handle protocol fees and executor payments
   </Card>
 </CardGroup>

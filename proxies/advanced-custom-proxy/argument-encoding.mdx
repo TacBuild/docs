@@ -13,76 +13,134 @@ This guide shows the encoding patterns for different data structure complexities
 
 ## Simple Parameters
 
-You typically define a struct that represents the arguments your proxy function expects:
+<Tabs>
+    <Tab title="Unstructured">
+        Parameters without structure:
 
-```solidity
-struct MyProxyFunctionArguments {
-    address tokenFrom;
-    address tokenTo;
-    uint256 amount;
-}
-```
+        ```solidity
+        address tokenFrom;
+        address tokenTo;
+        uint256 amount;
+        ```
 
-You then encode these fields in your frontend code using ethers.js:
+        Frontend **encoding** example using `ethers`:
 
-```javascript
-import { ethers } from "ethers";
-const abiCoder = ethers.AbiCoder.defaultAbiCoder();
+        ```javascript
+        import { ethers } from "ethers";
+        const abiCoder = ethers.AbiCoder.defaultAbiCoder();
 
-const myProxyFunctionArguments = abiCoder.encode(
-  ["address", "address", "uint256"],
-  [tokenFromAddress, tokenToAddress, tokenFromAmount]
-);
-```
+        const myProxyFunctionArguments = abiCoder.encode(
+            ['address', 'address', 'uint256'],
+            [tokenFromAddress, tokenToAddress, tokenFromAmount]
+        );
+        ```
+
+        And the associated **decoding** example in Solidity:
+
+        ```solidity
+        (address tokenFromAddress, address tokenToAddress, uint256 tokenFromAmount) =
+            abi.decode(arguments, (address, address, uint256));
+        ```
+    </Tab>
+
+    <Tab title="Structured">
+        Parameters within structure:
+
+        ```solidity
+        struct MyProxyFunctionArguments {
+            address tokenFrom;
+            address tokenTo;
+            uint256 amount;
+        }
+        ```
+
+        Frontend **encoding** example using `ethers`:
+
+        ```javascript
+        import { ethers } from "ethers";
+        const abiCoder = ethers.AbiCoder.defaultAbiCoder();
+
+        const myProxyFunctionArguments = abiCoder.encode(
+            ['tuple(address,address,uint256)'],
+            [[tokenFromAddress, tokenToAddress, tokenFromAmount]]
+        );
+        ```
+
+        And the associated **decoding** example in Solidity:
+
+        ```solidity
+        MyProxyFunctionArguments memory args =
+            abi.decode(arguments, (MyProxyFunctionArguments));
+        ```
+    </Tab>
+</Tabs>
 
 ## Advanced Parameters
 
-For structs containing other structs:
+<Tabs>
+    <Tab title="Structs in structs">
+        Parameters in structs containing other structs:
 
-```solidity
-struct AnyExtraInfo {
-    address feeCollector;
-    uint256 feeRate;
-}
+        ```solidity
+        struct AnyExtraInfo {
+            address feeCollector;
+            uint256 feeRate;
+        }
 
-struct MyProxyFunctionArguments {
-    AnyExtraInfo extraInfo;
-    address tokenFrom;
-    address tokenTo;
-    uint256 amount;
-}
-```
+        struct MyProxyFunctionArguments {
+            AnyExtraInfo extraInfo;
+            address tokenFrom;
+            address tokenTo;
+            uint256 amount;
+        }
+        ```
 
-Encoding:
+        Frontend **encoding** example using `ethers`:
 
-```javascript
-const extraInfo = [feeCollectorAddress, feeRate];
-const myProxyFunctionArguments = abiCoder.encode(
-  ["tuple(address,uint256)", "address", "address", "uint256"],
-  [extraInfo, tokenFromAddress, tokenToAddress, tokenAmount]
-);
-```
+        ```javascript
+        const extraInfo = [feeCollectorAddress, feeRate];
+        const myProxyFunctionArguments = abiCoder.encode(
+            ["tuple(tuple(address,uint256),address,address,uint256)"],
+            [[extraInfo, tokenFromAddress, tokenToAddress, tokenAmount]]
+        );
+        ```
 
-### Complex Example with Dynamic Arrays
+        And the associated **decoding** example in Solidity:
 
-For structs containing arrays:
+        ```solidity
+        MyProxyFunctionArguments memory args =
+            abi.decode(arguments, (MyProxyFunctionArguments));
+        ```
+    </Tab>
 
-```solidity
-struct MyProxyFunctionArguments {
-    address[] path;
-    uint256 amount;
-}
-```
+    <Tab title="Dynamic arrays">
+        Parameters in dynamic arrays:
 
-Encoding:
+        ```solidity
+        struct MyProxyFunctionArguments {
+            address[] path;
+            uint256 amount;
+        }
+        ```
 
-```javascript
-const path = [tokenFromAddress, tokenToAddress];
-const myProxyFunctionArguments = abiCoder.encode(
-  ["tuple(address[],uint256)"],
-  [[path, tokenFromAmount]]
-);
-```
+        Frontend **encoding** example using `ethers`:
+
+        ```javascript
+        const path = [tokenFromAddress, tokenToAddress];
+        const myProxyFunctionArguments = abiCoder.encode(
+            ["tuple(address[],uint256)"],
+            [[path, tokenFromAmount]]
+        );
+        ```
+
+        And the associated **decoding** example in Solidity:
+
+        ```solidity
+        MyProxyFunctionArguments memory args =
+            abi.decode(arguments, (MyProxyFunctionArguments));
+        ```
+    </Tab>
+</Tabs>
 
 ## TAC SDK Integration
 
@@ -106,33 +164,9 @@ const userMessage = {
 };
 ```
 
-
-## Decoding in Proxy Functions
-
-Your proxy functions decode the arguments using `abi.decode()`:
-
-```solidity
-function executeSwap(bytes calldata tacHeader, bytes calldata arguments)
-    external
-    _onlyCrossChainLayer
-{
-    TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
-    
-    // Decode the custom arguments
-    SwapParams memory params = abi.decode(arguments, (SwapParams));
-    
-    // Use the decoded parameters
-    require(params.amountIn > 0, "Invalid amount");
-    require(params.deadline > block.timestamp, "Expired");
-    
-    // Execute swap logic
-    performSwap(params);
-}
-```
-
 ## What's Next?
 
-Still have questions after reading the guide?
+Still have questions after reading the **Advanced Custom Proxy** guide?
 Check out the comprehensive documentation to find the answers you need.
 
 <CardGroup cols={1}>
@@ -141,8 +175,8 @@ Check out the comprehensive documentation to find the answers you need.
         href="https://www.npmjs.com/package/@tonappchain/evm-ccl"
         icon="git-commit-horizontal"
     >
-        Developer documentation
+        Developer documentation within `@tonappchain/evm-ccl` NPM-package
     </Card>
 </CardGroup>
 
-Or reach out to our developer community in [Telegram](https://t.me/TACbuild) or [Discord](https://discord.gg/tacbuild).
+You can also reach out to our developer community in [Telegram](https://t.me/TACbuild) or [Discord](https://discord.gg/tacbuild).
