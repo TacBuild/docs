@@ -1,0 +1,127 @@
+---
+title: TAC EVM Layer
+description: "A complete Layer 1 blockchain providing full EVM compatibility built on Cosmos SDK"
+---
+
+The TAC EVM Layer is a fully-fledged Layer-1 blockchain environment based on Cosmos SDK technology. It provides a secure and scalable execution environment specifically optimized for Ethereum-compatible smart contracts, allowing existing EVM dApps to be deployed without modifications or code rewrites, achieving ≈2-second finality through dPoS.
+
+## Technical Foundation
+
+TAC EVM Layer combines proven blockchain technologies to deliver a robust execution environment that feels familiar to Ethereum developers.
+
+### Core Technology Stack
+
+<AccordionGroup>
+  <Accordion title="Cosmos SDK - Application Framework" icon="blocks">
+    The latest Cosmos SDK provides the modular blockchain framework that powers
+    TAC EVM Layer. This battle-tested foundation offers built-in modules for
+    staking, governance, and inter-blockchain communication, while allowing
+    custom modules for TAC-specific functionality. 
+  </Accordion>
+
+<Accordion title="Native EVM Integration" icon="settings">
+
+TAC EVM Layer implements native EVM execution directly within the Cosmos SDK
+framework. This isn't a compatibility layer or virtual machine running on top
+of another VM - it's true EVM execution with modern consensus guarantees.
+
+Every Ethereum opcode, gas calculation, and state transition rule works
+exactly as it does on Ethereum mainnet, ensuring 100% compatibility for
+existing Solidity contracts.
+
+</Accordion>
+
+
+</AccordionGroup>
+
+## Performance Characteristics
+
+TAC EVM Layer maintains the security guarantees developers expect from a production blockchain.
+
+<Tabs>
+  <Tab title="Finality">
+
+    **≈2-second finality** through Tendermint consensus mechanism provides
+    deterministic execution and fast block confirmation. Transactions are
+    irreversibly confirmed with minimal latency.
+
+    **No reorganizations** are possible due to Tendermint's BFT consensus model. This
+    eliminates edge cases where transactions might be reversed or reordered
+    after confirmation.
+
+  </Tab>
+
+<Tab title="Throughput">
+
+**Configurable gas limits** allow the network to adapt to demand through
+governance proposals, balancing throughput with
+decentralization requirements.
+
+**Parallel execution potential** exists within the Cosmos SDK framework, enabling future optimizations as the network grows.
+
+</Tab>
+
+  <Tab title="Cost Efficiency">
+
+    **EIP-1559 gas management** provides predictable transaction fees with
+    automatic fee adjustment based on network demand. Users get the same fee
+    predictability they expect from modern Ethereum.
+
+    **Fee token flexibility** allows transaction fees to be paid in TAC tokens, while still
+    supporting ETH-denominated gas calculations for contract compatibility.
+
+  </Tab>
+</Tabs>
+
+## Developer Experience
+
+TAC EVM Layer maintains complete compatibility with the Ethereum development ecosystem while providing enhanced debugging and development capabilities.
+
+### Tool Compatibility
+
+Every tool in the Ethereum ecosystem works seamlessly with TAC EVM Layer:
+
+<Columns cols={2}>
+  <Card title="Development Frameworks" icon="hammer">
+    Hardhat, Truffle, Foundry, and Remix work without configuration changes.
+    Deploy scripts, test suites, and build processes transfer directly.
+  </Card>
+
+  <Card title="Wallet Integration" icon="wallet">
+    MetaMask, WalletConnect, and other Web3 wallets connect by simply adding TAC
+    as a custom network. No special plugins required.
+  </Card>
+</Columns>
+
+<Columns cols={2}>
+  <Card title="JavaScript Libraries" icon="code">
+    Web3.js, Ethers.js, and Viem work exactly as they do with Ethereum. Contract
+    ABIs and interaction patterns remain identical.
+  </Card>
+
+  <Card title="Infrastructure Tools" icon="server">
+    Block explorers, indexers, and monitoring tools designed for Ethereum can
+    index TAC EVM Layer with minimal configuration.
+  </Card>
+</Columns>
+
+## Gas and Fee Structure
+
+TAC EVM Layer implements familiar gas mechanics with improvements for predictability and efficiency.
+
+### EIP-1559 Implementation
+
+TAC EVM Layer uses EIP-1559 gas pricing for predictable transaction fees:
+
+```solidity
+// Gas calculations work exactly like Ethereum
+uint256 gasUsed = gasLimit - gasleft();
+uint256 effectiveGasPrice = baseFee + min(maxPriorityFee, maxFeePerGas - baseFee);
+uint256 totalCost = gasUsed * effectiveGasPrice;
+```
+
+- **Base Fee**: Automatically adjusts based on network congestion, providing predictable pricing for users.
+
+- **Priority Fee**: Allows users to pay extra for faster inclusion during high-demand periods.
+
+- **Fee Burning**: A portion of transaction fees are burned, creating deflationary pressure on TAC tokens.

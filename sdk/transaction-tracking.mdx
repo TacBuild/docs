@@ -1,0 +1,218 @@
+---
+title: Transaction Tracking
+description: "Monitor cross-chain transaction progress and handle completion with comprehensive tracking tools"
+---
+
+Whether you need simple status updates or detailed execution profiling, the tracking system offers multiple approaches to fit your application's needs.
+
+<Note>
+  Transaction tracking is essential for providing good user experience in
+  cross-chain applications
+</Note>
+
+## Main Classes
+
+Cross-chain transactions go through multiple stages across different blockchain networks.
+The TAC SDK's tracking system provides real-time visibility into this complex process through several types:
+
+- `TransactionLinker`: Initial tracking handle returned from transaction submission
+- `OperationTracker`: Comprehensive tracking with detailed status information
+- `SimplifiedStatuses`: Already successful or still processing?
+- `ExecutionStages`: Detailed execution timeline (Stage Profiling)
+
+## `TransactionLinker`
+
+Every cross-chain transaction returns a `TransactionLinker` object that serves as the primary tracking handle:
+
+```javascript
+// Send transaction and get tracking handle
+const transactionLinker = await tacSdk.sendCrossChainTransaction(
+  evmProxyMsg,
+  sender,
+  assets
+);
+
+// Operation ID may not be immediately available
+// Use OperationTracker to retrieve it
+console.log("Shard Key:", transactionLinker.shardsKey);
+console.log("Timestamp:", transactionLinker.timestamp);
+console.log("Caller:", transactionLinker.caller);
+```
+
+`TransactionLinker` properties:
+
+```javascript
+interface TransactionLinker {
+  caller: string; // Sender's wallet address
+  shardCount: number; // Number of shards involved
+  shardsKey: string; // Unique shard identifier
+  timestamp: number; // Transaction timestamp
+  operationId?: string; // Operation ID (available after TON Adapter transaction detection)
+  sendTransactionResult?: any; // Raw transaction result
+}
+```
+
+`operationId` is your primary identifier for the cross-chain transaction, save it for later use.
+
+## `OperationTracker`
+
+The `OperationTracker` provides comprehensive tracking capabilities with multiple monitoring methods:
+
+```javascript
+import { OperationTracker, Network } from "@tonappchain/sdk";
+
+// Initialize tracker
+const tracker = new OperationTracker(Network.TESTNET);
+
+// Get operation status
+const status = await tracker.getOperationStatus(operationId);
+console.log("Transaction status:", status);
+
+// Get operation status with wait options for automatic waiting
+const statusWithWait = await tracker.getOperationStatus(operationId, {
+  timeout: 300000, // 5 minutes total timeout
+  maxAttempts: 30, // Maximum 30 attempts
+  delay: 10000, // 10 seconds between attempts
+  successCheck: (opId) => !opId,
+  onSuccess: (opId) => console.log("Operation id received successfully!", opId),
+});
+console.log("Final status:", statusWithWait);
+```
+
+## `SimplifiedStatuses`
+
+For applications that need basic status information use method `getSimplifiedOperationStatus`:
+
+```javascript
+const getSimpleStatus = async (transactionLinker) => {
+  const tracker = new OperationTracker(Network.TESTNET);
+
+  const status = await tracker.getSimplifiedOperationStatus(transactionLinker);
+
+  switch (status) {
+    case "PENDING":
+      console.log("Transaction is being processed");
+      break;
+    case "SUCCESSFUL":
+      console.log("Transaction completed successfully");
+      break;
+    case "FAILED":
+      console.log("Transaction failed");
+      break;
+    case "OPERATION_ID_NOT_FOUND":
+      console.log("Operation not found - may still be propagating");
+      break;
+  }
+
+  return status;
+};
+```
+
+### Detailed Status Information
+
+For applications requiring comprehensive status data use method `getOperationStatus`:
+
+```javascript
+const getDetailedStatus = async (operationId) => {
+  const tracker = new OperationTracker(Network.TESTNET);
+
+  const statusInfo = await tracker.getOperationStatus(operationId);
+
+  console.log("Status Information:");
+  console.log("- Stage:", statusInfo.stage);
+  console.log("- Success:", statusInfo.success);
+  console.log("- Timestamp:", statusInfo.timestamp);
+  console.log("- Transactions:", statusInfo.transactions);
+
+  return statusInfo;
+};
+```
+
+## `ExecutionStages`
+
+For detailed execution analysis, use method `getStageProfiling` to understand where time is spent:
+
+```javascript
+const getExecutionProfiling = async (operationId) => {
+  const tracker = new OperationTracker(Network.TESTNET);
+
+  const stages = await tracker.getStageProfiling(operationId);
+
+  console.log("Execution Timeline:");
+  console.log("- Collected in TAC:", stages.collectedInTAC.stageData?.timestamp);
+  console.log(
+    "- Included in TAC Consensus:",
+    stages.includedInTACConsensus.stageData?.timestamp
+  );
+  console.log("- Executed in TAC:", stages.executedInTAC.stageData?.timestamp);
+  console.log("- Collected in TON:", stages.collectedInTON.stageData?.timestamp);
+  console.log(
+    "- Included in TON Consensus:",
+    stages.includedInTONConsensus.stageData?.timestamp
+  );
+  console.log("- Executed in TON:", stages.executedInTON.stageData?.timestamp);
+
+  return stages;
+};
+```
+
+## Custom Success Callbacks
+
+For complex applications that need automatic profiling and finalization tracking `successCheck` and `onSuccess` options can be used:
+
+```javascript
+const getDetailedStatusWithCallback = async (operationId) => {
+  const tracker = new OperationTracker(Network.TESTNET);
+
+  // Advanced tracking with callbacks
+  const statusInfo = await tracker.getOperationStatus(operationId, {
+    timeout: 300000,
+    maxAttempts: 30,
+    delay: 10000,
+    context: {
+      operationTracker: tracker,
+      enableProfiling: true,
+    },
+    successCheck: (opId) => !opId,
+    onSuccess: async (result, context) => {
+      if (context?.enableProfiling && context.operationTracker) {
+        console.log("📊 Retrieving detailed profiling data...");
+
+        // Get comprehensive profiling information
+        const profilingData = await context.operationTracker.getStageProfiling(
+          operationId
+        );
+
+        console.log("\n📈 OPERATION TRACKING COMPLETE");
+        console.log(`🔹 Operation ID: ${operationId}`);
+        console.log(
+          `🔹 Final Status: ${result.success ? "✅ Success" : "❌ Failed"}`
+        );
+        console.log(
+          `🔹 Profiling Stages: ${Object.keys(profilingData).length}`
+        );
+
+        // Display stage-by-stage breakdown
+        for (const [stageName, stageInfo] of Object.entries(profilingData)) {
+          if (stageName !== "operationType" && stageName !== "metaInfo") {
+            const status = stageInfo.exists
+              ? "✅ Completed"
+              : "⏸️ Not executed";
+            const timestamp = stageInfo.timestamp
+              ? new Date(stageInfo.timestamp).toISOString()
+              : "N/A";
+            console.log(`   • ${stageName}: ${status} (${timestamp})`);
+          }
+        }
+
+        // Send notifications, update database, trigger workflows, etc.
+        console.log("🔔 Triggering post-completion workflows...");
+
+        return profilingData;
+      }
+    },
+  });
+
+  return statusInfo;
+};
+```

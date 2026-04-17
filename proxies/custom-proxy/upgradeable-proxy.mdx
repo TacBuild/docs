@@ -1,0 +1,130 @@
+---
+title: Upgradeable Proxy Example
+description: "Build proxy contracts that can evolve and be upgraded over time"
+---
+
+TAC provides `TacProxyV1Upgradeable` for contracts that need to be upgraded after deployment. Use this base contract when you need upgrade functionality.
+
+## Basic Upgradeable Structure
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.28;
+
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { TacProxyV1Upgradeable } from "@tonappchain/evm-ccl/contracts/proxies/TacProxyV1Upgradeable.sol";
+import { TacHeaderV1 } from "@tonappchain/evm-ccl/contracts/core/Structs.sol";
+
+contract MyUpgradeableProxy is
+    Initializable,
+    OwnableUpgradeable,
+    UUPSUpgradeable,
+    TacProxyV1Upgradeable
+{
+    // Your state variables go here
+    mapping(string => uint256) public userBalances;
+    uint256 public totalProcessed;
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address owner, address crossChainLayer)
+        public
+        initializer
+    {
+        __UUPSUpgradeable_init();
+        __Ownable_init(owner);
+        __TacProxyV1Upgradeable_init(crossChainLayer);
+
+        // Initialize your contract state
+        totalProcessed = 0;
+    }
+
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        override
+        onlyOwner
+    {}
+
+    // Your proxy functions go here
+    function processRequest(bytes calldata tacHeader, bytes calldata arguments)
+        external
+        _onlyCrossChainLayer
+    {
+        TacHeaderV1 memory header = _decodeTacHeader(tacHeader);
+        uint256 amount = abi.decode(arguments, (uint256));
+
+        userBalances[header.tvmCaller] += amount;
+        totalProcessed += amount;
+
+        emit RequestProcessed(header.tvmCaller, amount);
+    }
+
+    event RequestProcessed(string indexed user, uint256 amount);
+}
+```
+
+## Key Difference from Basic Contracts
+
+The **inheritance order** is critical and must follow OpenZeppelin's recommended pattern.
+
+```solidity
+contract MyUpgradeableProxy is
+    Initializable,           // Must be first
+    OwnableUpgradeable,      // Access control
+    UUPSUpgradeable,         // Upgrade mechanism
+    TacProxyV1Upgradeable    // TAC functionality (last)
+```
+
+## Deployment
+
+Deployment differs from the basic example. UUPS pattern is used in the example below:
+
+```javascript
+import { Signer } from "ethers";
+import { MyUpgradeableProxy } from "../../typechain-types";
+import { deployUpgradable } from '@tonappchain/evm-ccl'
+import { DeployProxyOptions } from "@openzeppelin/hardhat-upgrades/dist/utils";
+import hre from 'hardhat';
+
+const proxyOptsUUPS: DeployProxyOptions = {
+    kind: "uups",
+    unsafeAllow: ["constructor"]
+};
+
+export async function deployMyUpgradeableProxy(
+    deployer: Signer,
+    crossChainLayerAddress: string,
+    owner?: string,
+): Promise<MyUpgradeableProxy> {
+    const myUpgradeableProxy = await deployUpgradable<MyUpgradeableProxy>(
+        deployer,
+        hre.artifacts.readArtifactSync('MyUpgradeableProxy'),
+        [owner || await deployer.getAddress(), crossChainLayerAddress],
+        proxyOptsUUPS,
+        undefined,
+        true // verbose
+    );
+
+    await myUpgradeableProxy.waitForDeployment();
+    return myUpgradeableProxy;
+}
+
+main().catch(console.error);
+```
+
+## What's Next?
+
+<CardGroup cols={1}>
+    <Card
+        title="Advanced Custom Proxy"
+        icon="brain"
+        href="/proxies/advanced-custom-proxy"
+    >
+        Learn even more sophisticated development patterns
+    </Card>
+</CardGroup>

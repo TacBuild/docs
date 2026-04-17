@@ -1,0 +1,182 @@
+---
+title: Argument Encoding
+description: "Advanced patterns for encoding complex data structures on your frontend"
+---
+
+TAC proxy functions receive their parameters as ABI-encoded bytes.
+This guide shows the encoding patterns for different data structure complexities.
+
+<Note>
+  All proxy functions must follow the signature `function name(bytes calldata tacHeader, bytes calldata arguments)`.
+  The `arguments` parameter contains your custom ABI-encoded data.
+</Note>
+
+## Simple Parameters
+
+<Tabs>
+    <Tab title="Unstructured">
+        Parameters without structure:
+
+        ```solidity
+        address tokenFrom;
+        address tokenTo;
+        uint256 amount;
+        ```
+
+        Frontend **encoding** example using `ethers`:
+
+        ```javascript
+        import { ethers } from "ethers";
+        const abiCoder = ethers.AbiCoder.defaultAbiCoder();
+
+        const myProxyFunctionArguments = abiCoder.encode(
+            ['address', 'address', 'uint256'],
+            [tokenFromAddress, tokenToAddress, tokenFromAmount]
+        );
+        ```
+
+        And the associated **decoding** example in Solidity:
+
+        ```solidity
+        (address tokenFromAddress, address tokenToAddress, uint256 tokenFromAmount) =
+            abi.decode(arguments, (address, address, uint256));
+        ```
+    </Tab>
+
+    <Tab title="Structured">
+        Parameters within structure:
+
+        ```solidity
+        struct MyProxyFunctionArguments {
+            address tokenFrom;
+            address tokenTo;
+            uint256 amount;
+        }
+        ```
+
+        Frontend **encoding** example using `ethers`:
+
+        ```javascript
+        import { ethers } from "ethers";
+        const abiCoder = ethers.AbiCoder.defaultAbiCoder();
+
+        const myProxyFunctionArguments = abiCoder.encode(
+            ['tuple(address,address,uint256)'],
+            [[tokenFromAddress, tokenToAddress, tokenFromAmount]]
+        );
+        ```
+
+        And the associated **decoding** example in Solidity:
+
+        ```solidity
+        MyProxyFunctionArguments memory args =
+            abi.decode(arguments, (MyProxyFunctionArguments));
+        ```
+    </Tab>
+</Tabs>
+
+## Advanced Parameters
+
+<Tabs>
+    <Tab title="Structs in structs">
+        Parameters in structs containing other structs:
+
+        ```solidity
+        struct AnyExtraInfo {
+            address feeCollector;
+            uint256 feeRate;
+        }
+
+        struct MyProxyFunctionArguments {
+            AnyExtraInfo extraInfo;
+            address tokenFrom;
+            address tokenTo;
+            uint256 amount;
+        }
+        ```
+
+        Frontend **encoding** example using `ethers`:
+
+        ```javascript
+        const extraInfo = [feeCollectorAddress, feeRate];
+        const myProxyFunctionArguments = abiCoder.encode(
+            ["tuple(tuple(address,uint256),address,address,uint256)"],
+            [[extraInfo, tokenFromAddress, tokenToAddress, tokenAmount]]
+        );
+        ```
+
+        And the associated **decoding** example in Solidity:
+
+        ```solidity
+        MyProxyFunctionArguments memory args =
+            abi.decode(arguments, (MyProxyFunctionArguments));
+        ```
+    </Tab>
+
+    <Tab title="Dynamic arrays">
+        Parameters in dynamic arrays:
+
+        ```solidity
+        struct MyProxyFunctionArguments {
+            address[] path;
+            uint256 amount;
+        }
+        ```
+
+        Frontend **encoding** example using `ethers`:
+
+        ```javascript
+        const path = [tokenFromAddress, tokenToAddress];
+        const myProxyFunctionArguments = abiCoder.encode(
+            ["tuple(address[],uint256)"],
+            [[path, tokenFromAmount]]
+        );
+        ```
+
+        And the associated **decoding** example in Solidity:
+
+        ```solidity
+        MyProxyFunctionArguments memory args =
+            abi.decode(arguments, (MyProxyFunctionArguments));
+        ```
+    </Tab>
+</Tabs>
+
+## TAC SDK Integration
+
+When using the TAC SDK to create messages for bridging, you must provide:
+
+- **target**: the address of your Proxy contract
+- **method_name**: the complete function signature, e.g. `"myProxyFunction(bytes,bytes)"`
+- **arguments**: the ABI-encoded arguments (second parameter in your proxy function)
+- **gasLimit** (optional): the parameter that will be passed to the TAC side. The executor must allocate at least `gasLimit` gas for executing the transaction on the TAC side. If this parameter is not specified, it will be calculated using the `simulateEVMMessage` method (preferred)
+
+Example:
+
+```javascript
+const myProxyFunctionName = "myProxyFunction(bytes,bytes)";
+
+const userMessage = {
+  target: MyProxyContractAddress,
+  method_name: myProxyFunctionName,
+  arguments: myProxyFunctionArguments, // from the previous encoding step
+  gasLimit?: // optional
+};
+```
+
+## What's Next?
+
+Still have questions after reading the **Advanced Custom Proxy** guide?
+Check out the comprehensive documentation to find the answers you need.
+
+<CardGroup cols={1}>
+    <Card
+        title="Custom Proxy"
+        href="https://www.npmjs.com/package/@tonappchain/evm-ccl"
+        icon="git-commit-horizontal"
+    >
+        Developer documentation within `@tonappchain/evm-ccl` NPM-package
+    </Card>
+</CardGroup>
+
+You can also reach out to our developer community in [Telegram](https://t.me/TACbuild) or [Discord](https://discord.gg/tacbuild).

@@ -1,0 +1,39 @@
+---
+title: Architecture
+description: "How TAC's three-layer architecture enables seamless interaction between TON and EVM ecosystems"
+---
+
+TAC's architecture is designed to support secure and deterministic cross-chain communication while preserving native user experience on the TON side. The protocol relies on on-chain consensus to execute contract-level operations across both networks.
+
+<Frame caption="TAC's three-layer architecture connecting TON users with EVM applications">
+  <img
+    src="/images/architecture-2.png"
+    alt="TAC Architecture showing EVM Layer, TON Adapter, and Proxy Apps"
+  />
+</Frame>
+
+## Main Layers
+
+<Columns cols={3}>
+    <Card title="TON TVM Layer" icon="hammer" href="/why-tac/components/tac-sdk">
+        TAC SDK dev tools to prepare and initiate cross-chain transaction in TON
+    </Card>
+
+    <Card title="TON Adapter" icon="arrow-left-right" href="/why-tac/components/ton-adapter">
+        Distributed sequencer network that securely routes messages between TON and EVM.
+    </Card>
+
+    <Card title="TAC EVM Layer" icon="blocks" href="/why-tac/components/tac-evm-layer"> Full EVM compatibility with Cosmos SDK. Handles all application logic and state. </Card>
+</Columns>
+
+## Secondary Layers
+
+<Columns cols={2}>
+    <Card title="Hybrid dApps" icon="gamepad" href="/why-tac/components/hybrid-dapps">
+        Applications that combine EVM smart contract logic with native Telegram user experience
+    </Card>
+
+    <Card title="TAC Proxies" icon="git-commit-horizontal" href="/why-tac/components/proxy-contracts">
+        Interface layer to access your EVM dApp from TON
+    </Card>
+</Columns>

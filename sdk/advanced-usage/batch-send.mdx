@@ -1,0 +1,44 @@
+---
+title: Batch Send
+description: ""
+---
+
+Send multiple cross-chain transactions simultaneously using method `sendCrossChainTransactions`:
+
+```javascript
+const batchTransactions = async () => {
+  // Define multiple transactions
+  const transactions = [
+    {
+      evmProxyMsg: {
+        evmTargetAddress: "0xContract1...",
+        methodName: "method1(bytes,bytes)",
+        encodedParameters: "0x...",
+      },
+      assets: [{ amount: 1.0 }],
+    },
+    {
+      evmProxyMsg: {
+        evmTargetAddress: "0xContract2...",
+        methodName: "method2(bytes,bytes)",
+        encodedParameters: "0x...",
+      },
+      assets: [{ address: "EQJetton...", amount: 100 }],
+    },
+  ];
+
+  // Convert to batch format
+  const crosschainTxs = transactions.map((tx) => ({
+    evmProxyMsg: tx.evmProxyMsg,
+    assets: tx.assets || [],
+  }));
+
+  // Send batch
+  const transactionLinkers = await tacSdk.sendCrossChainTransactions(
+    sender,
+    crosschainTxs
+  );
+
+  return transactionLinkers.map((linker) => linker.operationId);
+};
+```

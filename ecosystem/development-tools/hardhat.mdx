@@ -1,0 +1,67 @@
+---
+title: Hardhat
+description: "Deploy, test, and verify Solidity contracts on TAC using Hardhat - the complete development environment"
+---
+
+<CardGroup cols={1}>
+    <Card
+        title="Hardhat"
+        icon="code"
+        href="https://hardhat.org/docs/getting-started"
+    >
+        Official documentation
+    </Card>
+</CardGroup>
+
+TAC EVM Layer provides full compatibility with Hardhat, Ethereum's most popular development framework. Deploy your existing Solidity contracts without modification, test, and verify contracts on the [Block Explorer](/explorer/overview).
+
+## Installation & Setup
+
+Setting up Hardhat for TAC development requires no special configuration - it works exactly like any other EVM chain.
+
+Refer to our example app [create-tac-app](/quickstart/overview) to see the relevant hardhat deployment approach.
+
+## Deployment
+
+Below you can find the deployment commands used within [create-tac-app](/quickstart/overview)
+
+<Warning>
+    Ensure you have sufficient TAC tokens for gas fees before deploying to mainnet.
+</Warning>
+
+<Tabs>
+    <Tab title="Testnet Deployment">
+        ```bash
+        # Deploy to TAC Saint Petersburg Testnet
+        npx hardhat run scripts/deploy.ts --network tacTestnet
+        ```
+    </Tab>
+
+    <Tab title="Mainnet Deployment">
+        ```bash
+        # Deploy to TAC Mainnet (production)
+        npx hardhat run scripts/deploy.ts --network tacMainnet
+        ```
+    </Tab>
+</Tabs>
+
+## Common Issues & Solutions
+
+<AccordionGroup>
+    <Accordion title="Connection Issues" icon="wifi-off">
+        **Problem**: RPC connection failures or timeouts
+
+        **Solutions**:
+        - Verify RPC URLs are correct
+        - Increase timeout in network configuration
+        ```javascript
+        networks: {
+            tacTestnet: {
+                url: "https://spb.rpc.tac.build",
+                timeout: 60000, // Increase timeout
+            }
+        }
+        ```
+        - Try alternative RPC endpoints if available
+    </Accordion>
+</AccordionGroup>

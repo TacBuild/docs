@@ -1,0 +1,270 @@
+---
+title: Framework Integration
+---
+
+The TAC SDK can be used within different frontend frameworks. Below you can find examples for the popular ones like **React**, **Next.js** and **Vue.js**.
+
+## Integration Examples
+
+### React Application
+
+Create a context provider for SDK management:
+
+```jsx
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { TacSdk, Network } from "@tonappchain/sdk";
+
+const TacSdkContext = createContext(null);
+
+export const TacSdkProvider = ({ children }) => {
+  const [tacSdk, setTacSdk] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const initializeSdk = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const sdk = await TacSdk.create({
+          network:
+            process.env.NODE_ENV === "production"
+              ? Network.MAINNET
+              : Network.TESTNET,
+          delay: process.env.NODE_ENV === "production" ? 500 : 1000,
+        });
+
+        setTacSdk(sdk);
+      } catch (err) {
+        console.error("Failed to initialize TAC SDK:", err);
+        setError(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeSdk();
+
+    // Cleanup on unmount
+    return () => {
+      if (tacSdk) {
+        tacSdk.closeConnections();
+      }
+    };
+  }, []);
+
+  return (
+    <TacSdkContext.Provider value={{ tacSdk, loading, error }}>
+      {children}
+    </TacSdkContext.Provider>
+  );
+};
+
+export const useTacSdk = () => {
+  const context = useContext(TacSdkContext);
+  if (!context) {
+    throw new Error("useTacSdk must be used within a TacSdkProvider");
+  }
+  return context;
+};
+```
+
+### Next.js Application
+
+Handle client-side initialization with proper error boundaries:
+
+```jsx
+// hooks/useTacSdk.js
+import { useEffect, useState } from "react";
+import { TacSdk, Network } from "@tonappchain/sdk";
+
+export const useTacSdk = () => {
+  const [tacSdk, setTacSdk] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    // Ensure client-side only
+    if (typeof window === "undefined") return;
+
+    const initializeSdk = async () => {
+      try {
+        const sdk = await TacSdk.create({
+          network:
+            process.env.NODE_ENV === "production"
+              ? Network.MAINNET
+              : Network.TESTNET,
+          delay: process.env.NODE_ENV === "production" ? 500 : 1000,
+        });
+
+        setTacSdk(sdk);
+        setError(null);
+      } catch (err) {
+        console.error("SDK initialization failed:", err);
+        setError(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeSdk();
+
+    return () => {
+      if (tacSdk) {
+        tacSdk.closeConnections();
+      }
+    };
+  }, []);
+
+  const reinitialize = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      if (tacSdk) {
+        await tacSdk.closeConnections();
+      }
+
+      const sdk = await TacSdk.create({
+        network: Network.TESTNET,
+        delay: 1000,
+      });
+
+      setTacSdk(sdk);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { tacSdk, loading, error, reinitialize };
+};
+```
+
+### Vue.js Application
+
+Create a composable for SDK management:
+
+```javascript
+// composables/useTacSdk.js
+import { ref, onMounted, onUnmounted } from "vue";
+import { TacSdk, Network } from "@tonappchain/sdk";
+
+export function useTacSdk() {
+  const tacSdk = ref(null);
+  const loading = ref(true);
+  const error = ref(null);
+
+  const initialize = async () => {
+    try {
+      loading.value = true;
+      error.value = null;
+
+      tacSdk.value = await TacSdk.create({
+        network: import.meta.env.PROD ? Network.MAINNET : Network.TESTNET,
+        delay: import.meta.env.PROD ? 500 : 1000,
+      });
+    } catch (err) {
+      console.error("TAC SDK initialization failed:", err);
+      error.value = err;
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  onMounted(initialize);
+
+  onUnmounted(() => {
+    if (tacSdk.value) {
+      tacSdk.value.closeConnections();
+    }
+  });
+
+  return {
+    tacSdk: readonly(tacSdk),
+    loading: readonly(loading),
+    error: readonly(error),
+    reinitialize: initialize,
+  };
+}
+```
+
+## Common Issues and Solutions
+
+<Accordion title="Module Resolution Errors" icon="triangle-alert">
+
+    If you encounter module resolution errors, ensure you're using a modern bundler that supports ES modules:
+
+    **Webpack 5:**
+
+    ```javascript
+    // webpack.config.js
+    module.exports = {
+        resolve: {
+            fallback: {
+                crypto: require.resolve("crypto-browserify"),
+                stream: require.resolve("stream-browserify"),
+                buffer: require.resolve("buffer"),
+            },
+        },
+    };
+    ```
+
+    **Vite:**
+
+    ```javascript
+    // vite.config.js
+    export default {
+        define: {
+            global: "globalThis",
+        },
+        resolve: {
+            alias: {
+                crypto: "crypto-browserify",
+                stream: "stream-browserify",
+                buffer: "buffer",
+            },
+        },
+    };
+    ```
+
+</Accordion>
+
+<Accordion title="Network Connection Issues" icon="wifi-off">
+
+    If you experience network connection issues:
+
+    **Verify firewall settings** - Ensure your environment can access TON and TAC endpoints
+
+</Accordion>
+
+<Accordion title="TypeScript Type Errors" icon="code">
+
+    For TypeScript type errors:
+
+    1. **Install type definitions:**
+
+    ```bash
+    npm install --save-dev @types/node
+    ```
+
+    2. **Update your tsconfig.json:**
+
+    ```json
+    {
+        "compilerOptions": {
+            "moduleResolution": "node",
+            "allowSyntheticDefaultImports": true,
+            "esModuleInterop": true
+        }
+    }
+    ```
+
+    3. **Use explicit imports:**
+    ```typescript
+    import type { TacSdk, Network } from "@tonappchain/sdk";
+    ```
+
+</Accordion>

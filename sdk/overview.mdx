@@ -1,0 +1,434 @@
+---
+title: TAC SDK
+description: Developer's kits to build hybrid dApps.
+---
+
+<Tip>
+    Open the [Quickstart guide](/quickstart/overview) to send your first
+    cross-chain transaction and see the SDK in action.
+</Tip>
+
+<CardGroup cols={2}>
+    <Card
+        title="TypeScript SDK on NPM"
+        icon="hammer"
+        href="https://www.npmjs.com/package/@tonappchain/sdk"
+    >
+        Build hybrid dApp using TypeScript with **@tonappchain/sdk**
+    </Card>
+
+    <Card
+        title="Python SDK on PyPI"
+        icon="hammer"
+        href="https://pypi.org/project/tac-sdk/"
+    >
+        Build hybrid dApp using Python with **tac-sdk**
+    </Card>
+
+</CardGroup>
+
+## Installation
+
+Install the TAC SDK using your preferred package manager:
+
+<CodeGroup>
+    ```bash npm
+    npm install @tonappchain/sdk
+    ```
+
+    ```bash yarn
+    yarn add @tonappchain/sdk
+    ```
+
+    ```bash pnpm
+    pnpm add @tonappchain/sdk
+    ```
+</CodeGroup>
+
+## Core Capabilities
+
+The SDK provides four essential capabilities that make hybrid dApp development straightforward:
+
+<Info>Code snippets below are written in TypeScript, but the same features are also available in Python.</Info>
+
+### 1. TON Wallet Integration
+
+The SDK handles all aspects of TON wallet connectivity through the standard TON Connect protocol (or mnemonic usage). Users can connect with popular wallets like Wallet and Tonkeeper without installing additional software or managing new seed phrases.
+
+```javascript
+// Simple wallet connection
+const tacSdk = await TacSdk.create({ network: Network.TESTNET });
+const sender = await SenderFactory.getSender({ tonConnect: tonConnectUI });
+```
+
+### 2. Cross-Chain Transaction Routing
+
+Developers specify what they want to happen on the EVM side, and the SDK handles all the complex message formatting and routing through the TON Adapter.
+
+```javascript
+// Send tokens to an EVM DEX for swapping
+const transactionLinker = await tacSdk.sendCrossChainTransaction(
+  evmProxyMsg, // What to call on EVM
+  sender, // TON wallet
+  assets // Tokens to bridge
+);
+```
+
+<Warning>
+    Always send transactions on a Testnet first. Cross-chain transactions are
+    irreversible once confirmed, and incorrect parameters can result in loss of
+    funds.
+</Warning>
+
+### 3. Asset Bridging
+
+Token transfers between TON and TAC EVM happen automatically on behalf on the [TON Adapter](/why-tac/components/ton-adapter).
+The SDK manages encoding calldata for locking the specific tokens on TON, and accessing the target EVM dApp method.
+
+Learn more about working with different types of assets in the [Asset Bridging page](/why-tac/cross-chain-operations/asset-bridging).
+
+### 4. Real-Time Status Tracking
+
+The SDK provides comprehensive tools for monitoring cross-chain transactions, allowing applications to show users exactly what's happening and when operations complete.
+
+```javascript
+await tacSdk.startTracking(transactionLinker);
+```
+
+## How It Works
+
+The SDK acts as a bridge between your frontend application and TAC's cross-chain infrastructure:
+
+<Steps>
+    <Step title="Developer Integration" icon="code">
+        Developers integrate the SDK into their frontend applications and specify
+        EVM operations using familiar TypeScript/JavaScript patterns.
+    </Step>
+
+    <Step title="Message Preparation" icon="settings">
+        The SDK formats cross-chain messages with proper encoding, handles asset
+        preparation, and manages wallet interactions.
+    </Step>
+
+    <Step title="Simulation" icon="cctv">
+        Before each send cross-chain transaction call, simulation of the requested operation on TAC EVM is performed automatically,
+        helping you identify any potential issues before actually sending anything.
+    </Step>
+
+    <Step title="Cross-Chain Routing" icon="arrow-left-right">
+        Messages are routed through the TON Adapter's sequencer network, which
+        validates and processes them securely.
+    </Step>
+
+    <Step title="EVM Execution" icon="play">
+        Target EVM contracts receive properly formatted calls with bridged assets,
+        executing the requested operations.
+    </Step>
+
+    <Step title="Status Updates" icon="chart-line">
+        The SDK monitors progress and provides real-time updates to the frontend,
+        handling completion or failure scenarios.
+    </Step>
+</Steps>
+
+## Key Components
+
+The SDK is organized into focused components that handle different aspects of hybrid dApp functionality:
+
+<Accordion title="TacSdk - Main Interface" icon="code">
+    The primary class that developers interact with for all cross-chain operations. It handles SDK initialization, transaction sending, token address mapping, and balance queries.
+
+    Key features include sending cross-chain transactions, getting token addresses across chains, checking user balances, and managing SDK lifecycle.
+
+</Accordion>
+
+<Accordion title="OperationTracker - Status Monitoring" icon="chart-line">
+    Provides comprehensive tools for tracking cross-chain transaction status and progress. Applications can monitor operations in real-time and provide users with accurate updates.
+
+    Supports both simplified status checking (Pending/Successful/Failed) and detailed stage-by-stage tracking for advanced use cases.
+
+</Accordion>
+
+<Accordion title="Senders - Wallet Integration" icon="wallet">
+    Handles transaction signing and submission through different wallet types. Supports TON Connect for web applications and raw private keys for backend services.
+
+    Provides a unified interface regardless of the underlying wallet technology, simplifying application development.
+
+</Accordion>
+
+## Development Experience
+
+The SDK is designed to feel familiar to web developers while providing powerful cross-chain capabilities:
+
+### Typification
+
+The SDK provides comprehensive TypeScript definitions and Python type hints, enabling better development experience with IDE autocompletion and compile-time error checking.
+
+### Simulation
+
+Built-in simulation capabilities help developers validate their integrations before transfer:
+
+```javascript
+const simulation = await tacSdk.getSimulationInfo(
+    evmProxyMsg, // What to call on EVM
+    sender, // TON wallet
+    assets // Tokens to bridge
+);
+```
+
+### Testnet
+
+Joint TON Testnet and TAC Testnet environment available for developers 24/7.
+Verify your DeFi flow from TON to TAC and vice versa as simply as creating your sdk instance in the Testnet mode:
+
+```javascript
+const tacSdk = await TacSdk.create({ network: Network.TESTNET });
+```
+
+### Wait Options
+
+Many SDK methods support optional wait parameters to control the time it takes for operations to complete:
+
+```javascript
+// Basic waiting with defaults
+const defaultWaitOptions = {};
+const result = await tacSdk.sendCrossChainTransaction(
+  evmProxyMsg,
+  sender,
+  assets,
+  undefined, // transaction options
+  { waitOptions: defaultWaitOptions } // use default wait options
+);
+
+// Custom timeout and polling interval
+const customWaitOptions = {
+  timeout: 600000, // 10 minutes
+  delay: 5000, // Check every 5 seconds
+};
+const resultWithCustomTiming = await tacSdk.sendCrossChainTransaction(
+  evmProxyMsg,
+  sender,
+  assets,
+  undefined,
+  { waitOptions: customWaitOptions }
+);
+```
+
+## Verification
+
+Test your installation with a simple initialization:
+
+```javascript
+import { TacSdk, Network } from "@tonappchain/sdk";
+
+async function testInstallation() {
+  try {
+    const tacSdk = await TacSdk.create({
+      network: Network.TESTNET,
+    });
+
+    console.log("✅ TAC SDK initialized successfully");
+    console.log("Network:", tacSdk.network);
+
+    // Clean up
+    tacSdk.closeConnections();
+  } catch (error) {
+    console.error("❌ Installation test failed:", error);
+  }
+}
+
+testInstallation();
+```
+
+<Warning>
+    Remember to always call `await tacSdk.closeConnections()` when your application
+    shuts down to properly clean up network resources and prevent memory leaks.
+</Warning>
+
+## Sender Factory
+
+The SDK supports all standard TON wallet versions:
+
+```javascript
+import { SenderFactory, Network, AssetType } from "@tonappchain/sdk";
+
+// Wallet V4 (most common)
+const senderV4 = await SenderFactory.getSender({
+  network: Network.TESTNET,
+  version: "V4",
+  mnemonic: "word1 word2 word3 ... word24",
+});
+
+// Wallet V5R1 (latest)
+const senderV5 = await SenderFactory.getSender({
+  network: Network.TESTNET,
+  version: "V5R1",
+  mnemonic: "word1 word2 word3 ... word24",
+  options: {
+    v5r1: {
+      subwalletNumber: 0, // Optional subwallet number
+    },
+  },
+});
+
+// Legacy wallets
+const senderV3 = await SenderFactory.getSender({
+  network: Network.TESTNET,
+  version: "V3R2",
+  mnemonic: "word1 word2 word3 ... word24",
+});
+
+// Highload wallet for applications requiring high transaction throughput
+const highloadSender = await SenderFactory.getSender({
+  network: Network.TESTNET,
+  version: "HIGHLOAD_V3",
+  mnemonic: "word1 word2 word3 ... word24",
+  options: {
+    highloadV3: {
+      subwalletId: 0, // Subwallet identifier
+      timeout: 60, // Transaction timeout in seconds
+    },
+  },
+});
+```
+
+<Note>
+    **Batch Transaction Limits**: Different wallet versions support different
+    batch sizes when sending multiple transactions. V5R1 wallets can send up to
+    254 transactions per batch, while V4 and other standard wallets support up to
+    4 transactions per batch. Highload V3 wallets are optimized for large batch
+    operations.
+</Note>
+
+## EVM Target Messages
+
+Developers specify EVM operations using a unified structure for cross-chain delivery:
+
+```javascript
+const evmProxyMsg = {
+  evmTargetAddress: "0xDappProxyAddr", // Contract to call
+  methodName: "swapExactTokensForTokens(bytes,bytes)", // Method signature
+  encodedParameters: new ethers.AbiCoder().encode(
+    ['tuple(uint256,uint256,address[],address,uint256)'],
+    [[10n, 5n, ['0xToken1Addr', '0xToken2Addr'], '0xDappProxyAddr', 19010987500]],
+  ), // Example parameters for Uniswap V2 `swapExactTokensForTokens` method
+};
+```
+
+Use `ethers` or similar libraries to encode contract parameters and
+make sure the encoded parameters are valid tuples.
+Learn more about parameter encoding and decoding [here](/proxies/advanced-custom-proxy/argument-encoding).
+
+### Method Name Formatting
+
+The SDK accepts flexible method name formats:
+
+<Tabs>
+    <Tab title="Full Signature">
+        ```javascript
+        const evmProxyMsg = {
+        evmTargetAddress: "0x742d35Cc647332...",
+        methodName: "swapExactTokensForTokens(bytes,bytes)",
+        encodedParameters: encodedSwapParams
+    };
+        ```
+    </Tab>
+
+    <Tab title="Simple Name">
+        ```javascript
+        const evmProxyMsg = {
+        evmTargetAddress: "0x742d35Cc647332...",
+        methodName: "transfer", // SDK will format as "transfer(bytes,bytes)"
+        encodedParameters: encodedTransferParams
+    };
+        ```
+    </Tab>
+
+    <Tab title="No Method Name">
+        ```javascript
+        const evmProxyMsg = {
+        evmTargetAddress: "0x742d35Cc647332...",
+        // No methodName - calls contract directly with encoded data
+        encodedParameters: "0x..."
+    };
+        ```
+    </Tab>
+</Tabs>
+
+## Asset Bridging
+
+Tokens (native, FTs) and NFTs to transfer are specified using user-friendly amounts that the SDK automatically converts to the proper formats for each chain:
+
+```javascript
+import { TON } from '@tonappchain/sdk';
+
+const ft = await tacSdk.getFT('EQtonTokenAddress');
+const ton = new TON(tacSdk.config)
+const assets = [
+    ft.withAmount(10), // TON jetton (fungible token)
+    ton.withAmount(20) // Native TON
+];
+```
+
+## Configuration Options
+
+The SDK accepts several configuration options during initialization:
+
+```javascript
+const tacSdk = await TacSdk.create({
+  network: Network.TESTNET, // Network selection
+  delay: 1000, // Delay between operations (milliseconds)
+  TONParams: {
+    // TON-specific configuration
+    contractOpener: tonClient, // Custom TonClient instance
+  },
+  TACParams: {
+    // TAC-specific configuration
+    provider: customProvider, // Custom provider
+  },
+});
+```
+
+Explore more options in the [docs](https://github.com/TacBuild/tac-sdk/).
+
+## Error Handling
+
+The SDK provides comprehensive error handling that protects user assets and provides meaningful feedback:
+
+<Tabs>
+    <Tab title="Pre-Transaction Validation">
+        The SDK validates parameters, checks balances, and estimates gas costs
+        before submitting transactions, preventing common failure scenarios.
+    </Tab>
+
+    <Tab title="Network Resilience">
+        Built-in [retry mechanisms](/sdk/overview#wait-options) and fallback endpoints ensure operations continue
+        even when individual network components experience issues.
+    </Tab>
+
+    <Tab title="Asset Protection">
+        Failed transactions automatically trigger rollback mechanisms that return
+        assets to users safely, preventing fund loss.
+    </Tab>
+</Tabs>
+
+
+## Documentation
+
+Comprehensive documentation with helpful examples is available on the SDK's GitHub repositories:
+
+<CardGroup cols={2}>
+    <Card
+        title="TypeScript SDK Documentation"
+        href="https://github.com/TacBuild/tac-sdk/"
+        icon="hammer"
+    >
+    </Card>
+
+    <Card
+        title="Python TAC SDK Documentation"
+        href="https://github.com/TacBuild/python-tac-sdk"
+        icon="hammer"
+    >
+    </Card>
+</CardGroup>

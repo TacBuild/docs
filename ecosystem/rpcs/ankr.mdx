@@ -1,5 +1,7 @@
 Ankr is a leading provider of blockchain infrastructure, offering a range of services including RPC nodes, indexing, and analytics.
 
+https://www.ankr.com/rpc/tac
+
 ## TAC Network RPC Infrastructure
 
 TAC offers full EVM compatibility through its Layer 1 blockchain. For reliable development and production environments, we've partnered with Ankr to provide enterprise-grade RPC infrastructure.
@@ -35,7 +37,7 @@ For EVM application integration using Ankr's RPC services:
 import { ethers } from 'ethers';
 
 // Connect via Ankr's RPC endpoint
-const provider = new ethers.providers.JsonRpcProvider('https://spb.rpc.tac.build');
+const provider = new ethers.providers.JsonRpcProvider('https://rpc.ankr.com/tac_spb');
 
 // Test connection
 async function checkConnection() {
@@ -47,7 +49,7 @@ async function checkConnection() {
 Or for deployment on TAC L1 using Foundry
 
 ```
-forge create --rpc-url https://spb.rpc.tac.build --private-key YOUR_PRIVATE_KEY_HERE YOUR_CONTRACT --legacy --broadcast
+forge create --rpc-url https://rpc.ankr.com/tac_spb --private-key YOUR_PRIVATE_KEY_HERE YOUR_CONTRACT --legacy --broadcast
 ```
 
 </Step>

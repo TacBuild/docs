@@ -1,0 +1,112 @@
+---
+title: TON Adapter
+description: "The distributed messaging system that securely connects TON and TAC EVM blockchains through sequencer consensus"
+---
+
+<Info>
+    **Current Network Status**: The sequencer network is currently distributed but
+    not decentralized. Full decentralization is on the roadmap as the network
+    matures.
+</Info>
+
+The TON Adapter is the cross-chain messaging backbone of TAC, enabling secure communication between TON and TAC EVM Layer.
+Unlike traditional bridges that simply move assets, the TON Adapter is designed specifically for application-level interactions,
+allowing TON users to execute complex operations on EVM smart contracts seamlessly.
+
+TON Adapter is tied to the specific set of contracts on both TON and TAC EVM chains to perform its duty.
+
+### Core Functions
+
+The TON Adapter handles the following operations:
+
+<Columns cols={2}>
+    <Card title="Message Operations" icon="message-circle">
+        - Transaction execution coordination
+        - TON and TAC EVM calls
+        - Value routing
+    </Card>
+
+    <Card title="Consensus Operations" icon="handshake">
+        - Merkle tree formation
+        - Multi-group validation
+        - Economic security enforcement
+    </Card>
+</Columns>
+
+### Sequencer Network Architecture
+
+<Steps>
+    <Step title="Individual Sequencers" icon="server">
+        Each sequencer monitors both TON and TAC EVM for relevant events,
+        maintaining local databases of transactions and forming independent Merkle
+        trees.
+    </Step>
+
+    <Step title="Sequencer Groups" icon="users">
+        Sequencers organize into groups that must reach 3/5 internal consensus. Each
+        group validates transactions independently and stakes collateral as security.
+    </Step>
+
+    <Step title="Network Consensus" icon="handshake">
+        Multiple groups must submit identical Merkle trees to achieve network-wide
+        consensus. This creates multiple validation layers for maximum security.
+    </Step>
+
+    <Step title="Execution" icon="play">
+        Once consensus is reached, transactions execute on the target chain with
+        cryptographic proof of validity.
+    </Step>
+</Steps>
+
+## Asset Management
+
+The TON Adapter handles two primary types of asset operations as tokens move between chains.
+
+### Lock and Mint Operations
+
+When assets need to be moved from one chain to another, the TON Adapter uses a lock-and-mint mechanism:
+
+- **Asset Locking**: Tokens are locked on their native chain to prevent double-spending while preserving the original asset.
+- **Metadata Capture**: The system records key token details, including the name, symbol, decimals, and the original contract address.
+- **Token Deployment**: If the token is crossing chains for the first time, the system automatically deploys the corresponding ERC-20 contract on TAC EVM and Jetton contract on TON.
+- **Token Minting**: An equivalent amount of tokens is minted on the destination chain to keep supply consistent across both networks.
+
+### Burn and Release Operations
+
+When assets move back, the reverse flow applies:
+
+- **Asset Burning**: ERC-20/Jetton tokens are burned, removing them from circulation on a particular chain.
+- **Validation**: Sequencers verify the burn.
+- **Asset Release**: The previously locked tokens are released.
+
+### Failure Protection
+
+- **Automatic Rollbacks**: If a transaction fails on the target chain, assets are automatically returned to the sender.
+
+- **Failed Transaction Collection**: Failed transactions are processed through the same consensus mechanism to ensure proper resolution.
+
+## Performance Characteristics
+
+The TON Adapter is designed to balance security with reasonable performance for application-level interactions.
+
+<Tabs>
+  <Tab title="Latency">
+    Cross-chain transactions typically complete **within 1-3 minutes**.
+    The exact timing depends on the number of
+    sequencer groups participating in consensus and the current cross-chain activity.
+  </Tab>
+
+<Tab title="Throughput">
+    The system can handle **hundreds of cross-chain messages per minute**.
+    Each transaction will be finalized but the delay of up to **10 minutes** may be introduced under the peak cross-chain activity.
+</Tab>
+
+  <Tab title="Cost">
+    Cross-chain operations require gas fees on both chains plus sequencer fees
+    for the messaging service. However, the cost remains reasonable (about `0.05 - 0.20 TON`) for
+    transactions like token swaps (TON->TAC->TON type).
+
+    The distributed nature of sequencer operations helps keep fees competitive while maintaining
+    security guarantees.
+  </Tab>
+</Tabs>

@@ -1,0 +1,92 @@
+---
+title: TON Connect
+description: "For browser applications, integrate with TON Connect for wallet apps (Wallet, Tonkeeper) connectivity"
+---
+
+<Tip>
+    Start with TON Connect integration for web applications to provide the best
+    user experience. Use private key integration only for backend services or
+    development environments where you control the private keys securely.
+</Tip>
+
+### Install
+
+```bash
+npm install @tonconnect/ui
+```
+
+### TON Connect Manifest
+
+Create a manifest file for your application:
+
+```json
+{
+  "url": "https://yourapp.com",
+  "name": "Your dApp Name",
+  "iconUrl": "https://yourapp.com/icon.png",
+  "termsOfUseUrl": "https://yourapp.com/terms",
+  "privacyPolicyUrl": "https://yourapp.com/privacy"
+}
+```
+
+### Configure
+
+```javascript
+import { TonConnectUI } from "@tonconnect/ui";
+
+// Initialize TON Connect
+const tonConnectUI = new TonConnectUI({
+  manifestUrl: "https://yourapp.com/tonconnect-manifest.json",
+  buttonRootId: "ton-connect-button",
+});
+
+// Create sender from TON Connect
+import { SenderFactory } from "@tonappchain/sdk";
+
+const sender = await SenderFactory.getSender({
+  tonConnect: tonConnectUI,
+});
+```
+
+An example of using TON Connect with the TAC SDK can be found in our [create-tac-app](/quickstart/overview).
+
+## Security Best Practices
+
+<Warning>
+    Never expose private keys or mnemonics in client-side code. Always use
+    environment variables or secure configuration management for sensitive data.
+</Warning>
+
+### Client-Side Security
+
+```javascript
+// Good - Use TonConnect for web applications
+const sender = await SenderFactory.getSender({
+  tonConnect: tonConnectUI, // User controls private keys
+});
+
+// Bad - Never do this in client-side code
+const sender = await SenderFactory.getSender({
+  network: Network.TESTNET,
+  version: "V4",
+  mnemonic: "exposed mnemonic in browser", // Security risk!
+});
+```
+
+### Server-Side Security
+
+```javascript
+// Good - Use environment variables
+const sender = await SenderFactory.getSender({
+  network: Network.TESTNET,
+  version: "V4",
+  mnemonic: process.env.WALLET_MNEMONIC, // Secure
+});
+
+// Good - Use secure configuration services
+const sender = await SenderFactory.getSender({
+  network: Network.TESTNET,
+  version: "V4",
+  mnemonic: await getSecureConfig("WALLET_MNEMONIC"), // Secure
+});
+```

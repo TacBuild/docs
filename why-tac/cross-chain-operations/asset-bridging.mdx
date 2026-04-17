@@ -1,0 +1,283 @@
+---
+title: Asset Bridging
+description: "How tokens and assets move securely between TON and TAC EVM through lock-mint and burn-release mechanisms"
+---
+
+Asset bridging in TAC enables tokens to move seamlessly between TON and TAC EVM while preserving supply integrity and user ownership.
+
+Unlike traditional bridges that mint wrapped tokens, TAC’s bridging system is designed specifically for application-level interactions, where assets effectively remain the same as they move across chains.
+
+<Tip>Check out the official **Bridge app** for both Mainnet and Testnet [here](/ecosystem/bridge)</Tip>
+
+## Core Bridging Principles
+
+TAC's asset bridging system operates on fundamental principles that ensure security, maintain token economics, and provide seamless user experience.
+
+### Supply Conservation
+
+- **Total Supply Integrity**: The combined supply of a token across both TON and TAC EVM always equals the original supply. When tokens are locked on one chain, equivalent amounts are minted on the other chain, maintaining perfect balance.
+
+- **Provable Reserves**: All locked tokens are held in verifiable smart contracts where their existence can be independently confirmed by anyone.
+
+- **Atomic Operations**: Asset locking, minting, burning, and releasing operations occur atomically within the same cross-chain transaction, preventing inconsistent states.
+
+## Token Types and Handling
+
+Different types of assets require specialized handling to ensure proper representation and functionality across both chains.
+
+<Check>
+    Users can even bridge **multiple assets** in a single cross-chain transaction
+    (e.g., native TON, jettons and NFTs - with no limit!).
+</Check>
+
+### TON Native Assets
+
+<Tabs>
+  <Tab title="TON Jettons">
+    - **Jetton Bridging**: TON jettons (fungible tokens) like `USDT` are the most common bridged assets. When first crossing to TAC EVM, the system automatically deploys corresponding ERC-20 contracts.
+
+    - **Address Mapping**: Deterministic mapping between ERC-20 addresses and their corresponding TON jettons.
+
+    - **Metadata Preservation**: Token name, symbol, decimals, and additional metadata are captured from the TON side and replicated in the EVM contract.
+  </Tab>
+
+    <Tab title="TON NFTs">
+        - **NFT Collection**: A TON NFT collection will be represented as an familiar ERC-721 collection on TAC EVM.
+
+        - **Single NFT**: In TON NFT may not belong to a collection, but its mirrored version on TAC EVM will be part of a collection as EVM nature requires it.
+
+        - **Metadata Preservation**: NFT metadata will be mirrored to TAC EVM.
+    </Tab>
+  
+  <Tab title="Native TON">
+    - **TON Token Handling**: Native TON tokens receive special treatment as they don't have a traditional contract address on the TON side.
+    
+    - **Wrapped Representation**: On TAC EVM, native TON is represented as a wrapped token (similar to WETH on Ethereum) with standard ERC-20 functionality.
+  </Tab>
+</Tabs>
+
+### TAC EVM Native Assets
+
+<Tabs>
+    <Tab title="ERC-20 Tokens">
+        - **Token Bridging**: Tokens originally created on TAC EVM can also be bridged to TON, creating jetton representations on the TON side.
+
+        - **Address Mapping**: Deterministic mapping between ERC-20 addresses and their corresponding TON jettons.
+
+        - **Metadata Preservation**: Token name, symbol, decimals, and additional metadata are captured from the EVM side and replicated in the TON contract.
+    </Tab>
+
+    <Tab title="EVM NFTs">
+        - **NFT Collection**: An EVM NFT collection will be represented as an NFT collection on TON.
+
+        - **Metadata Preservation**: NFT metadata will be mirrored to TON.
+    </Tab>
+
+    <Tab title="Native TAC">
+        - **TAC Token Handling**: Native TAC tokens also don’t have a contract address on the TAC side.
+
+        - **Wrapped Representation**: Native TAC tokens are represented as jettons (fungible tokens) in TON.
+    </Tab>
+</Tabs>
+
+Applications can query the token registry to find corresponding addresses without needing to calculate them.
+Refer to TAC SDK's methods [`getTVMTokenAddress`](https://gitlab.com/ton-app-chain/tac/tac-sdk/-/blob/develop/docs/sdks/tac_sdk.md#gettvmtokenaddress)
+and [`getEVMTokenAddress`](https://gitlab.com/ton-app-chain/tac/tac-sdk/-/blob/develop/docs/sdks/tac_sdk.md#getevmtokenaddress)
+
+A few common tokens and their counterparts are listed on [this page](/ecosystem/token-list).
+
+## Token Address Mapping
+
+Understanding and working with cross-chain token addresses:
+
+<Info>
+    Code samples below use TypeScript [TAC SDK](/sdk/overview)
+</Info>
+
+### FT Address Resolution
+
+```javascript
+// Get EVM equivalent of TON token
+const getEvmTokenAddress = async (tonTokenAddress) => {
+  try {
+    const evmAddress = await tacSdk.getEVMTokenAddress(tonTokenAddress);
+    console.log(`TON token ${tonTokenAddress} maps to EVM token ${evmAddress}`);
+    return evmAddress;
+  } catch (error) {
+    console.error("Token mapping failed:", error);
+    return null;
+  }
+};
+
+// Reverse mapping: EVM to TON
+const getTonTokenAddress = async (evmTokenAddress) => {
+  try {
+    const tonAddress = await tacSdk.getTVMTokenAddress(evmTokenAddress);
+    console.log(`EVM token ${evmTokenAddress} maps to TON token ${tonAddress}`);
+    return tonAddress;
+  } catch (error) {
+    console.error("Reverse token mapping failed:", error);
+    return null;
+  }
+};
+```
+
+### NFT Address Resolution
+
+<Note>
+    NFT item is always a part of a collection in EVM
+</Note>
+
+```javascript
+// Get EVM NFT collection from TON NFT collection
+const getEvmNftCollectionAddress = async (tonNftCollectionAddress, tvmNftItemIndex) => {
+  const NFT = await tacSdk.getNFT(
+      address: tonNftCollectionAddress,
+      tokenType: AssetType.NFT,
+      addressType: NFTAddressType.COLLECTION,
+      index: tvmNftItemIndex,
+  );
+  return NFT.getEVMAddress();
+};
+
+// Reverse
+const getTonNftCollectionAddress = async (evmCollectionAddress, evmNftItemIndex) => {
+  const NFT = await tacSdk.getNFT(
+    address: evmCollectionAddress,
+    tokenType: AssetType.NFT,
+    addressType: NFTAddressType.COLLECTION,
+    index: evmNftItemIndex,
+  );
+  return NFT.getTVMAddress();
+};
+
+// Get EVM NFT collection from TON NFT single item
+const getEvmNftItemAddress = async (tonNftItemAddress) => {
+  const NFT = await tacSdk.getNFT(
+      address: tonNftItemAddress,
+      tokenType: AssetType.NFT,
+      addressType: NFTAddressType.ITEM,
+  );
+  return NFT.getEVMAddress();
+};
+```
+
+## FT Balance
+
+To query user FT balance use `getUserJettonBalance` and `getUserJettonBalanceExtended`:
+
+```javascript
+const getUserAssetBalances = async (userAddress) => {
+  // Get jetton balance (basic)
+  const jettonBalance = await tacSdk.getUserJettonBalance(
+    userAddress,
+    jettonMasterAddress
+  );
+  console.log("Raw jetton balance:", jettonBalance.toString());
+
+  // Get jetton balance (extended with metadata)
+  const extendedBalance = await tacSdk.getUserJettonBalanceExtended(
+    userAddress,
+    jettonMasterAddress
+  );
+
+  console.log("Balance Details:");
+  console.log("- Raw amount:", extendedBalance.rawAmount.toString());
+  console.log("- Decimals:", extendedBalance.decimals);
+  console.log("- Human readable:", extendedBalance.amount);
+  console.log("- Symbol:", extendedBalance.symbol);
+  console.log("- Name:", extendedBalance.name);
+
+  return extendedBalance;
+};
+```
+
+### Jetton Wallet Management
+
+<Note>
+    Each FT (jetton) in TON has a master address,
+    and each individual wallet has its own address associated with that master
+    (`UserJettonWalletAddress`).
+    The latter is created automatically when an individual wallet is funded with a specific jetton for the first time
+</Note>
+
+```javascript
+const getJettonWalletInfo = async (userAddress, jettonMasterAddress) => {
+  // Get user's jetton wallet address
+  const jettonWalletAddress = await tacSdk.getUserJettonWalletAddress(
+    userAddress,
+    jettonMasterAddress
+  );
+
+  console.log("Jetton wallet address:", jettonWalletAddress);
+
+  // Check if wallet exists and is deployed
+  const isDeployed = await tacSdk.isContractDeployedOnTVM(jettonWalletAddress);
+  console.log("Wallet deployed:", isDeployed);
+
+  return {
+    address: jettonWalletAddress,
+    deployed: isDeployed,
+  };
+};
+```
+
+## Decimal and Precision Handling
+
+Different blockchain ecosystems use different decimal standards, requiring careful handling to maintain precision and user experience.
+
+### Decimal Standards
+
+<Columns cols={2}>
+  <div>
+    **TON Standard**: TON jettons typically use 9 decimals, following the
+    platform's conventions for token precision.
+  </div>
+
+  <div>
+    **EVM Standard**: Ethereum and EVM chains commonly use 18 decimals,
+    providing higher precision for complex DeFi operations.
+  </div>
+</Columns>
+
+### Precision Management
+
+- **Preservation**: When TON tokens (9 decimals) bridge to TAC EVM, they maintain their 9 decimal precision rather than being artificially inflated to 18 decimals.
+
+- **Compatibility**: TAC EVM supports tokens with various decimal counts, ensuring that bridged tokens work correctly with existing DeFi protocols.
+    E.g., the `USDT` has 6 decimal places on both TON and TAC EVM.
+
+- **Dev Tools**: **TAC SDK** provides [means](https://github.com/TacBuild/tac-sdk/blob/main/docs/sdks/tac_sdk.md#getuserjettonbalanceextended) to get decimals for a specific token.
+
+## Liquidity Management
+
+Asset bridging enables sophisticated liquidity management strategies that benefit both ecosystems.
+
+### Example: DEX Liquidity
+
+When users provide liquidity to a DEX on TAC EVM using TON-origin tokens:
+
+<Steps>
+  <Step title="Token Bridging" icon="activity">
+    TON tokens are automatically bridged to TAC EVM as part of the liquidity
+    provision transaction.
+  </Step>
+
+<Step title="Liquidity Addition" icon="plus">
+  Bridged tokens are added to the DEX liquidity pool, creating trading
+  opportunities for both TON and EVM users.
+</Step>
+
+<Step title="LP Token Generation" icon="coins">
+  Users receive LP tokens representing their share of the pool, which can be
+  used on either chain.
+</Step>
+
+  <Step title="Cross-Chain Access" icon="arrow-left-right">
+    The same liquidity serves traders from both ecosystems, maximizing
+    utilization and fee generation.
+  </Step>
+</Steps>
+
+Reverse process applies while removing liquidity from the DEX.
+LP tokens can be burned to get the initial tokens back from the pool.
