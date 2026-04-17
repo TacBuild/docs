@@ -213,11 +213,11 @@
     },
     {
       "source": "/build/get-started/introduction",
-      "destination": "/build/quickstart"
+      "destination": "/quickstart/overview"
     },
     {
       "source": "/home/get-started/introduction",
-      "destination": "/build/quickstart"
+      "destination": "/quickstart/overview"
     },
     {
       "source": "/home/why-tac/cross-chain-messaging",
