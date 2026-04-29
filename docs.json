@@ -220,6 +220,14 @@
       "destination": "/quickstart/overview"
     },
     {
+      "source": "/build/quickstart",
+      "destination": "/quickstart/overview"
+    },
+    {
+      "source": "/core-concepts/overview/architecture",
+      "destination": "/why-tac/overview/what-is-tac"
+    },
+    {
       "source": "/home/why-tac/cross-chain-messaging",
       "destination": "/why-tac/cross-chain-operations/cross-chain-messaging"
     }
