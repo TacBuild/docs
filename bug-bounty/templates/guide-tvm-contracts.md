@@ -5,7 +5,7 @@ description:
 
 # Bug Bounty Report Guide
 
-The report template below covers vulnerabilities in FunC / Tact contracts deployed on TON.
+The report template below covers vulnerabilities in TAC-related FunC / Tact contracts deployed on TON.
 Tools: Blueprint, toncli, tonutils-go, @ton/ton (JS SDK).
 
 ## Report Template

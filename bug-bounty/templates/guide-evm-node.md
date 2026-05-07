@@ -5,7 +5,7 @@ description:
 
 # Bug Bounty Report Guide
 
-The report template below covers vulnerabilities in EVM-compatible Cosmos chain nodes: precompiles,
+The report template below covers vulnerabilities in EVM-compatible [Cosmos TAC chain node](https://github.com/TacBuild/evm): precompiles,
 EVM↔Cosmos state synchronisation, bank/staking/distribution module bugs.
 Tools: Hardhat (EVM side), Cosmos REST API, Go node source.
 

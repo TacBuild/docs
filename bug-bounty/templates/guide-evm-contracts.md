@@ -5,8 +5,8 @@ description:
 
 ## Bug Bounty Report Guide
 
-The report template below covers vulnerabilities in Solidity contracts deployed on EVM-compatible
-chains (TAC, Ethereum, etc.). Tools: Hardhat / Foundry / Tenderly.
+The report template below covers vulnerabilities in TAC-related Solidity contracts deployed on EVM-compatible
+chains (TAC, Ethereum, etc.). Some of them are available [here](/ecosystem/network-info). Tools: Hardhat / Foundry / Tenderly.
 
 ## Report Template
 
