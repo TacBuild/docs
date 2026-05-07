@@ -203,6 +203,25 @@
         "pages": [
           "audit/overview"
         ]
+      },
+      {
+        "tab": "Bug Bounty",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "bug-bounty/overview"
+            ]
+          },
+          {
+            "group": "Templates",
+            "pages": [
+              "bug-bounty/templates/guide-evm-contracts",
+              "bug-bounty/templates/guide-evm-node",
+              "bug-bounty/templates/guide-tvm-contracts"
+            ]
+          }
+        ]
       }
     ]
   },
