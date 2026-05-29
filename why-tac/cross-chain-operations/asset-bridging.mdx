@@ -60,6 +60,15 @@ Different types of assets require specialized handling to ensure proper represen
 
 <Tabs>
     <Tab title="ERC-20 Tokens">
+        <Warning>
+            The TAC EVM side can mint token amounts up to `2^128`, but the maximum token value supported on TON is limited to `2^120 - 1`.
+            If you attempt to bridge the `2^120`-th token (about 1329 quadrillion) or any larger amount from TAC to TON,
+            those tokens will be locked on TAC and will not be minted on TON.
+
+            In other words, any `2^120`-th and higher tokens will effectively be lost. Please be careful.
+            Fortunately, there are currently no existing assets with values that reach such levels.
+        </Warning>
+
         - **Token Bridging**: Tokens originally created on TAC EVM can also be bridged to TON, creating jetton representations on the TON side.
 
         - **Address Mapping**: Deterministic mapping between ERC-20 addresses and their corresponding TON jettons.
