@@ -61,7 +61,7 @@ Different types of assets require specialized handling to ensure proper represen
 <Tabs>
     <Tab title="ERC-20 Tokens">
         <Warning>
-            The TAC EVM side can mint token amounts up to `2^128`, but the maximum token value supported on TON is limited to `2^120 - 1`.
+            The EVM side allow amounts up to `2^256-1`, but the maximum token value supported on TON is limited to `2^120 - 1`.
             If you attempt to bridge the `2^120`-th token (about 1329 quadrillion) or any larger amount from TAC to TON,
             those tokens will be locked on TAC and will not be minted on TON.
 
