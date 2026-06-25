@@ -123,7 +123,10 @@
           {
             "group": "RPCs",
             "icon": "server",
-            "pages": ["ecosystem/rpcs/ankr"]
+            "pages": [
+              "ecosystem/rpcs/ankr",
+              "ecosystem/rpcs/getblock"
+            ]
           }
         ]
       },
