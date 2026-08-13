@@ -2,6 +2,7 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "TAC",
+  "description": "TAC documentation for developers building hybrid dApps that connect EVM smart contracts with native TON user experiences through TAC's SDK, TON Adapter, EVM layer, and proxy contracts.",
   "colors": {
     "primary": "#91029B",
     "light": "#91029B",
