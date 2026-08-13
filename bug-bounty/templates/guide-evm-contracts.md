@@ -149,7 +149,7 @@ Provide a source-verified link on TAC Explorer / Etherscan / Blockscout if avail
 
 #### 3.2 Root Cause
 
-Name the **SWC / Solodit category** and give the one-line explanation:
+Name the **SWC / Solidity category** and give the one-line explanation:
 
 > **SWC-107 (Reentrancy):** `balances[msg.sender]` is decremented **after**
 > the external `.call{value: amount}("")`, allowing the callee to re-enter
