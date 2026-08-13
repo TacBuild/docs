@@ -363,3 +363,7 @@ chainName
 rpcUrls
 nativeCurrency
 EVM's
+Ethereum's
+Ankr's
+TACHeader
+Tendermint's
