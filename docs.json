@@ -267,11 +267,6 @@
       {
         "label": "Telegram",
         "href": "https://t.me/TACbuild"
-      },
-      {
-        "type": "button",
-        "label": "Discord",
-        "href": "https://discord.gg/tacbuild"
       }
     ]
   },
