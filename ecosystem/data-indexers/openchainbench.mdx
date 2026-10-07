@@ -1,0 +1,16 @@
+---
+title: OpenChainBench
+---
+
+OpenChainBench measures the public TAC RPC endpoints and publishes the comparison. It sends one `eth_getBlockByNumber("latest", false)` every 60 seconds from three regions (us-east, eu-west and ap-southeast) and reports p50, p90, p99, mean, success rate and sample count for each endpoint, broken down per region, over a rolling 24 hours.
+
+The TAC page covers `rpc.tac.build` alongside the Ankr, dRPC and thirdweb endpoints, each listed with its URL and its measured numbers. No endpoint pays for inclusion or position, endpoints that stop answering keep their row and their success rate, and the measurement harness is public.
+
+<CardGroup cols={1}>
+    <Card
+        title="OpenChainBench for TAC"
+        href="https://openchainbench.com/benchmarks/tac-rpc"
+        icon="chart-line"
+    >
+    </Card>
+</CardGroup>
