@@ -100,7 +100,8 @@
             "pages": [
               "ecosystem/data-indexers/blockscout",
               "ecosystem/data-indexers/goldsky",
-              "ecosystem/data-indexers/dune"
+              "ecosystem/data-indexers/dune",
+              "ecosystem/data-indexers/openchainbench"
             ]
           },
           {
