@@ -75,8 +75,8 @@ Foundry works seamlessly with TAC - no special configuration required beyond sta
     
     [rpc_endpoints]
     # TAC Saint Petersburg Testnet
-    tac_testnet = "https://spb.rpc.tac.build"
-    tac_mainnet = "https://rpc.tac.build"
+    tac_testnet = "https://rpc-public-spb.tac.build"
+    tac_mainnet = "https://rpc-public.tac.build"
     
     
     ```
@@ -94,8 +94,8 @@ Foundry works seamlessly with TAC - no special configuration required beyond sta
     PRIVATE_KEY=your_private_key_here
     
     # Optional: RPC URLs as environment variables
-    TAC_TESTNET_RPC=https://spb.rpc.tac.build
-    TAC_MAINNET_RPC=https://rpc.tac.build
+    TAC_TESTNET_RPC=https://rpc-public-spb.tac.build
+    TAC_MAINNET_RPC=https://rpc-public.tac.build
     ```
   </Step>
 </Steps>
@@ -231,10 +231,10 @@ contract SimpleStorageTest is Test {
     <Tab title="Fork Testing">
         ```bash
         # Test against TAC testnet fork
-        forge test --fork-url https://spb.rpc.tac.build
+        forge test --fork-url https://rpc-public-spb.tac.build
 
         # Test at specific block
-        forge test --fork-url https://spb.rpc.tac.build --fork-block-number 1000000
+        forge test --fork-url https://rpc-public-spb.tac.build --fork-block-number 1000000
 
         # Test with environment variable
         forge test --fork-url $TAC_TESTNET_RPC
@@ -346,22 +346,22 @@ contract DeployScript is Script {
 
 ```bash
 # Get block information
-cast block-number --rpc-url https://spb.rpc.tac.build
+cast block-number --rpc-url https://rpc-public-spb.tac.build
 
 # Get account balance
-cast balance 0x742d35Cc6473... --rpc-url https://spb.rpc.tac.build
+cast balance 0x742d35Cc6473... --rpc-url https://rpc-public-spb.tac.build
 
 # Call contract function
-cast call CONTRACT_ADDRESS "get()" --rpc-url https://spb.rpc.tac.build
+cast call CONTRACT_ADDRESS "get()" --rpc-url https://rpc-public-spb.tac.build
 
 # Send transaction
 cast send CONTRACT_ADDRESS "set(uint256)" 100 \
   --private-key $PRIVATE_KEY \
-  --rpc-url https://spb.rpc.tac.build
+  --rpc-url https://rpc-public-spb.tac.build
 
 # Estimate gas
 cast estimate CONTRACT_ADDRESS "set(uint256)" 100 \
-  --rpc-url https://spb.rpc.tac.build
+  --rpc-url https://rpc-public-spb.tac.build
 ```
 
 ## Common Issues & Solutions
