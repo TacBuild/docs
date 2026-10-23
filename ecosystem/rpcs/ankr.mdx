@@ -1,7 +1,11 @@
 ---
 title: "Ankr"
-description: "Leading provider of blockchain infrastructure, offering a range of services including RPC nodes, indexing, and analytics"
+description: "Ankr RPC deprecation effective October 28, 2026, and migration to TAC public RPC endpoints"
 ---
+
+<Warning>
+  Ankr RPC endpoints for TAC Mainnet and Saint Petersburg Testnet are deprecated effective October 28, 2026. Update your applications and wallets to use the TAC public RPC endpoints below.
+</Warning>
 
 <CardGroup cols={1}>
     <Card
@@ -14,16 +18,14 @@ description: "Leading provider of blockchain infrastructure, offering a range of
 
 ## TAC Network RPC Infrastructure
 
-TAC offers full EVM compatibility through its Layer 1 blockchain. For reliable development and production environments, we've partnered with Ankr to provide enterprise-grade RPC infrastructure.
+TAC offers full EVM compatibility through its Layer 1 blockchain. Use the TAC public RPC endpoints for development and production environments.
 
-## Official Ankr RPC Endpoints
+## TAC Public RPC Endpoints
 
-As our main RPC provider, Ankr delivers high-availability infrastructure specifically optimized for TAC Network:
-
-| Type     | Network     | Endpoint                     |
-| -------- | ----------- | ---------------------------- |
-| JSON-RPC | Mainnet     | https://rpc.ankr.com/tac     |
-| JSON-RPC | SPB Testnet | https://rpc.ankr.com/tac_spb |
+| Network     | Endpoint                        |
+|-------------|---------------------------------|
+| Mainnet     | https://rpc-public.tac.build     |
+| SPB Testnet | https://rpc-public-spb.tac.build |
 
 ## Integration Steps
 
@@ -40,14 +42,14 @@ The TAC Network supports multiple access methods:
 
 <Step title="Configure Your Application">
 
-For EVM application integration using Ankr's RPC services:
+For EVM application integration using TAC public RPC endpoints:
 
 ```
 // Example configuration with ethers.js
 import { ethers } from 'ethers';
 
-// Connect via Ankr's RPC endpoint
-const provider = new ethers.providers.JsonRpcProvider('https://rpc.ankr.com/tac_spb');
+// Connect via TAC's public testnet RPC endpoint
+const provider = new ethers.providers.JsonRpcProvider('https://rpc-public-spb.tac.build');
 
 // Test connection
 async function checkConnection() {
@@ -59,7 +61,7 @@ async function checkConnection() {
 Or for deployment on TAC L1 using Foundry
 
 ```
-forge create --rpc-url https://rpc.ankr.com/tac_spb --private-key YOUR_PRIVATE_KEY_HERE YOUR_CONTRACT --legacy --broadcast
+forge create --rpc-url https://rpc-public-spb.tac.build --private-key YOUR_PRIVATE_KEY_HERE YOUR_CONTRACT --legacy --broadcast
 ```
 
 </Step>
@@ -70,7 +72,7 @@ forge create --rpc-url https://rpc.ankr.com/tac_spb --private-key YOUR_PRIVATE_K
 Before production deployment:
 
 - Get testnet tokens from the [TAC Faucet](https://spb.faucet.tac.build)
-- Test transactions through Ankr's RPC endpoints
+- Test transactions through TAC public RPC endpoints
 - Monitor performance via the Explorer
 
 For enterprise-level support or custom RPC requirements, contact the TAC team directly.

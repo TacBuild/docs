@@ -77,13 +77,13 @@ module.exports = {
   },
   networks: {
     tac_testnet: {
-      url: "https://spb.rpc.tac.build",
+      url: "https://rpc-public-spb.tac.build",
       chainId: 2391,
       accounts: [process.env.PRIVATE_KEY || ""],
       gasPrice: 20000000000,
     },
     tac_mainnet: {
-      url: "https://rpc.tac.build", 
+      url: "https://rpc-public.tac.build",
       chainId: 239,
       accounts: [process.env.PRIVATE_KEY || ""],
       gasPrice: 20000000000,
@@ -136,8 +136,8 @@ Create an organized project structure for proxy development:
     PRIVATE_KEY=your_private_key_here
     
     # Network Configuration
-    TAC_TESTNET_RPC=https://spb.rpc.tac.build
-    TAC_MAINNET_RPC=https://rpc.tac.build
+    TAC_TESTNET_RPC=https://rpc-public-spb.tac.build
+    TAC_MAINNET_RPC=https://rpc-public.tac.build
     
     # Optional: API Keys
     ETHERSCAN_API_KEY=your_etherscan_api_key
@@ -213,14 +213,14 @@ npx hardhat compile
     **Solutions**:
     - Verify RPC URLs are correct
     - Check network configuration in hardhat.config.js
-    - Test connection manually: `curl https://spb.rpc.tac.build`
+    - Test connection manually: `curl https://rpc-public-spb.tac.build`
     - Ensure firewall allows outbound connections
     
     ```javascript
     // Test network connectivity
     const { ethers } = require("hardhat");
     async function testConnection() {
-      const provider = new ethers.JsonRpcProvider("https://spb.rpc.tac.build");
+      const provider = new ethers.JsonRpcProvider("https://rpc-public-spb.tac.build");
       const blockNumber = await provider.getBlockNumber();
       console.log("Connected! Latest block:", blockNumber);
     }
